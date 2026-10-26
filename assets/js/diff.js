@@ -9,7 +9,7 @@ import { canExpand } from './expand.js';
 import { fileView } from './model.js';
 import { trailing } from './comments.js';
 
-// Быстрые конструкторы ячеек: на больших файлах тысячи строк.
+// Fast cell constructors: big files have thousands of rows.
 export function td(cls, text) {
   const c = document.createElement('td');
   c.className = cls;
@@ -17,7 +17,7 @@ export function td(cls, text) {
   return c;
 }
 
-// Кнопка «+» у номера строки (3.7). Без tabindex: с клавиатуры комментарий открывает C.
+// The "+" button at a line number. No tabindex: from the keyboard, C opens a comment.
 function cmtBtn(no) {
   const b = document.createElement('button');
   b.type = 'button';
@@ -27,7 +27,7 @@ function cmtBtn(no) {
   return b;
 }
 
-// btn — эта сторона комментируемая: у add и ctx новая, у del старая.
+// btn: this side can be commented on; the new side for add and ctx, the old side for del.
 function numTd(side, no, t, extra, marks, btn) {
   let cls = `num ${side} l-${t}${extra || ''}`;
   if (no != null && marks) {
@@ -61,7 +61,7 @@ function codeTd(file, l, wd, extra) {
   return c;
 }
 
-// Разделитель промежутка с кнопками раскрытия. hk — ханк после промежутка (null — хвост файла).
+// Gap separator with expand buttons. hk is the hunk after the gap (null for the end of the file).
 function gapRow(gap, hk, cols) {
   const btn = (dir, label, ic) => h('button', {
     class: 'gap-btn', type: 'button', title: label, 'aria-label': label,
@@ -121,8 +121,8 @@ function numDigits(file) {
 
 export const formIn = (path, secKey) => (ui.form && ui.form.path === path && ui.form.sec === secKey ? ui.form : null);
 
-// Метки комментариев и черновиков на номерах и то, что встаёт под строкой end своей стороны:
-// карточки, строки черновиков и открытая форма. Ключ — "side:no".
+// Comment and draft markers on line numbers and what goes under the end line of its side:
+// cards, draft rows and the open form. The key is "side:no".
 function fileMarks(file, secKey) {
   const after = new Map();
   const note = { old: new Set(), new: new Set() }, draft = { old: new Set(), new: new Set() };
@@ -159,7 +159,7 @@ export function renderDiff(file, sec) {
   const col = (cls) => { const c = document.createElement('col'); if (cls) c.className = cls; colgroup.append(c); };
   const tbody = document.createElement('tbody');
   const pathKey = `${secKey}:${file.path}`;
-  // Промежутки по номерам строк. Без полного текста — старые заголовки ханков без кнопок.
+  // Gaps by line numbers. Without the full text: the old hunk headers without buttons.
   const gaps = canExpand(file) ? new Map(D.gapsOf(file.hunks, file.newLines).map((g) => [g.at, g])) : null;
   const sepRow = (k, cols) => {
     const hk = file.hunks[k];
@@ -235,10 +235,10 @@ export function renderDiff(file, sec) {
   return wrap;
 }
 
-// Перерисованный дифф первые кадры рендерится целиком (content-visibility: visible). Оценка высоты
-// не знает о переносе строк, карточках и форме, и файл вне экрана получил бы реальную высоту уже после
-// того, как withAnchor выставил прокрутку: место чтения уехало бы. Пока дифф виден целиком, его размер
-// точный и запоминается браузером (contain-intrinsic-size: auto), так что возврат к auto ничего не сдвигает.
+// A re-rendered diff is rendered in full for the first frames (content-visibility: visible). The height estimate
+// knows nothing about line wrapping, cards and the form, and an off-screen file would get its real height only after
+// withAnchor has set the scroll position: the reading position would shift. While the diff is fully rendered, its size
+// is exact and remembered by the browser (contain-intrinsic-size: auto), so switching back to auto moves nothing.
 let freshQueued = false;
 function markFresh(wrap) {
   wrap.classList.add('cv-fresh');
@@ -250,7 +250,7 @@ function markFresh(wrap) {
   }));
 }
 
-// Выделенные строки: оверлей на коде и подсветка номеров выбранной стороны. В «Рядом» — только своя половина.
+// Selected lines: an overlay on the code and highlighted numbers of the selected side. In side-by-side view, only its own half.
 export function paintSelection(root, sel, split) {
   for (const el of root.querySelectorAll('.sel')) el.classList.remove('sel');
   if (!sel) return;

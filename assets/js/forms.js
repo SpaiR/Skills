@@ -11,14 +11,14 @@ import { closeSectionComment } from './section.js';
 import { draftKey, editKey, fitTextarea } from './comments.js';
 import { toast } from './toast.js';
 
-// Перерисовать файлы, где были или появились форма и выделение.
+// Re-render the files where the form or the selection was or has appeared.
 export function refreshFiles(paths, keep) {
   const set = new Set(paths.filter(Boolean));
   withAnchor(() => { for (const p of set) rerenderFile(p); }, keep);
   updateChrome();
 }
 
-// Форма в поле зрения: под закреплёнными заголовками и не ниже окна.
+// Bring the form into view: below the sticky headers and not below the window.
 export function revealEditor(el) {
   if (!el) return;
   el.scrollIntoView({ block: 'nearest', behavior: 'instant' });
@@ -36,8 +36,8 @@ function focusForm() {
   revealEditor(ta.closest('.editor'));
 }
 
-// Форма нового комментария на диапазоне. extend — расширен диапазон той же формы: черновик переезжает с ней.
-// row — строка таблицы, с которой работал пользователь: она остаётся на месте экрана.
+// New comment form on a range. extend: the range of the same form was extended, the draft moves with it.
+// row is the table row the user worked with: it stays in place on screen.
 export function openLineForm(file, secKey, range, anchor, extend, row) {
   if (finished) return;
   const prev = ui.form, prevSel = selection;
@@ -71,7 +71,7 @@ export function openEditForm(a, secKey) {
   focusForm();
 }
 
-// Закрыть форму: текст остаётся черновиком. focusBack — вернуть фокус из формы на заголовок файла.
+// Close the form: the text stays as a draft. focusBack: return focus from the form to the file header.
 export function closeForm(focusBack) {
   const f = ui.form, sel = selection;
   if (!f && !sel) return;
@@ -86,7 +86,7 @@ export function closeForm(focusBack) {
   }
 }
 
-// Строка диффа, под которой стоит элемент (карточка, черновик): по ней держится прокрутка.
+// The diff row an element (card, draft) sits under: the scroll position is held by it.
 export function lineRowBefore(el) {
   let tr = el && el.closest('tr');
   while (tr && !tr.matches('tr.ln')) tr = tr.previousElementSibling;

@@ -25,8 +25,8 @@ const SUBMIT_HINTS = {
 
 const fileOrder = () => new Map(R.files.map((f, i) => [f.path, i]));
 
-// Черновик виден на странице: его строка end есть в патче файла (у правки — строка end комментария),
-// и файл стоит в какой-то главе. Черновик на строках, которых в патче больше нет, показать негде.
+// A draft is visible on the page if its end line is in the file patch (for a suggestion, the comment's end line)
+// and the file is in some chapter. A draft on lines no longer in the patch has nowhere to be shown.
 function draftReachable(d) {
   const file = d && fileByPath.get(d.file);
   if (!file || !sections.some((s) => s.diffs.some((x) => x.file === d.file))) return false;
@@ -34,7 +34,7 @@ function draftReachable(d) {
   return !!a && !!lineAt(file, a.side, a.end);
 }
 
-// Непустые черновики, до которых можно дойти, в порядке файлов и строк.
+// Non-empty drafts that can be reached, in file and line order.
 function draftList() {
   const order = fileOrder();
   return Object.entries(S.drafts)
@@ -174,7 +174,7 @@ export function openSubmit(action) {
   ].filter(Boolean));
   refresh();
   d.showModal();
-  // Ширина кнопки не меняется, когда текст становится «Отправляю…».
+  // The button width does not change when its text switches to "Sending…".
   send.style.minWidth = `${send.offsetWidth}px`;
   (ta || cancel).focus();
 }
@@ -214,7 +214,7 @@ function showFinished(action, counts) {
   }[action];
   let sub = 'Комментарии сохранены в state.json.';
   if (action !== 'close') {
-    // Нулевые части не пишутся: «0 к главам» — шум. Слово «комментарий» склоняется у первого числа.
+    // Zero parts are omitted: "0 on chapters" is noise. The word "comment" is inflected by the first number.
     const parts = [];
     if (counts.lines) parts.push(`${plural(counts.lines, NOTES)} к строкам`);
     if (counts.secs) parts.push(`${parts.length ? counts.secs : plural(counts.secs, NOTES)} к главам`);
@@ -231,8 +231,8 @@ function showFinished(action, counts) {
   autoClose(closing, CLOSE_AFTER_S);
 }
 
-// Вкладку, открытую скиллом (одна запись в истории), браузер даёт закрыть скриптом. Если не дал —
-// вкладка остаётся, и строка просит закрыть её вручную.
+// A tab opened by the skill (a single history entry) may be closed by a script. If the browser refuses,
+// the tab stays open and a line asks the user to close it by hand.
 function autoClose(el, seconds) {
   const tick = (left) => {
     if (left > 0) {

@@ -52,18 +52,18 @@ function watchLayout() {
   const toc = document.getElementById('toc');
   toc.addEventListener('mouseenter', () => { ui.tocHover = true; });
   toc.addEventListener('mouseleave', () => { ui.tocHover = false; });
-  // Закрыть выезжающее оглавление кликом вне панели.
+  // Close the slide-out contents with a click outside the panel.
   document.addEventListener('mousedown', (e) => {
     if (narrowScreen.matches && ui.drawer && !e.target.closest('#toc, #toc-btn')) { ui.drawer = false; applyTocState(); }
   });
   window.addEventListener('scroll', queueTrack, { passive: true });
-  // Прокрутка пользователем снимает закрепление текущего элемента (клавиши J/K ставят его заново).
+  // Scrolling by the user releases the pinned current item (J/K pin it again).
   const unpin = () => { ui.pin = null; };
   for (const ev of ['wheel', 'touchmove', 'mousedown']) window.addEventListener(ev, unpin, { passive: true, capture: true });
   const SCROLL_KEYS = new Set(['PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown', 'Space']);
   window.addEventListener('keydown', (e) => { if (SCROLL_KEYS.has(e.code)) unpin(); }, { capture: true });
   window.addEventListener('resize', queueTrack, { passive: true });
-  // Пока заголовок ревью виден, в шапке контекст репозитория; потом — название ревью.
+  // While the review title is visible, the top bar shows the repository context; after that, the review title.
   observeTitle();
 }
 
@@ -92,7 +92,7 @@ async function init() {
       fullAvail: !!f.full, newLines: f.content && f.content.lines != null ? f.content.lines : null, full: null, fullBad: false,
     });
   });
-  // Раскрытое в прошлый раз: полный текст этих файлов нужен до первой отрисовки, иначе страница прыгнет.
+  // Expanded last time: the full text of these files is needed before the first render, otherwise the page would jump.
   for (const p of Object.keys(S.expanded)) if (!fileByPath.has(p)) delete S.expanded[p];
   await Promise.all(Object.keys(S.expanded).map((p) => {
     const file = fileByPath.get(p);

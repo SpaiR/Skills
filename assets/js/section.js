@@ -14,7 +14,7 @@ import { fitTextarea } from './comments.js';
 import { closeForm, revealEditor } from './forms.js';
 import { toast } from './toast.js';
 
-// В режиме «Файлы» — без intent: там читают код, а не историю изменения.
+// In Files mode, no intent: people read code there, not the story of the change.
 function renderHero() {
   const g = R.guide, m = R.meta, t = m.totals;
   const compact = filesMode();
@@ -46,7 +46,7 @@ export function renderMain() {
   $main().replaceChildren(renderHero(), ...groups().map(renderSection));
 }
 
-// Безголовая группа режима «Файлы»: только строка фильтра и карточки файлов.
+// Headless group of Files mode: only the filter row and the file cards.
 function renderFilesGroup(sec) {
   return h('section', { class: 'sec headless', id: sec.key, dataset: { key: sec.key }, 'aria-label': 'Файлы' },
     filterStatus(),
@@ -112,7 +112,7 @@ export function renderSection(sec) {
   return card;
 }
 
-// Комментарий к главе (3.10): текст пишется прямо в S.sectionComments, черновика у него нет.
+// Chapter comment: the text is written straight into S.sectionComments, it has no draft.
 function renderSectionComment(sec) {
   const value = S.sectionComments[sec.key] || '';
   const wrap = h('div', { class: 'sec-comment', dataset: { key: sec.key } });

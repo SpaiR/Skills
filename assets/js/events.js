@@ -20,7 +20,7 @@ export function onMainClick(e) {
   if (finished) return;
   const num = e.target.closest('td.num[data-no]');
   if (num) {
-    // Мышь обрабатывают mousedown/mouseup; сюда доходит только активация кнопки «+» без мыши.
+    // The mouse is handled by mousedown/mouseup; only a non-mouse activation of the "+" button gets here.
     if (e.detail !== 0) return;
     const hit = numLine(num);
     if (!hit) return;
@@ -94,7 +94,7 @@ export function toggleFile(file, sec, open) {
   updateChrome();
 }
 
-// Раскрыть главу и файл, если свёрнуты, и прокрутить к карточке комментария с подсветкой.
+// Expand the chapter and the file if collapsed, and scroll to the comment card, highlighting it.
 export function goToNote(id, secKey) {
   const a = S.annotations.find((x) => x.id === id);
   const file = a && fileByPath.get(a.file);
@@ -109,7 +109,7 @@ export function goToNote(id, secKey) {
   flash(note);
 }
 
-// Раскрыть главу и файл, чтобы до строк можно было дойти.
+// Expand the chapter and the file so the lines can be reached.
 export function revealFile(file, sec) {
   if (sec.headless && ui.visible && !ui.visible.has(file.path)) resetFilter();
   const changed = [];
@@ -141,7 +141,7 @@ export function onMainChange(e) {
   if (input.dataset.act === 'file-viewed') {
     const path = input.closest('.file').dataset.path;
     const closed = setFileViewed(fileByPath.get(path), input.checked, input.closest('.file-head'));
-    // Глава закрылась вместе с файлом — фокус на её заголовке, иначе на том же чекбоксе.
+    // The chapter closed along with the file: focus goes to its header, otherwise to the same checkbox.
     const again = closed
       ? $main().querySelector(`${secQ(closed)} .sec-toggle`)
       : $main().querySelector(`${fileQ(sec.key, path)} input[data-act="file-viewed"]`);

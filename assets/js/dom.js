@@ -7,7 +7,7 @@ export function h(tag, attrs, ...children) {
   for (const [k, v] of Object.entries(attrs || {})) {
     if (v == null || v === false) continue;
     if (k === 'class') node.className = v;
-    else if (k === 'html') node.innerHTML = v; // только для результата md() и inline()
+    else if (k === 'html') node.innerHTML = v; // only for the output of md() and inline()
     else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
     else if (k === 'dataset') Object.assign(node.dataset, v);
     else node.setAttribute(k, v === true ? '' : v);
@@ -31,7 +31,7 @@ export const uid = () => Math.random().toString(36).slice(2, 10);
 export const fileDomId = (path) => 'f-' + Array.from(path).map((c) => c.charCodeAt(0).toString(36)).join('');
 export const $main = () => document.getElementById('main');
 
-// Иконки 16×16: статические фигуры, без пользовательских данных.
+// 16x16 icons: static shapes, no user data.
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const ICONS = {
   chevron: [['path', { d: 'M4 6l4 4 4-4' }]],

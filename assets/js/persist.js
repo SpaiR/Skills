@@ -3,7 +3,7 @@
 import * as D from './diffcore.js';
 import { TOKEN, TREE_MAX, TREE_MIN } from './constants.js';
 import { finished, S, sections } from './state.js';
-import { fileOpen, secFiles, sectionOpen } from './model.js';
+import { secFiles } from './model.js';
 
 export async function api(method, path, body, keepalive) {
   const res = await fetch(path, {
@@ -28,7 +28,7 @@ export function normalizeState(raw) {
     sectionComments: obj(s.sectionComments),
     globalComment: typeof s.globalComment === 'string' ? s.globalComment : '',
     viewMode: s.viewMode === 'split' ? 'split' : 'unified',
-    filesViewed: s.filesViewed && typeof s.filesViewed === 'object' ? s.filesViewed : null, // null — заполнит миграция
+    filesViewed: s.filesViewed && typeof s.filesViewed === 'object' ? s.filesViewed : null, // null: filled in by the migration
     drafts: obj(s.drafts),
     wrap: s.wrap !== false,
     theme: s.theme === 'light' || s.theme === 'dark' ? s.theme : 'auto',
@@ -37,14 +37,14 @@ export function normalizeState(raw) {
     treeCollapsed: obj(s.treeCollapsed),
     treeW: Number.isFinite(s.treeW) ? Math.min(TREE_MAX, Math.max(TREE_MIN, s.treeW)) : null,
     hideViewed: !!s.hideViewed,
-    // Раскрытый контекст по файлам: {ranges: [[from, to]] в новых номерах строк, full: весь файл}.
+    // Expanded context per file: {ranges: [[from, to]] in new line numbers, full: whole file}.
     expanded: Object.fromEntries(Object.entries(obj(s.expanded))
       .map(([p, e]) => [p, { ranges: D.mergeRanges(Array.isArray(e && e.ranges) ? e.ranges : []), full: !!(e && e.full) }])
       .filter(([, e]) => e.full || e.ranges.length)),
   };
 }
 
-// Состояние старой версии: файлы уже отмеченных глав считаются просмотренными.
+// State from an older version: files of chapters already marked as viewed count as viewed.
 export function migrateFilesViewed() {
   if (S.filesViewed) return;
   S.filesViewed = {};

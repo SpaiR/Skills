@@ -10,7 +10,7 @@ import { fileQ, rerenderFile, withAnchor } from './rerender.js';
 import { cancelDrag } from './selection.js';
 import { toast } from './toast.js';
 
-// Раскрывать можно, если collect.py собрал полный текст файла и он сошёлся с патчем.
+// Expansion is possible if collect.py captured the full file text and it matched the patch.
 export const canExpand = (file) => file.fullAvail && !file.fullBad && file.newLines != null;
 const expandedOf = (file) => S.expanded[file.path] || (S.expanded[file.path] = { ranges: [], full: false });
 export const isWhole = (file) => !!(S.expanded[file.path] && S.expanded[file.path].full);
@@ -22,8 +22,8 @@ export function expandReason(file) {
   return c.reason ? `Полный текст не собран: ${c.reason}` : 'Полный текст недоступен';
 }
 
-// Полный текст файла (один ханк из full.patch) грузится один раз, при первом раскрытии.
-// Строки исходного патча сверяются с ним: не сошлись — раскрытие у файла выключается.
+// The full file text (a single hunk from full.patch) is loaded once, on the first expansion.
+// The lines of the original patch are checked against it: on a mismatch, expansion is turned off for the file.
 const fullLoads = new Map();
 export function ensureFull(file) {
   if (file.full) return Promise.resolve(!file.fullBad);
@@ -49,7 +49,7 @@ export function ensureFull(file) {
   return fullLoads.get(file.path);
 }
 
-// Ханки по текущему раскрытию. Индексы строк i пересчитываются, кэши файла сбрасываются.
+// Hunks for the current expansion. Line indices i are recomputed and the file caches are reset.
 export function applyView(file) {
   const ex = S.expanded[file.path];
   let hunks = file.baseHunks;
@@ -63,8 +63,8 @@ export function applyView(file) {
   file.split = file.blocks = file.wd = file.syn = null;
 }
 
-// Пересобрать вид файла. Курсор N/P и опора выделения держатся за индексы строк: они переносятся
-// по номерам строк (строки изменений видны всегда, так что находятся). keep — строка, которая не сдвигается.
+// Rebuild the file view. The N/P cursor and the selection anchor hold on to line indices: they are carried over
+// by line numbers (changed lines are always visible, so they are found). keep is the row that must not move.
 function reshapeFile(file, keep) {
   if (ui.drag && ui.drag.file === file) cancelDrag();
   const at = (li) => (li != null && file.lines[li] ? lineKey(file.lines[li]) : null);
@@ -88,8 +88,8 @@ function dropEmptyExpanded(file) {
   if (ex && !ex.full && !ex.ranges.length) delete S.expanded[file.path];
 }
 
-// Кнопка промежутка: «↑» раскрывает строки над следующим ханком, «↓» — под предыдущим. Строка рядом
-// с кнопкой остаётся на месте экрана, новые строки встают с другой стороны от неё.
+// Gap button: up reveals lines above the next hunk, down reveals lines below the previous one. The row next to
+// the button stays in place on screen; new lines appear on the other side of it.
 export async function expandGap(btn, byKeyboard) {
   const fileEl = btn.closest('.file');
   const file = fileEl && fileByPath.get(fileEl.dataset.path);
@@ -109,7 +109,7 @@ export async function expandGap(btn, byKeyboard) {
   const again = keepKey && $main().querySelector(`[data-anchor="${CSS.escape(keepKey)}"]`);
   reshapeFile(file, again || null);
   if (byKeyboard) {
-    // Фокус — на кнопку того же направления у той же строки, если промежуток ещё остался, иначе на заголовок файла.
+    // Focus goes to the button of the same direction at the same row if the gap is still there, otherwise to the file header.
     const row = keepKey && $main().querySelector(`[data-anchor="${CSS.escape(keepKey)}"]`);
     const sepNow = row && (dir === 'up' ? row.previousElementSibling : row.nextElementSibling);
     const b = sepNow && sepNow.matches('tr.gap') ? sepNow.querySelector(`.gap-btn[data-dir="${dir}"], .gap-btn[data-dir="all"]`) : null;
@@ -118,7 +118,7 @@ export async function expandGap(btn, byKeyboard) {
   }
 }
 
-// «Весь файл»: все промежутки раскрыты. Выключение возвращает раскрытое вручную и строки с комментариями.
+// "Whole file": all gaps expanded. Turning it off restores what was expanded by hand and the lines with comments.
 export async function setWholeFile(file, on) {
   if (!canExpand(file)) { toast(expandReason(file)); return; }
   if (!(await ensureFull(file))) { rerenderFile(file.path); return; }
@@ -128,8 +128,8 @@ export async function setWholeFile(file, on) {
   reshapeFile(file, null);
 }
 
-// Строки формы комментария остаются раскрытыми: иначе после «Весь файл» → выкл. комментарий
-// на раскрытой строке пропал бы со страницы. Номера старой стороны переводятся в новые по полному тексту.
+// Lines of the comment form stay expanded: otherwise, after toggling "Whole file" off, a comment
+// on an expanded line would vanish from the page. Old-side numbers are mapped to new ones using the full text.
 export function pinRange(file, r) {
   if (!file.full || file.fullBad) return;
   let range = null;

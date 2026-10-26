@@ -7,7 +7,7 @@ import { rerenderFile, rerenderSection, withAnchor } from './rerender.js';
 import { updateChrome } from './header.js';
 import { applyCurrent } from './nav.js';
 
-// Пересчитать отметки глав, где стоят файлы paths. except — глава, которую отметили вручную.
+// Recompute the chapter marks of chapters containing paths. except is the chapter marked by hand.
 function syncSections(paths, except) {
   const changed = [];
   for (const sec of sections) {
@@ -34,8 +34,8 @@ export function setFileViewed(file, value, keep) {
     delete S.filesViewed[file.path];
   }
   const changed = syncSections(new Set([file.path]));
-  // Отметка закрыла главу (это был её последний файл): на месте остаётся заголовок свёрнутой главы,
-  // и текущей становится она, а не файл соседней главы, который поднялся бы под шапку.
+  // The mark closed the chapter (it was its last file): the collapsed chapter header stays in place
+  // and becomes current, rather than a file of the next chapter that would move up under the top bar.
   const secEl = keep && keep.closest('.sec');
   const closed = secEl && changed.includes(secEl.dataset.key) && !sectionOpen(secByKey.get(secEl.dataset.key)) ? secEl.dataset.key : null;
   if (closed) {

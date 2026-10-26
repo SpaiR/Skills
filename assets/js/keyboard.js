@@ -22,7 +22,7 @@ import { closeMenu } from './menu.js';
 import { openHelp } from './help.js';
 import { openSubmit } from './submit.js';
 
-// Поля, где буквы — это ввод. Чекбоксы «Просмотрено» сюда не входят: после клика по ним клавиши должны работать.
+// Fields where letters are input. "Viewed" checkboxes are not included: keys must keep working after clicking them.
 const TEXT_INPUT = 'textarea, select, [contenteditable]:not([contenteditable="false"]), input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"])';
 
 const KEYS = {
@@ -43,7 +43,7 @@ const KEYS = {
   KeyZ: () => setAllFilesOpen(false),
   Slash: () => focusFilter(),
 };
-// Клавиши глав: в «Файлах» глав нет — подсказка вместо действия.
+// Chapter keys: Files mode has no chapters, so a hint is shown instead of the action.
 const guideOnly = (fn) => () => (filesMode() ? toast('Это действие с главами — оно есть в режиме «Гайд» (G)') : fn());
 KEYS.BracketRight = guideOnly(KEYS.BracketRight);
 KEYS.BracketLeft = guideOnly(KEYS.BracketLeft);
@@ -80,12 +80,12 @@ export function onKeyDown(e) {
   const fn = (e.shiftKey ? SHIFT_KEYS : KEYS)[code];
   if (!fn) return;
   e.preventDefault();
-  // Текущий элемент обновляется в кадре после прокрутки; клавиша, нажатая сразу после неё, получает свежий.
+  // The current item is updated in the frame after scrolling; a key pressed right after it gets a fresh one.
   trackCurrent();
   fn();
 }
 
-// Esc закрывает по очереди: меню, выезжающее оглавление, форму (черновик остаётся), выделение, курсор.
+// Esc closes, in order: the menu, the slide-out contents, the form (the draft stays), the selection, the cursor.
 function onEscape() {
   if (ui.menu) { closeMenu(true); return; }
   if (narrowScreen.matches && ui.drawer) { setDrawer(false); return; }
@@ -97,7 +97,7 @@ function onEscape() {
 
 const openFileEls = () => [...$main().querySelectorAll('.sec:not(.collapsed) .file:not([hidden])')];
 
-// J/K: соседний файл в раскрытых главах, включая свёрнутые файлы.
+// J/K: the adjacent file in expanded chapters, including collapsed files.
 function stepFile(dir) {
   const list = openFileEls();
   if (!list.length) return;
@@ -105,7 +105,7 @@ function stepFile(dir) {
   const cur = c ? list.findIndex((f) => f.dataset.path === c.path && f.closest('.sec').dataset.key === c.sec) : -1;
   let next = cur + dir;
   if (cur < 0) {
-    // Текущего файла нет (после ]/[ или V, закрывшего главу): соседний файл считается от текущей главы.
+    // No current file (after ]/[ or a V that closed the chapter): the adjacent file is counted from the current chapter.
     const at = sections.findIndex((s) => s.key === ui.curSec);
     const secIdx = (f) => secByKey.get(f.closest('.sec').dataset.key).idx;
     if (at < 0) next = dir > 0 ? 0 : list.length - 1;
@@ -120,7 +120,7 @@ function stepFile(dir) {
   goFile(el.dataset.path, el.closest('.sec').dataset.key);
 }
 
-// Заголовок файла под заголовок главы, файл текущий, фокус на его кнопке.
+// Put the file header under the chapter header, make the file current and focus its button.
 function goFile(path, key) {
   ui.curFile = { path, sec: key };
   ui.curSec = key;
@@ -131,7 +131,7 @@ function goFile(path, key) {
   if (t) t.focus({ preventScroll: true });
 }
 
-// ]/[: соседняя глава, включая свёрнутые.
+// ]/[: the adjacent chapter, including collapsed ones.
 function stepSection(dir) {
   const cur = sections.findIndex((s) => s.key === ui.curSec);
   const next = cur < 0 ? 0 : cur + dir;
@@ -149,7 +149,7 @@ function stepSection(dir) {
   if (t) t.focus({ preventScroll: true });
 }
 
-// Строки таблицы блока изменений (в «Рядом» блок занимает пары).
+// Table rows of a change block (in side-by-side view a block spans pairs).
 function blockRows(c) {
   const fileEl = c && $main().querySelector(fileQ(c.sec, c.path));
   const file = c && fileByPath.get(c.path);
@@ -164,7 +164,7 @@ function applyCursor() {
   for (const tr of blockRows(ui.cursor)) tr.classList.add('cursor');
 }
 
-// N/P: следующий блок изменений в раскрытых файлах раскрытых глав.
+// N/P: the next change block in expanded files of expanded chapters.
 function stepChange(dir) {
   const list = [];
   for (const fileEl of $main().querySelectorAll('.sec:not(.collapsed) .file:not(.collapsed):not([hidden])')) {
@@ -177,7 +177,7 @@ function stepChange(dir) {
   const cur = c ? list.findIndex((b) => b.path === c.path && b.sec === c.sec && b.from === c.from) : -1;
   if (cur >= 0) next = cur + dir;
   else if (list.length) {
-    // Без курсора — от экрана: первый блок под закреплёнными заголовками или последний над ними.
+    // Without a cursor, start from the screen: the first block below the sticky headers or the last one above them.
     const line = stickyOffset() - 1;
     const top = (b) => { const r = blockRows(b)[0]; return r ? r.getBoundingClientRect().top : -Infinity; };
     if (dir > 0) next = list.findIndex((b) => top(b) >= line);
@@ -189,8 +189,8 @@ function stepChange(dir) {
     return;
   }
   ui.cursor = list[next];
-  // Файл курсора становится текущим и закреплённым: иначе V, O и Shift+V сработали бы
-  // на файле или главе, закреплённых раньше клавишами J/K/]/[, хотя их уже нет на экране.
+  // The cursor's file becomes current and pinned: otherwise V, O and Shift+V would act
+  // on a file or chapter pinned earlier by J/K/]/[ that is no longer on screen.
   ui.curFile = { path: ui.cursor.path, sec: ui.cursor.sec };
   ui.curSec = ui.cursor.sec;
   ui.pin = { sec: ui.cursor.sec, path: ui.cursor.path };
@@ -199,7 +199,7 @@ function stepChange(dir) {
   scrollToElement(() => blockRows(ui.cursor)[0], stickyOffset() + Math.round(window.innerHeight * 0.25));
 }
 
-// C: форма на блоке под курсором. Есть добавленные строки — новая сторона по ним, иначе старая по удалённым.
+// C: a form on the block under the cursor. If there are added lines, the new side is used, otherwise the old side of the deleted ones.
 function commentAtCursor() {
   const c = ui.cursor;
   const file = c && fileByPath.get(c.path);
@@ -224,8 +224,8 @@ function currentFile() {
 
 const NO_FILE = 'Нет текущего файла: выбери его клавишами J/K';
 
-// Перерисовка убирает узел с фокусом. Фокус возвращается на кнопку заголовка файла или главы,
-// если он не ушёл сам (например, в поле формы).
+// Re-rendering removes the focused node. Focus returns to the button of the file or chapter header
+// unless it has moved elsewhere by itself (for example, into a form field).
 function refocus(secKey, path) {
   if (document.activeElement && document.activeElement !== document.body) return;
   const t = $main().querySelector(path ? `${fileQ(secKey, path)} .file-toggle` : `${secQ(secKey)} .sec-toggle`);

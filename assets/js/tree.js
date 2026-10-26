@@ -11,8 +11,8 @@ import { applyModeLayout } from './modes.js';
 import { jumpToFile, queueTrack } from './nav.js';
 import { filterStatus } from './section.js';
 
-// Каталоги раньше файлов, всё по алфавиту с учётом чисел. Каталог без файлов с единственным
-// подкаталогом сливается с ним в одну строку: src/core/.
+// Directories before files, everything alphabetical with numeric ordering. A directory without files and with a single
+// subdirectory is merged with it into one row: src/core/.
 export function buildTree(paths) {
   const coll = new Intl.Collator('ru', { numeric: true, sensitivity: 'base' });
   const root = { name: '', path: '', dirs: new Map(), files: [] };
@@ -48,7 +48,7 @@ export function computeVisible() {
     terms.every((t) => p.toLowerCase().includes(t)) && !(S.hideViewed && isViewed(fileByPath.get(p)))));
 }
 
-// Фильтр меняет только видимость карточек: перерисовки нет, место чтения держит withAnchor.
+// The filter changes only card visibility: no re-render, withAnchor keeps the reading position.
 function applyVisible() {
   computeVisible();
   withAnchor(() => {
@@ -197,7 +197,7 @@ export function renderTree() {
   };
   walk(treeRoot, 1);
   list.replaceChildren(...(rows.length ? rows : [h('div', { class: 'tree-empty' }, 'Ни один файл не подходит под фильтр')]));
-  // Один элемент дерева в порядке Tab (roving tabindex): тот, что был в фокусе, текущий файл или первый.
+  // One tree item in the Tab order (roving tabindex): the one that had focus, the current file, or the first.
   const pick = (focusKey && list.querySelector(`[data-tkey="${CSS.escape(focusKey)}"]`))
     || list.querySelector('.tree-row[aria-current]') || list.querySelector('.tree-row');
   if (pick) pick.tabIndex = 0;
@@ -221,7 +221,7 @@ export function toggleTreeDir(dir, open) {
   renderTree();
 }
 
-// Клавиатура дерева по образцу ARIA tree: стрелки, Home/End, Enter/Space. Буквы уходят глобальным клавишам.
+// Tree keyboard following the ARIA tree pattern: arrows, Home/End, Enter/Space. Letters go to the global shortcuts.
 function onTreeKey(e) {
   const row = e.target.closest('.tree-row');
   if (!row || e.altKey || e.ctrlKey || e.metaKey) return;

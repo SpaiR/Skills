@@ -12,14 +12,14 @@ export const draftKey = (path, side, start, end) => `${path}|${side}|${start}|${
 export const editKey = (id) => `edit|${id}`;
 export const FIELD_SIZING = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('field-sizing', 'content');
 
-// Высота поля по тексту: от 3 строк до 50vh. Где есть field-sizing, это делает CSS.
+// Field height follows the text: from 3 lines up to 50vh. Where field-sizing is supported, CSS does this.
 export function fitTextarea(ta) {
   if (FIELD_SIZING || !ta.isConnected) return;
   ta.style.height = 'auto';
   ta.style.height = `${Math.min(ta.scrollHeight + 2, window.innerHeight * 0.5)}px`;
 }
 
-// Строки, которые встают под строкой таблицы: карточки, черновики, форма.
+// Rows placed under a table row: note cards, drafts, the form.
 export function trailing(file, sec, marks, keys, cols) {
   const rows = [];
   for (const [side, no] of keys) {
@@ -65,7 +65,7 @@ function noteCard(file, a) {
     a.suggestion && suggestionBox(file, a));
 }
 
-// Мини-дифф правки: исходные строки диапазона со знаком −, затем предложенные со знаком +.
+// Mini diff of a suggestion: the original lines of the range with a − sign, then the suggested ones with +.
 function suggestionBox(file, a) {
   const line = (t, sign, text) => h('div', { class: `sg-line sg-${t}` }, h('span', { class: 'sg-sign' }, sign), h('span', { class: 'sg-code' }, text));
   return h('div', { class: 'suggestion' },
@@ -87,7 +87,7 @@ function draftCard(key, d) {
       h('button', { class: 'btn sm ghost danger', type: 'button', dataset: { act: 'draft-delete', key } }, 'Удалить')));
 }
 
-// Черновик формы: пишется на каждый ввод. Пустой новый комментарий и неизменённая правка черновика не дают.
+// Form draft: written on every input. An empty new comment and an unchanged edit produce no draft.
 function writeDraft(f, text, suggestion, existing) {
   const unchanged = existing
     ? text === existing.text && suggestion === (existing.suggestion || '')
@@ -99,7 +99,7 @@ function writeDraft(f, text, suggestion, existing) {
   }
 }
 
-// Tab в поле правки вставляет два пробела, Shift+Tab убирает отступ у строк выделения.
+// Tab in the suggestion field inserts two spaces; Shift+Tab removes indentation from the selected lines.
 function indentText(ta, outdent) {
   const v = ta.value, s = ta.selectionStart, e = ta.selectionEnd;
   if (!outdent && s === e) { ta.setRangeText('  ', s, e, 'end'); return; }
@@ -120,7 +120,7 @@ function indentText(ta, outdent) {
   else ta.setSelectionRange(s + 2, e + 2 * lines.length);
 }
 
-// Форма комментария (3.10). existing — редактируемая аннотация.
+// Comment form. existing is the annotation being edited.
 function editorCard(file, existing) {
   const f = ui.form;
   const d = S.drafts[f.key];
@@ -131,7 +131,7 @@ function editorCard(file, existing) {
   const sugBox = h('div', { class: 'sug-box', hidden: !f.sugOpen },
     h('div', { class: 'sug-head' },
       h('span', { class: 'sug-label' }, 'Предложенная правка'),
-      // Tab здесь вставляет отступ: выйти из поля клавиатурой можно только так.
+      // Tab inserts indentation here: this is the only way to leave the field with the keyboard.
       h('span', { class: 'hint' }, `Tab — отступ · Esc — закрыть форму · ${MOD_ENTER} — сохранить`)),
     sg);
   const sugToggle = h('button', { class: 'btn sm ghost sug-toggle', type: 'button', hidden: f.sugOpen }, '± Предложить правку');
@@ -165,7 +165,7 @@ function editorCard(file, existing) {
     sync();
     fitTextarea(sg);
     sg.focus({ preventScroll: true });
-    // Форма выросла: её нижний ряд с «Сохранить» мог уйти за край окна.
+    // The form grew: its bottom row with the Save button may have gone past the window edge.
     revealEditor(sg.closest('.editor'));
   });
   saveBtn.addEventListener('click', commit);
@@ -187,7 +187,7 @@ function editorCard(file, existing) {
       !existing && h('span', { class: 'hint' }, 'Shift+клик — расширить диапазон')),
     ta, sugToggle, sugBox,
     h('div', { class: 'editor-actions' }, saveBtn, closeBtn, discard,
-      // Короткий вариант — когда длинный не помещается в ряд с кнопками (container query в CSS).
+      // The short variant is used when the long one does not fit in the row with the buttons (container query in CSS).
       h('span', { class: 'hint save-hint', title: 'Esc закрывает форму, текст остаётся черновиком' },
         h('span', { class: 'hint-long' }, `${MOD_ENTER} — сохранить · Esc — закрыть, черновик останется`),
         h('span', { class: 'hint-short' }, `${MOD_ENTER} — сохранить · Esc — закрыть`))));

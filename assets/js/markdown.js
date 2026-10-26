@@ -2,8 +2,8 @@
 
 import { esc } from './dom.js';
 
-// Русская типографика для текста гайда: короткие предлоги и союзы не висят в конце строки,
-// частицы и тире не начинают строку. Только для показа: feedback.md собирается не отсюда.
+// Russian typography for guide text: short prepositions and conjunctions do not hang at the end of a line,
+// particles and dashes do not start a line. Display only: feedback.md is not built from this.
 function typo(text) {
   return text
     .replace(/(?<=^|[\s(«„"])([А-Яа-яЁё]{1,2}|для|при|без|над|под|про|что|как) /gu, '$1 ')

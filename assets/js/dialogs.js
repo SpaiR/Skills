@@ -15,7 +15,7 @@ export function dialogEl(id, cls) {
     const r = d.getBoundingClientRect();
     return e.target === d && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom);
   };
-  // Клик по фону закрывает, но только если и нажатие было на фоне: выделение текста мышью диалог не закроет.
+  // A click on the backdrop closes the dialog, but only if the press also started on it: selecting text with the mouse will not close it.
   d.addEventListener('mousedown', (e) => { d.downOutside = outside(e); });
   d.addEventListener('click', (e) => { if (d.downOutside && outside(e)) d.close(); });
   d.addEventListener('keydown', (e) => {
@@ -23,7 +23,7 @@ export function dialogEl(id, cls) {
       e.preventDefault();
       d.primary.click();
     } else if (e.key === 'Tab') {
-      // Держим фокус внутри: после последнего элемента — первый, и наоборот.
+      // Keep focus inside: after the last element comes the first, and vice versa.
       const items = [...d.querySelectorAll(FOCUSABLE)].filter((el) => el.getClientRects().length);
       if (!items.length) return;
       const first = items[0], last = items[items.length - 1];
@@ -42,7 +42,7 @@ export function dialogEl(id, cls) {
   return d;
 }
 
-// Кто открыл диалог: туда вернётся фокус. Пункт меню исчезает вместе с меню — тогда кнопка «Ещё».
+// Who opened the dialog: focus returns there. A menu item disappears along with the menu; then it is the More button.
 export function dialogOpener() {
   const a = document.activeElement;
   if (ui.menu && a && ui.menu.contains(a)) return document.getElementById('more-btn');

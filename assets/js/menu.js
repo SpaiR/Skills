@@ -36,7 +36,7 @@ function openMenu() {
   const btn = document.getElementById('more-btn');
   const items = menuItems();
   const menu = h('div', { class: 'menu', role: 'menu', 'aria-label': 'Ещё' });
-  // Пункты темы — группа с подписью: скринридер читает «Тема», и в самих пунктах слово не повторяется.
+  // Theme items are a labelled group: the screen reader reads the label once, and the items do not repeat the word.
   let box = menu;
   for (const it of items) {
     if (it === 'sep') { box = menu; menu.append(h('div', { class: 'menu-sep', role: 'separator' })); continue; }

@@ -7,7 +7,7 @@ import { filesMode } from './model.js';
 import { closeMenu } from './menu.js';
 import { dialogEl, dialogOpener } from './dialogs.js';
 
-// Клавиши глав показываются только в «Гайде»: в «Файлах» они ничего не делают.
+// Chapter keys are shown only in Guide mode: in Files mode they do nothing.
 function helpGroups() {
   const mod = isMac ? '⌘' : 'Ctrl';
   const guide = !filesMode();
@@ -73,7 +73,7 @@ export function openHelp() {
       h('dl', {}, rows.map(([keys, text]) => h('div', { class: 'help-row' }, h('dt', {}, keyCombo(keys)), h('dd', {}, text))))))),
     h('p', { class: 'dlg-note' }, 'Клавиши работают в любой раскладке. В полях ввода отключены.'));
   d.showModal();
-  // Фокус на самом диалоге, а не на «×»: иначе самым заметным в справке становится кнопка закрытия.
+  // Focus the dialog itself, not the close button: otherwise the close button becomes the most prominent thing in the help.
   d.tabIndex = -1;
   d.focus();
 }

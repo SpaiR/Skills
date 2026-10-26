@@ -10,8 +10,8 @@ import { updateChrome } from './header.js';
 
 const scrollBehavior = () => (reducedMotion.matches ? 'instant' : 'smooth');
 
-// Прокрутка к элементу с поправкой: размеры ещё не отрисованных блоков (content-visibility) оцениваются
-// и уточняются по мере прокрутки, поэтому после неё позиция проверяется, пока не простоит три кадра.
+// Scroll to an element with correction: sizes of blocks not yet rendered (content-visibility) are estimated
+// and refined while scrolling, so afterwards the position is re-checked until it holds for three frames.
 let jumpSeq = 0;
 export function scrollToElement(getEl, offset, instant) {
   const seq = ++jumpSeq;
@@ -24,8 +24,8 @@ export function scrollToElement(getEl, offset, instant) {
   };
   const y = target();
   if (y == null) return;
-  // Далёкий переход: плавная анимация через десятки экранов идёт секунды. Переносимся почти к цели
-  // мгновенно и доезжаем плавно последние полэкрана — направление движения остаётся видно.
+  // A far jump: smooth animation across dozens of screens takes seconds. Jump almost to the target
+  // instantly and scroll smoothly over the last half screen, so the direction of movement stays visible.
   const far = window.innerHeight * 2;
   if (behavior === 'smooth' && Math.abs(y - window.scrollY) > far) {
     window.scrollTo({ top: y - Math.sign(y - window.scrollY) * window.innerHeight / 2, behavior: 'instant' });
@@ -68,7 +68,7 @@ export function jumpToSection(key) {
 
 export function jumpToFile(path, key) {
   const sec = secByKey.get(key);
-  // В «Файлах» клик по файлу в дереве раскрывает свёрнутый файл, как в GitHub.
+  // In Files mode, clicking a file in the tree expands a collapsed file, as on GitHub.
   const file = fileByPath.get(path);
   if (sec && sec.headless && file && !file.binary && !fileOpen(file)) {
     S.fileOpen[path] = true;
@@ -82,7 +82,7 @@ export function jumpToFile(path, key) {
     updateChrome();
   }
   ui.curFile = { path, sec: key };
-  // Файл остаётся текущим, пока он на экране: у конца страницы прокрутка не доводит его до верха.
+  // A file stays current while it is on screen: near the end of the page, scrolling cannot bring it to the top.
   ui.pin = { sec: key, path };
   scrollToElement(() => $main().querySelector(`.sec[data-key="${CSS.escape(key)}"] .file[data-path="${CSS.escape(path)}"]`), L.header + L.secHead);
 }
@@ -113,8 +113,8 @@ export function trackCurrent() {
   }
   let fileKey = cur ? { path: cur.dataset.path, sec: secEl.dataset.key } : null;
   let secKey = secEl ? secEl.dataset.key : null;
-  // После J/K/]/[/V текущим остаётся выбранный элемент, пока он на экране: у конца страницы
-  // заголовок не доезжает до закреплённой позиции, и расчёт по прокрутке выбрал бы соседний.
+  // After J/K/]/[/V the selected item stays current while it is on screen: near the end of the page
+  // the header cannot reach the sticky position, and the scroll-based calculation would pick a neighbour.
   if (ui.pin) {
     const el = main.querySelector(ui.pin.path ? fileQ(ui.pin.sec, ui.pin.path) : secQ(ui.pin.sec));
     const r = el && el.getBoundingClientRect();

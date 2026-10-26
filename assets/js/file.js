@@ -16,7 +16,7 @@ function renderPath(file) {
   return h('span', { class: 'path' }, parts);
 }
 
-// «Весь файл» — у изменённых файлов с ханками. У добавленных и удалённых весь файл уже в диффе.
+// "Whole file" is offered for modified files with hunks. Added and deleted files already show the whole file in the diff.
 export function wholeButton(file) {
   if (file.binary || !file.baseHunks.length || file.status === 'added' || file.status === 'deleted') return null;
   const ok = canExpand(file), on = ok && isWhole(file);
@@ -36,7 +36,7 @@ export function renderFile(file, sec) {
   const count = fileComments(file.path);
   const current = ui.curFile && ui.curFile.path === file.path && sec && ui.curFile.sec === sec.key;
   const head = h('div', { class: `file-head${current ? ' is-current' : ''}`, dataset: { anchor: `fh:${sec ? sec.key : ''}:${file.path}` } },
-    // Заголовок третьего уровня: переход по заголовкам скринридера доходит до файлов.
+    // A level-3 heading: screen reader heading navigation reaches the files.
     h('div', { class: 'file-h', role: 'heading', 'aria-level': '3' },
       h('button', { class: 'file-toggle', type: 'button', 'aria-expanded': String(open), 'aria-keyshortcuts': 'O', dataset: { act: 'toggle-file' }, title: file.oldPath ? `${file.oldPath} → ${file.path}` : file.path },
         icon('chevron', 'chev'), statusBadge(file), renderPath(file))),
@@ -52,7 +52,7 @@ export function renderFile(file, sec) {
     dataset: { path: file.path, anchor: `f:${sec ? sec.key : ''}:${file.path}` },
     hidden: !!(sec && sec.headless && ui.visible && !ui.visible.has(file.path)),
   }, head);
-  // В режиме «Файлы» у файла из главы — её номер и название: переход к файлу в гайде.
+  // In Files mode, a file from a chapter shows the chapter number and title: a jump to the file in the guide.
   if (g && g.sec) {
     box.append(h('div', { class: 'file-summary with-chip' },
       h('button', { class: 'sec-chip', type: 'button', dataset: { act: 'to-guide' }, title: 'Открыть этот файл в гайде' },

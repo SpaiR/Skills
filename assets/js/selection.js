@@ -16,12 +16,12 @@ export function numLine(num) {
 export function onMainMouseDown(e) {
   const num = e.button === 0 && !finished ? e.target.closest('td.num[data-no]') : null;
   if (!num) return;
-  // Без выделения текста страницы и без потери фокуса.
+  // No page text selection and no focus loss.
   e.preventDefault();
   const hit = numLine(num);
   if (!hit) return;
   const { file, fileEl, sec, line } = hit;
-  // У строки контекста комментарий всегда к новой версии, по какой бы цифре ни кликнули.
+  // On a context line the comment always targets the new version, whichever number was clicked.
   const side = line.t === 'ctx' ? 'new' : num.dataset.side;
   const extend = e.shiftKey && selection && selection.anchor && selection.path === file.path && selection.sec === sec
     && !(ui.form && ui.form.editId);

@@ -4,13 +4,13 @@
 import * as D from './diffcore.js';
 import { fileView } from './model.js';
 
-// Строки диапазона для цитаты: из полного текста, если он загружен, иначе из того, что видно в диффе.
+// Lines of a range for a quote: from the full text if loaded, otherwise from what is visible in the diff.
 export const quote = (file, side, start, end) => D.quoteLines(file.full && !file.fullBad ? file.full : file.lines, side, start, end);
 
 export const lineAt = (file, side, no) => file.lines.find((l) => (side === 'new' ? l.n : l.o) === no) || null;
 const otherSide = (side) => (side === 'new' ? 'old' : 'new');
 
-// Пары «Рядом» по ханкам и индекс строки файла → номер пары (это data-i строки в «Рядом»).
+// Side-by-side pairs per hunk, and a map from file line index to pair number (the data-i of a side-by-side row).
 export function splitIndex(file) {
   if (!file.split) {
     const pairs = [], at = new Int32Array(file.lines.length);
@@ -27,11 +27,11 @@ export function splitIndex(file) {
   return file.split;
 }
 
-// Строка таблицы, в которой стоит строка файла li, в текущем виде файла.
+// The table row that holds file line li in the current file view.
 export const rowIndex = (file, li) => (fileView(file) === 'split' ? splitIndex(file).at[li] : li);
 
-// Диапазон от опоры до строки line по правилу 4.4: строки таблицы между ними, сторона опоры,
-// если у неё есть номера в диапазоне, иначе противоположная.
+// Range from the anchor to row line: the table rows between them, on the anchor's side
+// if it has numbers within the range, otherwise on the opposite side.
 export function rangeOf(file, anchor, line) {
   const split = fileView(file) === 'split';
   const a = rowIndex(file, anchor.li), b = rowIndex(file, line.i);
@@ -43,7 +43,7 @@ export function rangeOf(file, anchor, line) {
   return { side, start: Math.min(...nos), end: Math.max(...nos) };
 }
 
-// Блоки изменений файла (подряд идущие add/del внутри ханка) в индексах строк файла.
+// Change blocks of a file (consecutive add/del lines inside a hunk) as file line indices.
 export function fileBlocks(file) {
   if (!file.blocks) {
     file.blocks = [];
@@ -54,7 +54,7 @@ export function fileBlocks(file) {
   return file.blocks;
 }
 
-// Внутристрочный дифф считается один раз на файл: результат одинаков для обоих видов.
+// The intraline diff is computed once per file: the result is the same for both views.
 export function wordRangesOf(file) {
   if (!file.wd) {
     file.wd = new Array(file.lines.length).fill(null);
@@ -66,7 +66,7 @@ export function wordRangesOf(file) {
   return file.wd;
 }
 
-// Подсветка синтаксиса (4.8) тоже считается один раз на файл. Пустой массив — у файла подсветки нет.
+// Syntax highlighting is also computed once per file. An empty array means the file has no highlighting.
 export function synTokensOf(file) {
   if (!file.syn) file.syn = D.highlightFile(file.hunks, file.path) || [];
   return file.syn;

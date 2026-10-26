@@ -27,8 +27,8 @@ export function toggleToc() {
   applyTocState();
 }
 
-// Выезжающее оглавление (окно уже 1100px). При открытии фокус встаёт на строку текущей главы,
-// при закрытии возвращается на кнопку «Оглавление», если был внутри панели.
+// Slide-out contents (window narrower than 1100px). On open, focus goes to the current chapter row;
+// on close it returns to the Contents button if it was inside the panel.
 export function setDrawer(open) {
   const toc = document.getElementById('toc');
   const inside = toc.contains(document.activeElement);
@@ -47,8 +47,8 @@ export function setDrawer(open) {
   }
 }
 
-// Tab в открытой панели ходит по кругу, Shift+Tab с первой строки — на кнопку «Оглавление»,
-// а Tab с неё — в панель: панель идёт сразу за кнопкой, а не после всей шапки.
+// Tab cycles inside the open panel; Shift+Tab from the first row goes to the Contents button,
+// and Tab from that button goes into the panel: the panel comes right after the button, not after the whole top bar.
 export function onDrawerTab(e) {
   if (e.key !== 'Tab' || e.altKey || e.ctrlKey || e.metaKey || !(narrowScreen.matches && ui.drawer)) return;
   const toc = document.getElementById('toc');
@@ -63,7 +63,7 @@ export function onDrawerTab(e) {
   if (to) { e.preventDefault(); to.focus(); }
 }
 
-// «+N −M»: нулевая часть серым — красный «−0» у новых файлов ничего не сообщает. У бинарного файла строк нет.
+// "+N −M": a zero part is grey, since a red "−0" on new files says nothing. A binary file has no lines.
 export function statPair(add, del, binary) {
   if (binary) return h('span', { class: 'stat-bin' }, 'бинарный');
   return [
@@ -77,7 +77,7 @@ export function statusBadge(file, small) {
   return h('span', { class: `status st-${file.status}${small ? ' sm' : ''}`, title: word }, code);
 }
 
-// Строка файла: в оглавлении и в списке «Файлы главы».
+// File row: in the contents and in the "Chapter files" list.
 export function fileRow(file, sec, inToc) {
   const comments = fileComments(file.path);
   const viewed = isViewed(file);
@@ -138,7 +138,7 @@ export function onTocClick(e) {
   if (act === 'goto-file') jumpToFile(btn.dataset.path, btn.dataset.sec);
   if (narrowScreen.matches && ui.drawer) {
     setDrawer(false);
-    // С клавиатуры фокус идёт туда, куда перешли, а не на кнопку «Оглавление».
+    // From the keyboard, focus goes to the jump target, not to the Contents button.
     if (e.detail === 0) {
       const q = act === 'goto-file' ? `${fileQ(btn.dataset.sec, btn.dataset.path)} .file-toggle` : `${secQ(btn.dataset.key)} .sec-toggle`;
       const t = $main().querySelector(q);

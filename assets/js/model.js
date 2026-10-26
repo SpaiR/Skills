@@ -6,12 +6,12 @@ import { plural } from './dom.js';
 
 export const secFiles = (sec) => sec.diffs.map((d) => fileByPath.get(d.file)).filter(Boolean);
 export const filesMode = () => S.mode === 'files';
-// Группы основной колонки в текущем режиме: главы гайда или одна безголовая группа «Файлы».
+// Groups of the main column in the current mode: the guide chapters or a single headless Files group.
 export const groups = () => (filesMode() ? [filesGroup] : sections);
 export const groupFor = (path) => (filesMode() ? filesGroup : sections.find((s) => s.diffs.some((d) => d.file === path)) || null);
 export const isViewed = (file) => !!S.filesViewed && S.filesViewed[file.path] === file.hash;
 export const sectionOpen = (sec) => (sec.headless ? true : sec.key in S.sectionOpen ? !!S.sectionOpen[sec.key] : !S.reviewed[sec.key]);
-// Размер исходного диффа: раскрытый контекст не делает файл «большим» и не сворачивает его.
+// Size of the original diff: expanded context does not make a file "big" and does not collapse it.
 const lineCount = (file) => file.baseCount;
 
 export function fileOpen(file) {
@@ -19,7 +19,7 @@ export function fileOpen(file) {
   return !collapseReason(file);
 }
 
-// Причина сворачивания по умолчанию — первое сработавшее условие (3.6).
+// Reason for collapsing by default: the first condition that matches.
 export function collapseReason(file) {
   if (isViewed(file)) return { text: 'Просмотрен' };
   if (file.binary) return { text: 'Бинарный файл — содержимое не показывается', noShow: true };
@@ -39,8 +39,8 @@ export function secStats(sec) {
   };
 }
 
-// Комментарии к главам считаются только у глав из гайда: комментарий к главе, которой больше нет,
-// в Markdown не попадает (buildMarkdown идёт по sections) и на странице не виден.
+// Chapter comments are counted only for chapters in the guide: a comment on a chapter that no longer exists
+// does not get into the Markdown (buildMarkdown iterates over sections) and is not visible on the page.
 export function commentCount() {
   return S.annotations.length + secComments().length + (S.globalComment.trim() ? 1 : 0);
 }

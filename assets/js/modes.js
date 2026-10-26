@@ -14,8 +14,8 @@ import { cancelDrag } from './selection.js';
 import { toast } from './toast.js';
 import { closeMenu } from './menu.js';
 
-// Класс режима и ширина панели. --sec-head-h: 0 в «Файлах» — закреплённых заголовков глав там нет,
-// и все отступы под шапкой (L.secHead) пересчитываются сами.
+// Mode class and panel width. --sec-head-h is 0 in Files mode, which has no sticky chapter headers,
+// so every offset below the top bar (L.secHead) is recomputed by itself.
 export function applyModeLayout() {
   const root = document.documentElement;
   root.classList.toggle('mode-files', filesMode());
@@ -36,8 +36,8 @@ export function observeTitle() {
   ui.titleObs.observe(title);
 }
 
-// Переключение режима: текущий файл и строка под закреплёнными заголовками остаются на месте экрана.
-// toPath — файл, к которому перейти (чип главы), вместо текущего по прокрутке.
+// Mode switch: the current file and the row under the sticky headers stay in place on screen.
+// toPath is the file to go to (chapter chip) instead of the current one by scroll position.
 export function setMode(mode, toPath) {
   if (finished || S.mode === mode) return;
   closeMenu(false);
@@ -48,8 +48,8 @@ export function setMode(mode, toPath) {
   const oldGroup = path && groupFor(path);
   const fileEl = oldGroup && $main().querySelector(fileQ(oldGroup.key, path));
   if (fileEl) {
-    // Опора — первая строка, целиком видная в обоих режимах: ниже закреплённых заголовков «Гайда».
-    // Иначе туда-обратно опорой каждый раз была бы другая строка, и текст уезжал бы на высоту заголовка главы.
+    // The anchor is the first row fully visible in both modes: below the sticky headers of Guide mode.
+    // Otherwise, switching back and forth would pick a different anchor row each time and the text would drift by a chapter header height.
     const y = L.header + L.secHeadGuide + L.fileHead;
     for (const tr of fileEl.querySelectorAll('tr.ln')) {
       const r = tr.getBoundingClientRect();
@@ -92,7 +92,7 @@ export function setMode(mode, toPath) {
   applyCurrent(true);
 }
 
-// Z / Shift+Z: свернуть или развернуть все файлы видимых групп.
+// Z / Shift+Z: collapse or expand all files of the visible groups.
 export function setAllFilesOpen(open) {
   const files = groups().filter(sectionOpen).flatMap(secFiles)
     .filter((f) => !f.binary && !(ui.visible && filesMode() && !ui.visible.has(f.path)));

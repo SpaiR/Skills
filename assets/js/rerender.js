@@ -12,14 +12,14 @@ export const stickyOffset = () => L.header + L.secHead + L.fileHead;
 
 export const secQ = (key) => `.sec[data-key="${CSS.escape(key)}"]`;
 export const fileQ = (key, path) => `${secQ(key)} .file[data-path="${CSS.escape(path)}"]`;
-// Верх заголовка в потоке: верх карточки плюс её рамка. У закреплённого заголовка rect показывает не это место.
+// Top of a header in the flow: the card top plus its border. For a sticky header, rect does not show this position.
 export const headTop = (box) => box.getBoundingClientRect().top + box.clientTop;
 const topOf = (sel) => { const el = $main().querySelector(sel); return el ? headTop(el) : null; };
 
-// Держит на месте точку опоры, пока fn() перерисовывает узлы. Опоры перебираются по порядку:
-// первая, что нашлась после перерисовки, определяет прокрутку. keep — заголовок, с которым работал
-// пользователь (клик по нему, V, O): он остаётся там, где был, даже если был закреплён. Или строка
-// диффа, по номеру которой кликнули: форма открывается под ней, а форма выше схлопывается в черновик.
+// Keeps an anchor point in place while fn() re-renders nodes. Anchors are tried in order:
+// the first one found after re-rendering determines the scroll position. keep is the header the user worked
+// with (clicked it, V, O): it stays where it was, even if it was sticky. Or the diff row whose
+// number was clicked: the form opens under it, and a form above collapses into a draft.
 export function withAnchor(fn, keep) {
   const anchors = collectAnchors(keep);
   fn();
@@ -32,7 +32,7 @@ export function withAnchor(fn, keep) {
   }
 }
 
-// Заголовок файла или главы. После перерисовки его место — верх контейнера: в потоке заголовок первый.
+// File or chapter header. After re-rendering its place is the top of the container: the header comes first in the flow.
 function headAnchor(head, top) {
   const box = head.parentElement;
   const key = head.closest('.sec').dataset.key;
@@ -40,7 +40,7 @@ function headAnchor(head, top) {
   return { top: top == null ? headTop(box) : top, find: () => topOf(sel) };
 }
 
-// Строка диффа или карточка комментария. Если вид сменился, строка ищется по номеру своей стороны.
+// A diff row or a comment card. If the view changed, the row is looked up by the number of its side.
 function rowAnchor(el) {
   const file = el.closest('.file'), sec = el.closest('.sec');
   const key = el.dataset.anchor;
@@ -66,24 +66,24 @@ function collectAnchors(keep) {
     const r = keep.getBoundingClientRect();
     if (keep.matches('tr.ln')) {
       if (r.bottom > L.header && r.top < vh) out.push(rowAnchor(keep));
-    // Заголовок, спрятанный под шапкой, не в счёт: пользователь его уже не видит.
+    // A header hidden under the top bar does not count: the user can no longer see it.
     } else if (r.top >= L.header - 1 && r.top < vh) out.push(headAnchor(keep, r.top));
   }
-  // Первый элемент под закреплёнными заголовками (по центру #main).
+  // The first element below the sticky headers (at the horizontal center of #main).
   const y = stickyOffset() + 2;
   if (y >= vh) return out;
   const mr = main.getBoundingClientRect();
   const hit = document.elementFromPoint(mr.left + mr.width / 2, y);
   const el = hit && main.contains(hit) ? hit.closest('[data-anchor]') : null;
   if (el && el.matches('tr.ln, .note, .draft-row, .annot-form')) out.push(rowAnchor(el));
-  // Видимые заголовки ниже: если строка под точкой исчезла (свернули главу или файл выше), на месте остаются они.
+  // Visible headers below: if the row under the point disappears (a chapter or file above was collapsed), they stay in place.
   for (const head of main.querySelectorAll('.sec-head, .file-head')) {
     const top = head.getBoundingClientRect().top;
     if (top < y - 2) continue;
     if (top >= vh) break;
     out.push(headAnchor(head));
   }
-  // Последний вариант — предки: файл, затем глава.
+  // Last resort: the ancestors, the file and then the chapter.
   const file = el && el.closest('.file'), sec = el && el.closest('.sec');
   if (file) out.push(headAnchor(file.querySelector('.file-head')));
   const secHead = sec && sec.querySelector(':scope > .sec-head');
@@ -99,7 +99,7 @@ export function rerenderSection(key) {
   keepFocus(old, card, () => old.replaceWith(card));
 }
 
-// skip — главы, которые уже перерисованы целиком.
+// skip: chapters that have already been re-rendered in full.
 export function rerenderFile(path, skip) {
   const file = fileByPath.get(path);
   if (!file) return;
@@ -110,13 +110,13 @@ export function rerenderFile(path, skip) {
     const box = renderFile(file, sec);
     keepFocus(old, box, () => old.replaceWith(box));
     if (!FIELD_SIZING) for (const t of box.querySelectorAll('textarea.grow')) fitTextarea(t);
-    // Строка файла в списке «Файлы главы» показывает отметку и счётчик комментариев.
+    // A file row in the "Chapter files" list shows the viewed mark and the comment counter.
     const row = secEl.querySelector(`.aside-files .file-row[data-path="${CSS.escape(path)}"]`);
     if (row) row.replaceWith(fileRow(file, sec, false));
   }
 }
 
-// Перерисовка не должна выбивать фокус и курсор из поля ввода внутри узла.
+// Re-rendering must not knock focus and the caret out of an input field inside the node.
 function keepFocus(oldNode, newNode, replace) {
   const active = document.activeElement;
   const inside = active && oldNode.contains(active) && active.dataset.focusKey;
@@ -129,8 +129,8 @@ function keepFocus(oldNode, newNode, replace) {
   if (sel) again.setSelectionRange(sel[0], sel[1]);
 }
 
-// before — смена классов раскладки. Она идёт внутри withAnchor: иначе опора запоминается
-// уже в перестроенной главе (в «Рядом» обзор встаёт над диффами) и место чтения уезжает.
+// before: a change of layout classes. It runs inside withAnchor: otherwise the anchor would be captured
+// in the already rebuilt chapter (in side-by-side view the overview moves above the diffs) and the reading position would shift.
 export function rerenderAllFiles(before) {
   withAnchor(() => {
     if (before) before();
