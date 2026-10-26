@@ -1,11 +1,11 @@
 // Diff view mode, line wrapping and color theme.
 
-import { S } from './state.js';
-import { save } from './persist.js';
-import { splitAvailable } from './model.js';
-import { rerenderAllFiles, withAnchor } from './rerender.js';
 import { updateChrome } from './header.js';
 import { renderMenuState } from './menu.js';
+import { splitAvailable } from './model.js';
+import { save } from './persist.js';
+import { rerenderAllFiles, withAnchor } from './rerender.js';
+import { S } from './state.js';
 
 export function setViewMode(mode) {
   if (mode === 'split' && !splitAvailable()) return;

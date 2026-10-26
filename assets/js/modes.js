@@ -1,19 +1,19 @@
 // Guide/Files mode switching, layout variables read from CSS, collapsing all files.
 
 import { TREE_DEFAULT } from './constants.js';
-import { finished, L, S, secByKey, selection, ui } from './state.js';
 import { $main } from './dom.js';
-import { save } from './persist.js';
-import { filesMode, groupFor, groups, secFiles, sectionOpen } from './model.js';
-import { fileQ, rerenderAllFiles, stickyOffset } from './rerender.js';
 import { updateChrome } from './header.js';
-import { computeVisible } from './tree.js';
+import { closeMenu } from './menu.js';
+import { filesMode, groupFor, groups, secFiles, sectionOpen } from './model.js';
 import { applyCurrent, scrollToElement, trackCurrent } from './nav.js';
+import { save } from './persist.js';
+import { fileQ, rerenderAllFiles, stickyOffset } from './rerender.js';
 import { renderMain } from './section.js';
 import { cancelDrag } from './selection.js';
-import { toast } from './toast.js';
-import { closeMenu } from './menu.js';
+import { finished, L, S, secByKey, selection, ui } from './state.js';
 import { T } from './strings.js';
+import { toast } from './toast.js';
+import { computeVisible } from './tree.js';
 
 // Mode class and panel width. --sec-head-h is 0 in Files mode, which has no sticky chapter headers,
 // so every offset below the top bar (L.secHead) is recomputed by itself.
@@ -29,11 +29,14 @@ export function observeTitle() {
   if (ui.titleObs) ui.titleObs.disconnect();
   const title = document.getElementById('review-title');
   if (!title) return;
-  ui.titleObs = new IntersectionObserver(([entry]) => {
-    if (finished) return;
-    ui.heroHidden = !entry.isIntersecting && entry.boundingClientRect.top < L.header;
-    document.getElementById('top').classList.toggle('show-title', ui.heroHidden);
-  }, { rootMargin: `-${L.header}px 0px 0px 0px` });
+  ui.titleObs = new IntersectionObserver(
+    ([entry]) => {
+      if (finished) return;
+      ui.heroHidden = !entry.isIntersecting && entry.boundingClientRect.top < L.header;
+      document.getElementById('top').classList.toggle('show-title', ui.heroHidden);
+    },
+    { rootMargin: `-${L.header}px 0px 0px 0px` },
+  );
   ui.titleObs.observe(title);
 }
 
@@ -63,13 +66,19 @@ export function setMode(mode, toPath) {
   S.mode = mode;
   save();
   applyModeLayout();
-  const key = (p) => { const g = p && groupFor(p); return g ? g.key : null; };
+  const key = (p) => {
+    const g = p && groupFor(p);
+    return g ? g.key : null;
+  };
   if (path && key(path)) {
     ui.curFile = { path, sec: key(path) };
     ui.curSec = ui.curFile.sec;
     const sec = secByKey.get(ui.curSec);
     if (!sec.headless && !sectionOpen(sec)) S.sectionOpen[sec.key] = true;
-  } else { ui.curFile = null; ui.curSec = null; }
+  } else {
+    ui.curFile = null;
+    ui.curSec = null;
+  }
   if (ui.cursor) ui.cursor = { ...ui.cursor, sec: key(ui.cursor.path) };
   if (selection) selection.sec = key(selection.path);
   if (ui.form) ui.form.sec = key(ui.form.path);
@@ -95,7 +104,9 @@ export function setMode(mode, toPath) {
 
 // Z / Shift+Z: collapse or expand all files of the visible groups.
 export function setAllFilesOpen(open) {
-  const files = groups().filter(sectionOpen).flatMap(secFiles)
+  const files = groups()
+    .filter(sectionOpen)
+    .flatMap(secFiles)
     .filter((f) => !f.binary && !(ui.visible && filesMode() && !ui.visible.has(f.path)));
   if (!files.length) return;
   for (const f of files) S.fileOpen[f.path] = open;
@@ -107,7 +118,10 @@ export function setAllFilesOpen(open) {
 
 function readLayoutVars() {
   const cs = getComputedStyle(document.documentElement);
-  const px = (name, def) => { const v = parseFloat(cs.getPropertyValue(name)); return Number.isFinite(v) ? v : def; };
+  const px = (name, def) => {
+    const v = parseFloat(cs.getPropertyValue(name));
+    return Number.isFinite(v) ? v : def;
+  };
   L.header = px('--header-h', 52);
   L.secHead = px('--sec-head-h', 48);
   if (!filesMode()) L.secHeadGuide = L.secHead;

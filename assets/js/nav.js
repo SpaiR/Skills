@@ -1,12 +1,12 @@
 // Scrolling and jumps, plus tracking of the current chapter and file.
 
 import { reducedMotion } from './constants.js';
-import { fileByPath, finished, L, S, secByKey, ui } from './state.js';
 import { $main } from './dom.js';
-import { save } from './persist.js';
-import { fileOpen, sectionOpen } from './model.js';
-import { fileQ, headTop, rerenderFile, rerenderSection, secQ, withAnchor } from './rerender.js';
 import { updateChrome } from './header.js';
+import { fileOpen, sectionOpen } from './model.js';
+import { save } from './persist.js';
+import { fileQ, headTop, rerenderFile, rerenderSection, secQ, withAnchor } from './rerender.js';
+import { fileByPath, finished, L, S, secByKey, ui } from './state.js';
 
 const scrollBehavior = () => (reducedMotion.matches ? 'instant' : 'smooth');
 
@@ -28,10 +28,11 @@ export function scrollToElement(getEl, offset, instant) {
   // instantly and scroll smoothly over the last half screen, so the direction of movement stays visible.
   const far = window.innerHeight * 2;
   if (behavior === 'smooth' && Math.abs(y - window.scrollY) > far) {
-    window.scrollTo({ top: y - Math.sign(y - window.scrollY) * window.innerHeight / 2, behavior: 'instant' });
+    window.scrollTo({ top: y - (Math.sign(y - window.scrollY) * window.innerHeight) / 2, behavior: 'instant' });
   }
   window.scrollTo({ top: target(), behavior });
-  let tries = 0, stable = 0;
+  let tries = 0,
+    stable = 0;
   const fix = () => {
     if (seq !== jumpSeq) return;
     const y2 = target();
@@ -48,7 +49,8 @@ export function scrollToElement(getEl, offset, instant) {
 }
 
 function waitScrollEnd(fn) {
-  let done = false, timer = null;
+  let done = false,
+    timer = null;
   const finish = () => {
     if (done) return;
     done = true;
@@ -56,7 +58,10 @@ function waitScrollEnd(fn) {
     window.removeEventListener('scroll', onScroll);
     fn();
   };
-  const onScroll = () => { clearTimeout(timer); timer = setTimeout(finish, 150); };
+  const onScroll = () => {
+    clearTimeout(timer);
+    timer = setTimeout(finish, 150);
+  };
   window.addEventListener('scrollend', finish, { once: true });
   window.addEventListener('scroll', onScroll, { passive: true });
   timer = setTimeout(finish, 150);
@@ -84,21 +89,28 @@ export function jumpToFile(path, key) {
   ui.curFile = { path, sec: key };
   // A file stays current while it is on screen: near the end of the page, scrolling cannot bring it to the top.
   ui.pin = { sec: key, path };
-  scrollToElement(() => $main().querySelector(`.sec[data-key="${CSS.escape(key)}"] .file[data-path="${CSS.escape(path)}"]`), L.header + L.secHead);
+  scrollToElement(
+    () => $main().querySelector(`.sec[data-key="${CSS.escape(key)}"] .file[data-path="${CSS.escape(path)}"]`),
+    L.header + L.secHead,
+  );
 }
 
 let trackQueued = false;
 export function queueTrack() {
   if (trackQueued) return;
   trackQueued = true;
-  requestAnimationFrame(() => { trackQueued = false; trackCurrent(); });
+  requestAnimationFrame(() => {
+    trackQueued = false;
+    trackCurrent();
+  });
 }
 
 export function trackCurrent() {
   if (finished) return;
   const main = $main();
   const line = L.header + L.secHead;
-  let cur = null, firstVisible = null;
+  let cur = null,
+    firstVisible = null;
   for (const f of main.querySelectorAll('.file')) {
     const r = f.getBoundingClientRect();
     if (r.top <= line + 1 && r.bottom > line + L.fileHead) cur = f;
@@ -124,14 +136,19 @@ export function trackCurrent() {
       else if (fileKey && fileKey.sec !== secKey) fileKey = null;
     } else ui.pin = null;
   }
-  const same = ui.curSec === secKey && (ui.curFile && fileKey ? ui.curFile.path === fileKey.path && ui.curFile.sec === fileKey.sec : ui.curFile === fileKey);
+  const same =
+    ui.curSec === secKey &&
+    (ui.curFile && fileKey
+      ? ui.curFile.path === fileKey.path && ui.curFile.sec === fileKey.sec
+      : ui.curFile === fileKey);
   ui.curFile = fileKey;
   ui.curSec = secKey;
   applyCurrent(!same);
 }
 
 export function applyCurrent(scrollToc) {
-  const main = $main(), toc = document.getElementById('toc');
+  const main = $main(),
+    toc = document.getElementById('toc');
   for (const el of main.querySelectorAll('.is-current')) el.classList.remove('is-current');
   for (const el of toc.querySelectorAll('[aria-current]')) el.removeAttribute('aria-current');
   if (ui.curSec) {
@@ -146,7 +163,9 @@ export function applyCurrent(scrollToc) {
     const q = `.sec[data-key="${CSS.escape(ui.curFile.sec)}"] .file[data-path="${CSS.escape(ui.curFile.path)}"] > .file-head`;
     const head = main.querySelector(q);
     if (head) head.classList.add('is-current');
-    tocRow = toc.querySelector(`.file-row[data-sec="${CSS.escape(ui.curFile.sec)}"][data-path="${CSS.escape(ui.curFile.path)}"]`);
+    tocRow = toc.querySelector(
+      `.file-row[data-sec="${CSS.escape(ui.curFile.sec)}"][data-path="${CSS.escape(ui.curFile.path)}"]`,
+    );
     if (tocRow) tocRow.setAttribute('aria-current', 'true');
   }
   if (scrollToc && !ui.tocHover) {

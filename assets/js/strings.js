@@ -37,7 +37,8 @@ const FULL_TEXT_REASONS = {
 const NOTES = {
   no_commits: 'в репозитории нет коммитов, взяты все файлы рабочего дерева',
   base_not_found: 'базовая ветка не найдена, взяты только незакоммиченные изменения',
-  full_text_mismatch: 'полный текст файлов не собран: вывод git не сошёлся со списком файлов, раскрытие контекста недоступно',
+  full_text_mismatch:
+    'полный текст файлов не собран: вывод git не сошёлся со списком файлов, раскрытие контекста недоступно',
 };
 
 // Error codes of serve.py responses.
@@ -52,13 +53,20 @@ export const T = Object.freeze({
   rangeLabel(meta) {
     const r = meta.range;
     switch (r && r.mode) {
-      case 'since-base': return `${r.base}...HEAD + незакоммиченное`;
-      case 'uncommitted': return r.hasCommits ? 'HEAD + незакоммиченное' : 'рабочее дерево (коммитов нет)';
-      case 'staged': return 'индекс (staged)';
-      case 'commit': return `${r.sha.slice(0, 10)} ${r.subject}`;
-      case 'range': return `${r.from}${r.dots}${r.to}`;
-      case 'branch': return `${r.base}...${r.ref}`;
-      default: return meta.label;
+      case 'since-base':
+        return `${r.base}...HEAD + незакоммиченное`;
+      case 'uncommitted':
+        return r.hasCommits ? 'HEAD + незакоммиченное' : 'рабочее дерево (коммитов нет)';
+      case 'staged':
+        return 'индекс (staged)';
+      case 'commit':
+        return `${r.sha.slice(0, 10)} ${r.subject}`;
+      case 'range':
+        return `${r.from}${r.dots}${r.to}`;
+      case 'branch':
+        return `${r.base}...${r.ref}`;
+      default:
+        return meta.label;
     }
   },
   note: (n) => (typeof n === 'string' ? n : byCode(NOTES, n.code) || n.text),
@@ -69,13 +77,24 @@ export const T = Object.freeze({
   // The raw response body stays as shown before; only a known error code is replaced by its text.
   serverError(body) {
     let code;
-    try { code = JSON.parse(body).error; } catch { return body; }
+    try {
+      code = JSON.parse(body).error;
+    } catch {
+      return body;
+    }
     const text = byCode(SERVER_ERRORS, code);
     return text ? body.replace(JSON.stringify(code), JSON.stringify(text)) : body;
   },
 
   // Shared bits.
-  status: { added: 'новый', modified: 'изменён', deleted: 'удалён', renamed: 'переименован', copied: 'скопирован', typechange: 'тип изменён' },
+  status: {
+    added: 'новый',
+    modified: 'изменён',
+    deleted: 'удалён',
+    renamed: 'переименован',
+    copied: 'скопирован',
+    typechange: 'тип изменён',
+  },
   branch: (name) => `ветка ${name}`,
   binaryStat: 'бинарный',
   viewed: 'Просмотрено',
@@ -119,8 +138,10 @@ export const T = Object.freeze({
     approve: 'Одобрить',
     submit: 'Отправить фидбек',
     submitTitle: (modEnter) => `Отправить фидбек (${modEnter})`,
-    saveError: 'Не удалось сохранить прогресс: сервер недоступен. Комментарии на странице пока целы, но отправить их не получится.',
-    progressTitle: (viewed, total, secDone, secTotal) => `Просмотрено файлов: ${viewed} из ${total}, глав: ${secDone} из ${secTotal}`,
+    saveError:
+      'Не удалось сохранить прогресс: сервер недоступен. Комментарии на странице пока целы, но отправить их не получится.',
+    progressTitle: (viewed, total, secDone, secTotal) =>
+      `Просмотрено файлов: ${viewed} из ${total}, глав: ${secDone} из ${secTotal}`,
     allViewed: 'Всё просмотрено',
   },
 
@@ -289,16 +310,19 @@ export const T = Object.freeze({
   submit: {
     titles: { feedback: 'Отправить фидбек', approve: 'Одобрить изменения', close: 'Закрыть без ответа' },
     hints: {
-      feedback: 'Сессия Claude Code получит этот текст как твоё сообщение: ответит на вопросы и внесёт просьбы о правках.',
+      feedback:
+        'Сессия Claude Code получит этот текст как твоё сообщение: ответит на вопросы и внесёт просьбы о правках.',
       approve: 'Сессия получит одобрение. Ничего не будет закоммичено. Комментарии, если есть, приложатся.',
-      close: 'Сервер остановится, в сессию уйдёт только отметка, что ревью закрыто. Комментарии останутся в state.json.',
+      close:
+        'Сервер остановится, в сессию уйдёт только отметка, что ревью закрыто. Комментарии останутся в state.json.',
     },
     lineComments: 'Комментарии к строкам',
     chapterComments: 'К главам',
     globalComment: 'Общий',
     yes: 'есть',
     no: 'нет',
-    viewed: (viewed, files, secDone, secTotal) => `${viewed} из ${count(files, WORDS.ofFiles)}, ${secDone} из ${count(secTotal, WORDS.ofChapters)}`,
+    viewed: (viewed, files, secDone, secTotal) =>
+      `${viewed} из ${count(files, WORDS.ofFiles)}, ${secDone} из ${count(secTotal, WORDS.ofChapters)}`,
     notAllViewed: 'Не все файлы просмотрены',
     andMore: (n) => `и ещё ${n}`,
     drafts: (n) => `Есть неотправленные черновики: ${n}. Они не войдут в фидбек.`,
@@ -315,7 +339,11 @@ export const T = Object.freeze({
 
   // Screen after submitting.
   finished: {
-    title: { feedback: 'Фидбек отправлен в сессию Claude Code.', approve: 'Одобрение отправлено в сессию Claude Code.', close: 'Ревью закрыто.' },
+    title: {
+      feedback: 'Фидбек отправлен в сессию Claude Code.',
+      approve: 'Одобрение отправлено в сессию Claude Code.',
+      close: 'Ревью закрыто.',
+    },
     savedInState: 'Комментарии сохранены в state.json.',
     // Zero parts are omitted: "0 on chapters" is noise. The word "comment" is inflected by the first number.
     sent(counts) {

@@ -1,22 +1,32 @@
-// Mini Markdown renderer for the guide intent/overview texts, with the page language typography fixes.
+// Mini Markdown renderer for the guide intent/overview texts (and inline() for file summaries), with the page
+// language typography fixes.
 
 import { esc } from './dom.js';
 import { T, typography } from './strings.js';
 
 export function inline(src) {
-  return src.split(/(`[^`]+`)/).map((part) => {
-    if (/^`[^`]+`$/.test(part)) return `<code>${esc(part.slice(1, -1))}</code>`;
-    return typography(esc(part))
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-  }).join('');
+  return src
+    .split(/(`[^`]+`)/)
+    .map((part) => {
+      if (/^`[^`]+`$/.test(part)) return `<code>${esc(part.slice(1, -1))}</code>`;
+      return typography(esc(part))
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(
+          /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+          '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>',
+        );
+    })
+    .join('');
 }
 
 export function md(src) {
-  const lines = String(src || '').replace(/\r/g, '').split('\n');
+  const lines = String(src || '')
+    .replace(/\r/g, '')
+    .split('\n');
   const out = [];
   let i = 0;
-  const isBlockStart = (l) => /^```/.test(l) || /^>/.test(l) || /^\s*[-*]\s+/.test(l) || /^\s*\d+[.)]\s+/.test(l) || /^#{1,6}\s/.test(l);
+  const isBlockStart = (l) =>
+    /^```/.test(l) || /^>/.test(l) || /^\s*[-*]\s+/.test(l) || /^\s*\d+[.)]\s+/.test(l) || /^#{1,6}\s/.test(l);
   while (i < lines.length) {
     const line = lines[i];
     if (/^```/.test(line)) {
@@ -32,7 +42,9 @@ export function md(src) {
       if (m) {
         const kind = m[1].toLowerCase();
         const title = T.callouts[kind];
-        out.push(`<div class="callout callout-${kind}"><div class="callout-title">${title}</div>${md(body.slice(1).join('\n'))}</div>`);
+        out.push(
+          `<div class="callout callout-${kind}"><div class="callout-title">${title}</div>${md(body.slice(1).join('\n'))}</div>`,
+        );
       } else {
         out.push(`<blockquote>${md(body.join('\n'))}</blockquote>`);
       }

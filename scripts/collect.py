@@ -32,13 +32,17 @@ from pathlib import Path
 
 EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 DIFF_FLAGS = [
-    "--no-color", "--no-ext-diff", "--no-textconv", "--find-renames",
-    "--src-prefix=a/", "--dst-prefix=b/",
+    "--no-color",
+    "--no-ext-diff",
+    "--no-textconv",
+    "--find-renames",
+    "--src-prefix=a/",
+    "--dst-prefix=b/",
 ]
 LOG_LIMIT = 50
 # Full text (full.patch) for context expansion in the viewer: only for modified and renamed files.
 FULL_CONTEXT = "-U100000000"
-FULL_FILE_MAX = 1024 * 1024        # new side of a file larger than this gets no full text
+FULL_FILE_MAX = 1024 * 1024  # new side of a file larger than this gets no full text
 FULL_TOTAL_MAX = 64 * 1024 * 1024  # total size limit for full.patch
 META_VERSION = 3
 # Notes about how the diff was collected: code for the viewer, English text for the session summary.
@@ -46,7 +50,7 @@ NOTE_TEXT = {
     "no_commits": "the repository has no commits, all working tree files are included",
     "base_not_found": "base branch not found, only uncommitted changes are included",
     "full_text_mismatch": "full file text not collected: git output did not match the file list, "
-                          "context expansion is unavailable",
+    "context expansion is unavailable",
 }
 
 
@@ -94,8 +98,13 @@ def resolve_base(root, explicit):
 
 def untracked_index_env(root):
     """Temporary index with untracked files added in intent-to-add mode."""
-    files = [f for f in git(root, "ls-files", "--others", "--exclude-standard", "-z")
-             .stdout.decode(errors="surrogateescape").split("\0") if f]
+    files = [
+        f
+        for f in git(root, "ls-files", "--others", "--exclude-standard", "-z")
+        .stdout.decode(errors="surrogateescape")
+        .split("\0")
+        if f
+    ]
     if not files:
         return None, None, 0
     index = Path(out(root, "rev-parse", "--path-format=absolute", "--git-path", "index"))
@@ -110,7 +119,9 @@ def untracked_index_env(root):
     # Pass paths via stdin to stay clear of the command-line length limit.
     subprocess.run(
         ["git", "-C", str(root), "add", "-N", "--pathspec-from-file=-", "--pathspec-file-nul"],
-        input="\0".join(files).encode(errors="surrogateescape"), env=env, check=True,
+        input="\0".join(files).encode(errors="surrogateescape"),
+        env=env,
+        check=True,
         capture_output=True,
     )
     return env, tmpdir, len(files)
@@ -142,8 +153,14 @@ def parse_numstat(raw):
         else:
             i += 1
         binary = adds == "-"
-        stats.append({"path": path, "additions": 0 if binary else int(adds),
-                      "deletions": 0 if binary else int(dels), "binary": binary})
+        stats.append(
+            {
+                "path": path,
+                "additions": 0 if binary else int(adds),
+                "deletions": 0 if binary else int(dels),
+                "binary": binary,
+            }
+        )
     return stats
 
 
@@ -158,7 +175,7 @@ def log_lines(root, log_args):
     if not log_args:
         return []
     res = git(root, "log", "--oneline", "--no-decorate", f"-{LOG_LIMIT}", *log_args, check=False)
-    return [l for l in res.stdout.decode(errors="replace").splitlines() if l]
+    return [ln for ln in res.stdout.decode(errors="replace").splitlines() if ln]
 
 
 def new_side_sizes(root, new_rev, paths):
@@ -172,8 +189,11 @@ def new_side_sizes(root, new_rev, paths):
                 sizes.append(None)
         return sizes
     prefix = ":" if new_rev == "index" else f"{new_rev}:"
-    res = subprocess.run(["git", "-C", str(root), "cat-file", "--batch-check"],
-                         input="".join(f"{prefix}{p}\n" for p in paths).encode(), capture_output=True)
+    res = subprocess.run(
+        ["git", "-C", str(root), "cat-file", "--batch-check"],
+        input="".join(f"{prefix}{p}\n" for p in paths).encode(),
+        capture_output=True,
+    )
     lines = res.stdout.decode(errors="replace").splitlines()
     if res.returncode != 0 or len(lines) != len(paths):
         return [None] * len(paths)
@@ -226,8 +246,9 @@ def collect_full(root, diff_args, env, new_rev, name_status, numstat, notes):
     for i in sorted(excluded):
         for p in {name_status[i]["path"], name_status[i]["oldPath"]} - {None}:
             specs.append(f":(exclude,literal){p}")
-    raw = git(root, "diff", *DIFF_FLAGS, FULL_CONTEXT, "--diff-filter=MR", *diff_args, "--", *specs,
-              env=env, check=False)
+    raw = git(
+        root, "diff", *DIFF_FLAGS, FULL_CONTEXT, "--diff-filter=MR", *diff_args, "--", *specs, env=env, check=False
+    )
     got = split_patch(raw.stdout.decode(errors="replace")) if raw.returncode == 0 else []
     expected = [i for i in mr if i not in excluded]
     if len(got) != len(expected):
@@ -246,7 +267,7 @@ def collect_full(root, diff_args, env, new_rev, name_status, numstat, notes):
             continue
         chunks[i] = chunk
         body = chunk.split("\n@@ ", 1)[1].split("\n")[1:]
-        lines[i] = sum(1 for l in body if l[:1] in (" ", "+"))
+        lines[i] = sum(1 for ln in body if ln[:1] in (" ", "+"))
     return {"chunks": chunks, "lines": lines, "reasons": reasons}
 
 
@@ -275,8 +296,11 @@ def collect(args):
     repo_name = common.parent.name if common.name == ".git" else root.name
 
     head = verify(root, "HEAD")
-    branch = out(root, "rev-parse", "--abbrev-ref", "HEAD") if head else out(
-        root, "symbolic-ref", "--short", "-q", "HEAD", check=False)
+    branch = (
+        out(root, "rev-parse", "--abbrev-ref", "HEAD")
+        if head
+        else out(root, "symbolic-ref", "--short", "-q", "HEAD", check=False)
+    )
     mode = args.mode
     notes = []
     base = merge_base = None
@@ -350,11 +374,13 @@ def collect(args):
             env, tmpdir, untracked = untracked_index_env(root)
         patch = git(root, "diff", *DIFF_FLAGS, "-U3", *diff_args, env=env).stdout.decode(errors="replace")
         name_status = parse_name_status(
-            git(root, "diff", "--name-status", "-z", "--find-renames", *diff_args, env=env)
-            .stdout.decode(errors="replace"))
+            git(root, "diff", "--name-status", "-z", "--find-renames", *diff_args, env=env).stdout.decode(
+                errors="replace"
+            )
+        )
         numstat = parse_numstat(
-            git(root, "diff", "--numstat", "-z", "--find-renames", *diff_args, env=env)
-            .stdout.decode(errors="replace"))
+            git(root, "diff", "--numstat", "-z", "--find-renames", *diff_args, env=env).stdout.decode(errors="replace")
+        )
         full = collect_full(root, diff_args, env, new_rev, name_status, numstat, notes)
     finally:
         if tmpdir:
@@ -365,24 +391,25 @@ def collect(args):
         return None, {"root": str(root), "label": label, "notes": notes}, None
     if not (len(chunks) == len(name_status) == len(numstat)):
         raise CollectError(
-            f"out of sync: {len(chunks)} patch chunks, {len(name_status)} in name-status, "
-            f"{len(numstat)} in numstat")
+            f"out of sync: {len(chunks)} patch chunks, {len(name_status)} in name-status, {len(numstat)} in numstat"
+        )
 
-    status_names = {"A": "added", "M": "modified", "D": "deleted", "R": "renamed",
-                    "C": "copied", "T": "typechange"}
+    status_names = {"A": "added", "M": "modified", "D": "deleted", "R": "renamed", "C": "copied", "T": "typechange"}
     files = []
-    for i, (ns, st, chunk) in enumerate(zip(name_status, numstat, chunks)):
+    for i, (ns, st, _chunk) in enumerate(zip(name_status, numstat, chunks)):
         if ns["path"] != st["path"]:
             raise CollectError(f"paths out of sync: `{ns['path']}` and `{st['path']}`")
-        files.append({
-            "path": ns["path"],
-            "oldPath": ns["oldPath"],
-            "status": status_names.get(ns["status"], "modified"),
-            "additions": st["additions"],
-            "deletions": st["deletions"],
-            "binary": st["binary"],
-            "content": file_content(i, full),
-        })
+        files.append(
+            {
+                "path": ns["path"],
+                "oldPath": ns["oldPath"],
+                "status": status_names.get(ns["status"], "modified"),
+                "additions": st["additions"],
+                "deletions": st["deletions"],
+                "binary": st["binary"],
+                "content": file_content(i, full),
+            }
+        )
 
     meta = {
         "version": META_VERSION,
@@ -425,8 +452,9 @@ def note_texts(meta):
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--repo", default=".", help="repository or worktree directory")
-    p.add_argument("--mode", default="since-base",
-                   choices=["since-base", "uncommitted", "staged", "commit", "range", "branch"])
+    p.add_argument(
+        "--mode", default="since-base", choices=["since-base", "uncommitted", "staged", "commit", "range", "branch"]
+    )
     p.add_argument("--ref", help="sha, A..B / A...B or a branch name, depending on the mode")
     p.add_argument("--base", help="base for since-base and branch")
     p.add_argument("--out", help="output directory (default: $TMPDIR/diff-review/...)")
@@ -439,8 +467,7 @@ def main():
         sys.exit(2)
 
     if patch is None:
-        print(json.dumps({"ok": False, "reason": "no-changes", **meta, "notes": note_texts(meta)},
-                         ensure_ascii=False))
+        print(json.dumps({"ok": False, "reason": "no-changes", **meta, "notes": note_texts(meta)}, ensure_ascii=False))
         print(f"No changes: `{meta['root']}`, {meta['label']}.", file=sys.stderr)
         sys.exit(3)
 
@@ -451,20 +478,26 @@ def main():
     (outdir / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
     t = meta["totals"]
-    print(json.dumps({
-        "ok": True,
-        "outdir": str(outdir),
-        "root": meta["root"],
-        "branch": meta["branch"],
-        "mode": meta["mode"],
-        "label": meta["label"],
-        "files": t["files"],
-        "additions": t["additions"],
-        "deletions": t["deletions"],
-        "untrackedIncluded": meta["untrackedIncluded"],
-        "commits": len(meta["commits"]),
-        "notes": note_texts(meta),
-    }, ensure_ascii=False, indent=2))
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "outdir": str(outdir),
+                "root": meta["root"],
+                "branch": meta["branch"],
+                "mode": meta["mode"],
+                "label": meta["label"],
+                "files": t["files"],
+                "additions": t["additions"],
+                "deletions": t["deletions"],
+                "untrackedIncluded": meta["untrackedIncluded"],
+                "commits": len(meta["commits"]),
+                "notes": note_texts(meta),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

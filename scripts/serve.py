@@ -46,10 +46,12 @@ def asset_file(path):
         path = "/assets/viewer.html"
     if not path.startswith("/assets/"):
         return None
-    target = (ASSETS / path[len("/assets/"):]).resolve()
-    if not target.is_relative_to(ASSETS.resolve()) or target.suffix not in MIME or not target.is_file():
+    try:
+        target = (ASSETS / path[len("/assets/") :]).resolve()
+        ok = target.is_relative_to(ASSETS.resolve()) and target.suffix in MIME and target.is_file()
+    except (OSError, ValueError):  # e.g. a NUL byte in the path: answer 404, not a dropped connection
         return None
-    return target
+    return target if ok else None
 
 
 MAX_BODY = 20 * 1024 * 1024
@@ -81,7 +83,8 @@ def load_review(outdir):
     if len(chunks) != len(meta["files"]):
         raise SystemExit(f"guide.patch ({len(chunks)} files) does not match meta.json ({len(meta['files'])})")
     files = [{**f, "patch": c} for f, c in zip(meta["files"], chunks)]
-    # full.patch: chunks in order for files with content.available. If the file is missing or does not match, there is no expansion.
+    # full.patch: chunks in order for files with content.available.
+    # If the file is missing or does not match, there is no expansion.
     full = {}
     want = [i for i, f in enumerate(meta["files"]) if (f.get("content") or {}).get("available")]
     full_path = outdir / "full.patch"

@@ -8,9 +8,11 @@ export const secFiles = (sec) => sec.diffs.map((d) => fileByPath.get(d.file)).fi
 export const filesMode = () => S.mode === 'files';
 // Groups of the main column in the current mode: the guide chapters or a single headless Files group.
 export const groups = () => (filesMode() ? [filesGroup] : sections);
-export const groupFor = (path) => (filesMode() ? filesGroup : sections.find((s) => s.diffs.some((d) => d.file === path)) || null);
+export const groupFor = (path) =>
+  filesMode() ? filesGroup : sections.find((s) => s.diffs.some((d) => d.file === path)) || null;
 export const isViewed = (file) => !!S.filesViewed && S.filesViewed[file.path] === file.hash;
-export const sectionOpen = (sec) => (sec.headless ? true : sec.key in S.sectionOpen ? !!S.sectionOpen[sec.key] : !S.reviewed[sec.key]);
+export const sectionOpen = (sec) =>
+  sec.headless ? true : sec.key in S.sectionOpen ? !!S.sectionOpen[sec.key] : !S.reviewed[sec.key];
 // Size of the original diff: expanded context does not make a file "big" and does not collapse it.
 const lineCount = (file) => file.baseCount;
 
@@ -47,6 +49,9 @@ export function commentCount() {
 
 export const fileComments = (path) => S.annotations.filter((a) => a.file === path).length;
 export const splitAvailable = () => ui.mainW >= SPLIT_MIN_MAIN;
-export const fileView = (file) => (S.viewMode === 'split' && splitAvailable() && file.status !== 'added' && file.status !== 'deleted' ? 'split' : 'unified');
+export const fileView = (file) =>
+  S.viewMode === 'split' && splitAvailable() && file.status !== 'added' && file.status !== 'deleted'
+    ? 'split'
+    : 'unified';
 
 export const secComments = () => sections.filter((s) => (S.sectionComments[s.key] || '').trim());

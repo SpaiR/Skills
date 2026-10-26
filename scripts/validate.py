@@ -54,7 +54,7 @@ def validate(guide, meta):
         if not isinstance(s.get("title"), str) or not s["title"].strip():
             errors.append(f"{where}: empty `title`")
         else:
-            where = f"section {i} \"{s['title'].strip()}\""
+            where = f'section {i} "{s["title"].strip()}"'
         if not isinstance(s.get("overview"), str) or not s["overview"].strip():
             errors.append(f"{where}: empty `overview`")
         diffs = s.get("diffs")
@@ -116,8 +116,10 @@ def main():
         sys.exit(1)
 
     n_placed = sum(len(s["diffs"]) for s in guide["sections"])
-    print(f"OK: {len(guide['sections'])} sections, {n_placed} files in sections, "
-          f"{len(guide['unplacedFiles'])} in unplacedFiles")
+    print(
+        f"OK: {len(guide['sections'])} sections, {n_placed} files in sections, "
+        f"{len(guide['unplacedFiles'])} in unplacedFiles"
+    )
 
 
 if __name__ == "__main__":

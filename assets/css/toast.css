@@ -1,21 +1,58 @@
 /* Toasts. */
 
 .toast {
-  position: fixed; bottom: 20px; left: 50%; z-index: var(--z-toast);
-  display: flex; align-items: center; gap: 14px; max-width: calc(100vw - 32px);
-  padding: 8px 12px; border-radius: var(--r-md); box-shadow: var(--shadow-md);
-  background: var(--ink); color: var(--surface); font-size: var(--fs-sm); line-height: 20px;
-  transform: translate(-50%, 6px); opacity: 0; visibility: hidden; pointer-events: none;
-  transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease), visibility 0s linear var(--dur);
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  z-index: var(--z-toast);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: calc(100vw - 32px);
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-md);
+  background: var(--ink);
+  color: var(--surface);
+  font-size: var(--fs-sm);
+  line-height: 20px;
+  transform: translate(-50%, 6px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--dur) var(--ease),
+    transform var(--dur) var(--ease),
+    visibility 0s linear var(--dur);
 }
 .toast.show {
-  opacity: 1; visibility: visible; pointer-events: auto; transform: translate(-50%, 0);
-  transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease), visibility 0s;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+  transition:
+    opacity var(--dur) var(--ease),
+    transform var(--dur) var(--ease),
+    visibility 0s;
 }
-.toast:empty { display: none; }
+.toast:empty {
+  display: none;
+}
 .toast-btn {
-  margin: -2px -6px -2px 0; padding: 2px 6px; border: 0; border-radius: var(--r-xs); background: transparent;
-  color: var(--accent-soft); font-weight: 600; cursor: pointer;
+  margin: -2px -6px -2px 0;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--accent-soft);
+  font-weight: 600;
+  cursor: pointer;
 }
-.toast-btn:hover { text-decoration: underline; text-underline-offset: 2px; }
-.toast-btn:focus-visible { outline-color: var(--accent-soft); outline-offset: 0; }
+.toast-btn:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.toast-btn:focus-visible {
+  outline-color: var(--accent-soft);
+  outline-offset: 0;
+}

@@ -1,21 +1,23 @@
 // Line comment form lifecycle: open, edit, close, drafts and deletion with undo.
 
-import { fileByPath, finished, L, S, selection, setSelection, ui } from './state.js';
-import { $main } from './dom.js';
-import { save } from './persist.js';
-import { lineAt } from './lines.js';
-import { pinRange } from './expand.js';
-import { fileQ, rerenderFile, stickyOffset, withAnchor } from './rerender.js';
-import { updateChrome } from './header.js';
-import { closeSectionComment } from './section.js';
 import { draftKey, editKey, fitTextarea } from './comments.js';
-import { toast } from './toast.js';
+import { $main } from './dom.js';
+import { pinRange } from './expand.js';
+import { updateChrome } from './header.js';
+import { lineAt } from './lines.js';
+import { save } from './persist.js';
+import { fileQ, rerenderFile, stickyOffset, withAnchor } from './rerender.js';
+import { closeSectionComment } from './section.js';
+import { fileByPath, finished, L, S, selection, setSelection, ui } from './state.js';
 import { T } from './strings.js';
+import { toast } from './toast.js';
 
 // Re-render the files where the form or the selection was or has appeared.
 export function refreshFiles(paths, keep) {
   const set = new Set(paths.filter(Boolean));
-  withAnchor(() => { for (const p of set) rerenderFile(p); }, keep);
+  withAnchor(() => {
+    for (const p of set) rerenderFile(p);
+  }, keep);
   updateChrome();
 }
 
@@ -41,7 +43,8 @@ function focusForm() {
 // row is the table row the user worked with: it stays in place on screen.
 export function openLineForm(file, secKey, range, anchor, extend, row) {
   if (finished) return;
-  const prev = ui.form, prevSel = selection;
+  const prev = ui.form,
+    prevSel = selection;
   if (ui.secForm) closeSectionComment();
   const key = draftKey(file.path, range.side, range.start, range.end);
   let sugOpen = false;
@@ -63,10 +66,21 @@ export function openLineForm(file, secKey, range, anchor, extend, row) {
 
 export function openEditForm(a, secKey) {
   if (finished) return;
-  const prev = ui.form, prevSel = selection;
+  const prev = ui.form,
+    prevSel = selection;
   if (ui.secForm) closeSectionComment();
-  const key = editKey(a.id), d = S.drafts[key];
-  ui.form = { key, path: a.file, sec: secKey, side: a.side, start: a.start, end: a.end, editId: a.id, sugOpen: !!(d ? d.suggestion : a.suggestion) };
+  const key = editKey(a.id),
+    d = S.drafts[key];
+  ui.form = {
+    key,
+    path: a.file,
+    sec: secKey,
+    side: a.side,
+    start: a.start,
+    end: a.end,
+    editId: a.id,
+    sugOpen: !!(d ? d.suggestion : a.suggestion),
+  };
   setSelection({ path: a.file, sec: secKey, side: a.side, start: a.start, end: a.end, anchor: null });
   refreshFiles([prev && prev.path, prevSel && prevSel.path, a.file]);
   focusForm();
@@ -74,7 +88,8 @@ export function openEditForm(a, secKey) {
 
 // Close the form: the text stays as a draft. focusBack: return focus from the form to the file header.
 export function closeForm(focusBack) {
-  const f = ui.form, sel = selection;
+  const f = ui.form,
+    sel = selection;
   if (!f && !sel) return;
   const active = document.activeElement;
   const hadFocus = focusBack && active && active.closest && active.closest('.annot-form');
@@ -105,7 +120,14 @@ export function continueDraft(key, secKey, row) {
   const file = fileByPath.get(d.file);
   if (!file) return;
   const l = lineAt(file, d.side, d.start);
-  openLineForm(file, secKey, { side: d.side, start: d.start, end: d.end }, l ? { li: l.i, side: d.side } : null, false, row);
+  openLineForm(
+    file,
+    secKey,
+    { side: d.side, start: d.start, end: d.end },
+    l ? { li: l.i, side: d.side } : null,
+    false,
+    row,
+  );
 }
 
 export function deleteDraft(key) {
@@ -120,14 +142,19 @@ export function deleteNote(id) {
   const idx = S.annotations.findIndex((a) => a.id === id);
   if (idx < 0) return;
   const a = S.annotations[idx];
-  const dk = editKey(id), d = S.drafts[dk];
+  const dk = editKey(id),
+    d = S.drafts[dk];
   S.annotations.splice(idx, 1);
   delete S.drafts[dk];
-  if (ui.form && ui.form.editId === id) { ui.form = null; setSelection(null); }
+  if (ui.form && ui.form.editId === id) {
+    ui.form = null;
+    setSelection(null);
+  }
   save();
   refreshFiles([a.file]);
   toast(T.comments.deleted, {
-    label: T.undo, run: () => {
+    label: T.undo,
+    run: () => {
       if (S.annotations.some((x) => x.id === id)) return;
       S.annotations.splice(Math.min(idx, S.annotations.length), 0, a);
       if (d && !S.drafts[dk]) S.drafts[dk] = d;

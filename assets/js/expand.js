@@ -1,19 +1,22 @@
 // Context expansion: loading the full file text, gap buttons, "whole file" mode and rebuilding a file view.
 
-import * as D from './diffcore.js';
 import { EXPAND_STEP, TOKEN } from './constants.js';
-import { fileByPath, S, selection, ui } from './state.js';
+import * as D from './diffcore.js';
 import { $main } from './dom.js';
-import { save } from './persist.js';
 import { lineKey } from './lines.js';
+import { save } from './persist.js';
 import { fileQ, rerenderFile, withAnchor } from './rerender.js';
 import { cancelDrag } from './selection.js';
-import { toast } from './toast.js';
+import { fileByPath, S, selection, ui } from './state.js';
 import { T } from './strings.js';
+import { toast } from './toast.js';
 
 // Expansion is possible if collect.py captured the full file text and it matched the patch.
 export const canExpand = (file) => file.fullAvail && !file.fullBad && file.newLines != null;
-const expandedOf = (file) => S.expanded[file.path] || (S.expanded[file.path] = { ranges: [], full: false });
+const expandedOf = (file) => {
+  if (!S.expanded[file.path]) S.expanded[file.path] = { ranges: [], full: false };
+  return S.expanded[file.path];
+};
 export const isWhole = (file) => !!(S.expanded[file.path] && S.expanded[file.path].full);
 
 export function expandReason(file) {
@@ -30,22 +33,28 @@ export function ensureFull(file) {
   if (file.full) return Promise.resolve(!file.fullBad);
   if (!canExpand(file)) return Promise.resolve(false);
   if (!fullLoads.has(file.path)) {
-    fullLoads.set(file.path, fetch(`/api/full?i=${file.idx}`, { headers: { 'X-Review-Token': TOKEN } })
-      .then((res) => { if (!res.ok) throw new Error(String(res.status)); return res.text(); })
-      .then((text) => {
-        const hunks = D.parsePatch(text);
-        file.full = hunks.length === 1 ? hunks[0].lines : [];
-        if (!D.buildView(file.full, file.baseHunks, [], false)) {
-          file.fullBad = true;
-          toast(T.expand.fileChanged);
-        }
-        return !file.fullBad;
-      })
-      .catch(() => {
-        fullLoads.delete(file.path);
-        toast(T.expand.loadFailed);
-        return false;
-      }));
+    fullLoads.set(
+      file.path,
+      fetch(`/api/full?i=${file.idx}`, { headers: { 'X-Review-Token': TOKEN } })
+        .then((res) => {
+          if (!res.ok) throw new Error(String(res.status));
+          return res.text();
+        })
+        .then((text) => {
+          const hunks = D.parsePatch(text);
+          file.full = hunks.length === 1 ? hunks[0].lines : [];
+          if (!D.buildView(file.full, file.baseHunks, [], false)) {
+            file.fullBad = true;
+            toast(T.expand.fileChanged);
+          }
+          return !file.fullBad;
+        })
+        .catch(() => {
+          fullLoads.delete(file.path);
+          toast(T.expand.loadFailed);
+          return false;
+        }),
+    );
   }
   return fullLoads.get(file.path);
 }
@@ -72,9 +81,13 @@ function reshapeFile(file, keep) {
   const cur = ui.cursor && ui.cursor.path === file.path ? [at(ui.cursor.from), at(ui.cursor.to)] : null;
   const anc = selection && selection.path === file.path && selection.anchor ? at(selection.anchor.li) : null;
   applyView(file);
-  const find = (k) => { const i = k ? file.lines.findIndex((l) => lineKey(l) === k) : -1; return i < 0 ? null : i; };
+  const find = (k) => {
+    const i = k ? file.lines.findIndex((l) => lineKey(l) === k) : -1;
+    return i < 0 ? null : i;
+  };
   if (cur) {
-    const a = find(cur[0]), b = find(cur[1]);
+    const a = find(cur[0]),
+      b = find(cur[1]);
     ui.cursor = a == null || b == null ? null : { ...ui.cursor, from: a, to: b };
   }
   if (selection && selection.path === file.path && selection.anchor) {
@@ -99,11 +112,19 @@ export async function expandGap(btn, byKeyboard) {
   const gap = { newFrom: +btn.dataset.from, newTo: +btn.dataset.to };
   gap.n = gap.newTo - gap.newFrom + 1;
   const sep = btn.closest('tr');
-  const near = (el, step) => { let tr = el && el[step]; while (tr && !tr.matches('tr.ln')) tr = tr[step]; return tr; };
-  const below = near(sep, 'nextElementSibling'), above = near(sep, 'previousElementSibling');
+  const near = (el, step) => {
+    let tr = el && el[step];
+    while (tr && !tr.matches('tr.ln')) tr = tr[step];
+    return tr;
+  };
+  const below = near(sep, 'nextElementSibling'),
+    above = near(sep, 'previousElementSibling');
   const keep = dir === 'up' ? below || above : above || below;
   const keepKey = keep && keep.dataset.anchor;
-  if (!(await ensureFull(file))) { rerenderFile(file.path); return; }
+  if (!(await ensureFull(file))) {
+    rerenderFile(file.path);
+    return;
+  }
   const ex = expandedOf(file);
   ex.ranges = D.mergeRanges([...ex.ranges, D.expandRange(gap, dir, EXPAND_STEP)]);
   save();
@@ -113,7 +134,10 @@ export async function expandGap(btn, byKeyboard) {
     // Focus goes to the button of the same direction at the same row if the gap is still there, otherwise to the file header.
     const row = keepKey && $main().querySelector(`[data-anchor="${CSS.escape(keepKey)}"]`);
     const sepNow = row && (dir === 'up' ? row.previousElementSibling : row.nextElementSibling);
-    const b = sepNow && sepNow.matches('tr.gap') ? sepNow.querySelector(`.gap-btn[data-dir="${dir}"], .gap-btn[data-dir="all"]`) : null;
+    const b =
+      sepNow && sepNow.matches('tr.gap')
+        ? sepNow.querySelector(`.gap-btn[data-dir="${dir}"], .gap-btn[data-dir="all"]`)
+        : null;
     const t = b || $main().querySelector(`${fileQ(fileEl.closest('.sec').dataset.key, file.path)} .file-toggle`);
     if (t) t.focus({ preventScroll: true });
   }
@@ -121,8 +145,14 @@ export async function expandGap(btn, byKeyboard) {
 
 // "Whole file": all gaps expanded. Turning it off restores what was expanded by hand and the lines with comments.
 export async function setWholeFile(file, on) {
-  if (!canExpand(file)) { toast(expandReason(file)); return; }
-  if (!(await ensureFull(file))) { rerenderFile(file.path); return; }
+  if (!canExpand(file)) {
+    toast(expandReason(file));
+    return;
+  }
+  if (!(await ensureFull(file))) {
+    rerenderFile(file.path);
+    return;
+  }
   expandedOf(file).full = on;
   dropEmptyExpanded(file);
   save();

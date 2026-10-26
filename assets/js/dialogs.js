@@ -1,11 +1,12 @@
 // Shared modal dialog scaffold: backdrop close, focus trap, focus return.
 
 import { isMod } from './constants.js';
-import { finished, ui } from './state.js';
 import { h } from './dom.js';
 import { updateChrome } from './header.js';
+import { finished, ui } from './state.js';
 
-const FOCUSABLE = 'button:not([disabled]), textarea:not([disabled]), input:not([disabled]), summary, a[href], [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE =
+  'button:not([disabled]), textarea:not([disabled]), input:not([disabled]), summary, a[href], [tabindex]:not([tabindex="-1"])';
 
 export function dialogEl(id, cls) {
   let d = document.getElementById(id);
@@ -16,8 +17,12 @@ export function dialogEl(id, cls) {
     return e.target === d && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom);
   };
   // A click on the backdrop closes the dialog, but only if the press also started on it: selecting text with the mouse will not close it.
-  d.addEventListener('mousedown', (e) => { d.downOutside = outside(e); });
-  d.addEventListener('click', (e) => { if (d.downOutside && outside(e)) d.close(); });
+  d.addEventListener('mousedown', (e) => {
+    d.downOutside = outside(e);
+  });
+  d.addEventListener('click', (e) => {
+    if (d.downOutside && outside(e)) d.close();
+  });
   d.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && isMod(e) && d.primary && !d.primary.disabled) {
       e.preventDefault();
@@ -26,10 +31,18 @@ export function dialogEl(id, cls) {
       // Keep focus inside: after the last element comes the first, and vice versa.
       const items = [...d.querySelectorAll(FOCUSABLE)].filter((el) => el.getClientRects().length);
       if (!items.length) return;
-      const first = items[0], last = items[items.length - 1];
-      if (document.activeElement === d) { e.preventDefault(); (e.shiftKey ? last : first).focus(); }
-      else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      const first = items[0],
+        last = items[items.length - 1];
+      if (document.activeElement === d) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      } else if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
   });
   d.addEventListener('close', () => {

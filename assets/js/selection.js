@@ -1,13 +1,14 @@
 // Mouse selection of line ranges on the line numbers: click, Shift+click and drag.
 
-import { fileByPath, finished, selection, ui } from './state.js';
-import { lineAt, rangeOf } from './lines.js';
-import { fileView } from './model.js';
 import { paintSelection } from './diff.js';
 import { openLineForm, refreshFiles } from './forms.js';
+import { lineAt, rangeOf } from './lines.js';
+import { fileView } from './model.js';
+import { fileByPath, finished, selection, ui } from './state.js';
 
 export function numLine(num) {
-  const fileEl = num.closest('.file'), secEl = num.closest('.sec');
+  const fileEl = num.closest('.file'),
+    secEl = num.closest('.sec');
   const file = fileEl && fileByPath.get(fileEl.dataset.path);
   const line = file && lineAt(file, num.dataset.side, +num.dataset.no);
   return line ? { file, fileEl, sec: secEl.dataset.key, line } : null;
@@ -23,12 +24,21 @@ export function onMainMouseDown(e) {
   const { file, fileEl, sec, line } = hit;
   // On a context line the comment always targets the new version, whichever number was clicked.
   const side = line.t === 'ctx' ? 'new' : num.dataset.side;
-  const extend = e.shiftKey && selection && selection.anchor && selection.path === file.path && selection.sec === sec
-    && !(ui.form && ui.form.editId);
+  const extend =
+    e.shiftKey &&
+    selection &&
+    selection.anchor &&
+    selection.path === file.path &&
+    selection.sec === sec &&
+    !(ui.form && ui.form.editId);
   const anchor = extend ? selection.anchor : { li: line.i, side };
   ui.drag = { file, sec, fileEl, anchor, extend, range: rangeOf(file, anchor, line), row: num.closest('tr') };
   document.body.classList.add('dragging');
-  paintSelection(fileEl, { side: ui.drag.range.side, start: ui.drag.range.start, end: ui.drag.range.end }, fileView(file) === 'split');
+  paintSelection(
+    fileEl,
+    { side: ui.drag.range.side, start: ui.drag.range.start, end: ui.drag.range.end },
+    fileView(file) === 'split',
+  );
   document.addEventListener('mouseup', onDragEnd, { once: true });
 }
 

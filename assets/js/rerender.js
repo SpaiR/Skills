@@ -1,12 +1,12 @@
 // Targeted re-rendering of chapters and files while keeping the scroll anchor and input focus in place.
 
-import { fileByPath, L, secByKey } from './state.js';
-import { $main } from './dom.js';
-import { groups, sectionOpen } from './model.js';
-import { fileRow } from './toc.js';
-import { renderSection } from './section.js';
-import { renderFile } from './file.js';
 import { FIELD_SIZING, fitTextarea } from './comments.js';
+import { $main } from './dom.js';
+import { renderFile } from './file.js';
+import { groups, sectionOpen } from './model.js';
+import { renderSection } from './section.js';
+import { fileByPath, L, secByKey } from './state.js';
+import { fileRow } from './toc.js';
 
 export const stickyOffset = () => L.header + L.secHead + L.fileHead;
 
@@ -14,7 +14,10 @@ export const secQ = (key) => `.sec[data-key="${CSS.escape(key)}"]`;
 export const fileQ = (key, path) => `${secQ(key)} .file[data-path="${CSS.escape(path)}"]`;
 // Top of a header in the flow: the card top plus its border. For a sticky header, rect does not show this position.
 export const headTop = (box) => box.getBoundingClientRect().top + box.clientTop;
-const topOf = (sel) => { const el = $main().querySelector(sel); return el ? headTop(el) : null; };
+const topOf = (sel) => {
+  const el = $main().querySelector(sel);
+  return el ? headTop(el) : null;
+};
 
 // Keeps an anchor point in place while fn() re-renders nodes. Anchors are tried in order:
 // the first one found after re-rendering determines the scroll position. keep is the header the user worked
@@ -42,7 +45,8 @@ function headAnchor(head, top) {
 
 // A diff row or a comment card. If the view changed, the row is looked up by the number of its side.
 function rowAnchor(el) {
-  const file = el.closest('.file'), sec = el.closest('.sec');
+  const file = el.closest('.file'),
+    sec = el.closest('.sec');
   const key = el.dataset.anchor;
   const num = el.matches('tr.ln') ? el.querySelector('td.num[data-no]') : null;
   const fsel = file && sec ? fileQ(sec.dataset.key, file.dataset.path) : null;
@@ -66,7 +70,7 @@ function collectAnchors(keep) {
     const r = keep.getBoundingClientRect();
     if (keep.matches('tr.ln')) {
       if (r.bottom > L.header && r.top < vh) out.push(rowAnchor(keep));
-    // A header hidden under the top bar does not count: the user can no longer see it.
+      // A header hidden under the top bar does not count: the user can no longer see it.
     } else if (r.top >= L.header - 1 && r.top < vh) out.push(headAnchor(keep, r.top));
   }
   // The first element below the sticky headers (at the horizontal center of #main).
@@ -84,7 +88,8 @@ function collectAnchors(keep) {
     out.push(headAnchor(head));
   }
   // Last resort: the ancestors, the file and then the chapter.
-  const file = el && el.closest('.file'), sec = el && el.closest('.sec');
+  const file = el && el.closest('.file'),
+    sec = el && el.closest('.sec');
   if (file) out.push(headAnchor(file.querySelector('.file-head')));
   const secHead = sec && sec.querySelector(':scope > .sec-head');
   if (secHead) out.push(headAnchor(secHead));

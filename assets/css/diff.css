@@ -1,94 +1,265 @@
 /* Diff table: gutters, line backgrounds, syntax tokens, selection, hunks, context expansion. */
 
-.diff-wrap { overflow-x: auto; content-visibility: auto; contain-intrinsic-size: auto 400px; }
-/* A freshly re-rendered diff: fully rendered for a couple of frames so its height is exact (viewer.js, markFresh). */
-.diff-wrap.cv-fresh { content-visibility: visible; }
+.diff-wrap {
+  overflow-x: auto;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 400px;
+}
+/* A freshly re-rendered diff: fully rendered for a couple of frames so its height is exact (diff.js, markFresh). */
+.diff-wrap.cv-fresh {
+  content-visibility: visible;
+}
 table.diff {
-  border-collapse: collapse; width: 100%;
-  font: var(--code-fs)/var(--code-lh) var(--font-mono);
+  border-collapse: collapse;
+  width: 100%;
+  font: var(--code-fs) / var(--code-lh) var(--font-mono);
   --num-w: calc(var(--num-ch, 3) * 1ch + 16px);
   --sign-w: calc(2ch + 4px);
 }
-table.diff.unified { --gutter-w: calc(var(--num-w) * 2 + var(--sign-w)); }
-table.diff.unified.only-new, table.diff.unified.only-old { --gutter-w: calc(var(--num-w) + var(--sign-w)); }
-table.diff.split { table-layout: fixed; }
-col.c-num { width: var(--num-w); }
-col.c-sign { width: var(--sign-w); }
+table.diff.unified {
+  --gutter-w: calc(var(--num-w) * 2 + var(--sign-w));
+}
+table.diff.unified.only-new,
+table.diff.unified.only-old {
+  --gutter-w: calc(var(--num-w) + var(--sign-w));
+}
+table.diff.split {
+  table-layout: fixed;
+}
+col.c-num {
+  width: var(--num-w);
+}
+col.c-sign {
+  width: var(--sign-w);
+}
 /* :where keeps the paddings and backgrounds of specific cells below from losing on specificity. */
-:where(table.diff) td { padding: 0; vertical-align: top; background-color: var(--surface); }
+:where(table.diff) td {
+  padding: 0;
+  vertical-align: top;
+  background-color: var(--surface);
+}
 
 td.num {
-  padding: 0 8px; text-align: right; font-size: var(--fs-xs); color: var(--ink-3);
-  user-select: none; -webkit-user-select: none; cursor: pointer; white-space: nowrap; position: relative;
+  padding: 0 8px;
+  text-align: right;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: pointer;
+  white-space: nowrap;
+  position: relative;
 }
-td.num:not([data-no]) { cursor: default; }
-td.sign { padding: 0 0 0 4px; text-align: center; user-select: none; -webkit-user-select: none; white-space: pre; }
-td.sign.l-add { color: var(--add-sign); }
-td.sign.l-del { color: var(--del-sign); }
-td.code { padding: 0 12px 0 4px; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
-table.diff.split td.num.half-new { border-left: 1px solid var(--hair); }
+td.num:not([data-no]) {
+  cursor: default;
+}
+td.sign {
+  padding: 0 0 0 4px;
+  text-align: center;
+  user-select: none;
+  -webkit-user-select: none;
+  white-space: pre;
+}
+td.sign.l-add {
+  color: var(--add-sign);
+}
+td.sign.l-del {
+  color: var(--del-sign);
+}
+td.code {
+  padding: 0 12px 0 4px;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+table.diff.split td.num.half-new {
+  border-left: 1px solid var(--hair);
+}
 
 /* No line wrapping */
-body.nowrap td.code { white-space: pre; overflow-wrap: normal; }
-body.nowrap table.diff { width: max-content; min-width: 100%; }
-body.nowrap table.diff.split { table-layout: auto; }
+body.nowrap td.code {
+  white-space: pre;
+  overflow-wrap: normal;
+}
+body.nowrap table.diff {
+  width: max-content;
+  min-width: 100%;
+}
+body.nowrap table.diff.split {
+  table-layout: auto;
+}
 
 /* Line backgrounds: the line type is conveyed by background, bar and sign; code text is always --ink */
-td.code.l-add, td.sign.l-add { background-color: var(--add-line); }
-td.num.l-add { background-color: var(--add-gutter); color: var(--ink-2); }
-td.code.l-del, td.sign.l-del { background-color: var(--del-line); }
-td.num.l-del { background-color: var(--del-gutter); color: var(--ink-2); }
+td.code.l-add,
+td.sign.l-add {
+  background-color: var(--add-line);
+}
+td.num.l-add {
+  background-color: var(--add-gutter);
+  color: var(--ink-2);
+}
+td.code.l-del,
+td.sign.l-del {
+  background-color: var(--del-line);
+}
+td.num.l-del {
+  background-color: var(--del-gutter);
+  color: var(--ink-2);
+}
 /* The number cell's shadows combine the line-type bar (--bar) with the selection or comment mark (--mark). */
-td.num { box-shadow: var(--bar, 0 0 transparent), var(--mark, 0 0 transparent); }
-tr.ln[data-t="add"] > td:first-child, table.split td.num.l-add { --bar: inset 3px 0 0 var(--add-bar); }
-tr.ln[data-t="del"] > td:first-child, table.split td.num.l-del { --bar: inset 3px 0 0 var(--del-bar); }
-td.code.l-add .w { background: var(--add-word); border-radius: 2px; }
-td.code.l-del .w { background: var(--del-word); border-radius: 2px; }
+td.num {
+  box-shadow: var(--bar, 0 0 transparent), var(--mark, 0 0 transparent);
+}
+tr.ln[data-t="add"] > td:first-child,
+table.split td.num.l-add {
+  --bar: inset 3px 0 0 var(--add-bar);
+}
+tr.ln[data-t="del"] > td:first-child,
+table.split td.num.l-del {
+  --bar: inset 3px 0 0 var(--del-bar);
+}
+td.code.l-add .w {
+  background: var(--add-word);
+  border-radius: 2px;
+}
+td.code.l-del .w {
+  background: var(--del-word);
+  border-radius: 2px;
+}
 /* Light syntax highlighting: colour only, no italics or bold. Contrast on every line background is checked by contrast.js. */
-td.code .t-kw { color: var(--syn-kw); }
-td.code .t-str { color: var(--syn-str); }
-td.code .t-com { color: var(--syn-com); }
-td.code .t-num { color: var(--syn-num); }
-td.filler, table.diff td.filler {
+td.code .t-kw {
+  color: var(--syn-kw);
+}
+td.code .t-str {
+  color: var(--syn-str);
+}
+td.code .t-com {
+  color: var(--syn-com);
+}
+td.code .t-num {
+  color: var(--syn-num);
+}
+td.filler,
+table.diff td.filler {
   background-color: var(--tint);
   background-image: repeating-linear-gradient(135deg, var(--hatch) 0 1px, transparent 1px 7px);
   cursor: default;
 }
-tr.ln:hover td.code:not(.filler), tr.ln:hover td.sign:not(.filler) { background-image: linear-gradient(var(--row-hover), var(--row-hover)); }
+tr.ln:hover td.code:not(.filler),
+tr.ln:hover td.sign:not(.filler) {
+  background-image: linear-gradient(var(--row-hover), var(--row-hover));
+}
 
 /* Selection for a comment: an overlay on top of the line background, so the add/del background is kept. In split view it applies per half. */
-table.unified tr.ln.sel > td.code, table.unified tr.ln.sel > td.sign,
-table.split td.sel.code, table.split td.sel.sign { background-image: linear-gradient(var(--sel-tint), var(--sel-tint)); }
-td.num.sel { background-color: var(--sel-gutter); color: var(--ink); }
+table.unified tr.ln.sel > td.code,
+table.unified tr.ln.sel > td.sign,
+table.split td.sel.code,
+table.split td.sel.sign {
+  background-image: linear-gradient(var(--sel-tint), var(--sel-tint));
+}
+td.num.sel {
+  background-color: var(--sel-gutter);
+  color: var(--ink);
+}
 /* A comment mark is a solid bar on the right of the numbers; a draft mark is a dashed one of the same width. */
-td.num.sel, td.num.has-note { --mark: inset -2px 0 0 var(--accent); }
+td.num.sel,
+td.num.has-note {
+  --mark: inset -2px 0 0 var(--accent);
+}
 td.num.has-draft:not(.sel):not(.has-note) {
   background-image: repeating-linear-gradient(to bottom, var(--accent) 0 3px, transparent 3px 6px);
-  background-size: 2px 100%; background-position: right; background-repeat: no-repeat;
+  background-size: 2px 100%;
+  background-position: right;
+  background-repeat: no-repeat;
 }
-td.num[data-no]:hover { color: var(--ink); }
+td.num[data-no]:hover {
+  color: var(--ink);
+}
 
 /* Change cursor (N/P): a bar at the start of the code, not at the number edge where the comment mark sits. */
-tr.ln.cursor > td.code:not(.filler) { box-shadow: inset 2px 0 0 var(--accent); }
+tr.ln.cursor > td.code:not(.filler) {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
 
 /* Hunks */
-tr.hunk td.hunk-cell { background: var(--hunk-bg); height: 28px; padding: 0 12px; vertical-align: middle; font-size: var(--fs-xs); line-height: 28px; }
-.hunk-in { display: flex; align-items: baseline; gap: 16px; white-space: nowrap; min-width: 0; }
-.hunk-skip, .hunk-range { color: var(--hunk-ink); flex: none; }
-.hunk-fn { color: var(--ink-2); min-width: 0; overflow: hidden; text-overflow: ellipsis; margin-left: -8px; }
-body.nowrap .hunk-in { position: sticky; left: 12px; width: max-content; }
-/* Context expansion buttons: at the left of the separator, one line tall, as on GitHub. */
-.gap-btns { display: inline-flex; align-self: stretch; margin-left: -12px; flex: none; }
-.gap-btns:empty { display: none; }
-.gap-btn {
-  width: 36px; height: 28px; display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: 0;
-  background: transparent; color: var(--hunk-ink); cursor: pointer;
-  transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+tr.hunk td.hunk-cell {
+  background: var(--hunk-bg);
+  height: 28px;
+  padding: 0 12px;
+  vertical-align: middle;
+  font-size: var(--fs-xs);
+  line-height: 28px;
 }
-.gap-btn:hover { background: var(--accent-soft); color: var(--accent); }
-.gap-btn:active { background: var(--hair); }
-.gap-btn .icon { width: 14px; height: 14px; }
-.gap-btn:focus-visible { outline-offset: -2px; }
-tr.gap .hunk-in { gap: 12px; }
+.hunk-in {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  white-space: nowrap;
+  min-width: 0;
+}
+.hunk-skip,
+.hunk-range {
+  color: var(--hunk-ink);
+  flex: none;
+}
+.hunk-fn {
+  color: var(--ink-2);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-left: -8px;
+}
+body.nowrap .hunk-in {
+  position: sticky;
+  left: 12px;
+  width: max-content;
+}
+/* Context expansion buttons: at the left of the separator, one line tall, as on GitHub. */
+.gap-btns {
+  display: inline-flex;
+  align-self: stretch;
+  margin-left: -12px;
+  flex: none;
+}
+.gap-btns:empty {
+  display: none;
+}
+.gap-btn {
+  width: 36px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--hunk-ink);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+.gap-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.gap-btn:active {
+  background: var(--hair);
+}
+.gap-btn .icon {
+  width: 14px;
+  height: 14px;
+}
+.gap-btn:focus-visible {
+  outline-offset: -2px;
+}
+tr.gap .hunk-in {
+  gap: 12px;
+}
 
-.nonl { color: var(--del-sign); padding-left: 4px; user-select: none; -webkit-user-select: none; }
+.nonl {
+  color: var(--del-sign);
+  padding-left: 4px;
+  user-select: none;
+  -webkit-user-select: none;
+}

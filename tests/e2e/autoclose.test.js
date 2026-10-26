@@ -12,7 +12,11 @@ import { sleep, startFixture } from './lib.js';
 describe('tab auto-close after submit', () => {
   let dir, ctx, cdp;
   const servers = [];
-  const fresh = async (fx) => { const s = await startFixture(fx); servers.push(s); return s; };
+  const fresh = async (fx) => {
+    const s = await startFixture(fx);
+    servers.push(s);
+    return s;
+  };
   const ready = (p) => p.waitForFunction(() => performance.getEntriesByName('dr-ready').length > 0);
   const openTab = async (url) => {
     const ev = ctx.waitForEvent('page');
@@ -27,8 +31,12 @@ describe('tab auto-close after submit', () => {
 
   before(async () => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dr-ac-'));
-    ctx = await chromium.launchPersistentContext(dir, { channel: 'chrome', headless: true, viewport: { width: 1280, height: 800 } });
-    cdp = await ctx.newCDPSession(ctx.pages()[0] || await ctx.newPage());
+    ctx = await chromium.launchPersistentContext(dir, {
+      channel: 'chrome',
+      headless: true,
+      viewport: { width: 1280, height: 800 },
+    });
+    cdp = await ctx.newCDPSession(ctx.pages()[0] || (await ctx.newPage()));
   });
   after(async () => {
     for (const s of servers) s.stop();
@@ -37,7 +45,8 @@ describe('tab auto-close after submit', () => {
     if (dir) fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  it('closes a tab with a single history entry about 3 s after submit, counting down 3 -> 2', async (t) => { // was AC1
+  it('closes a tab with a single history entry about 3 s after submit, counting down 3 -> 2', async (t) => {
+    // was AC1
     const fx = await fresh('mixed2');
     const p = await openTab(fx.url);
     await ready(p);
@@ -59,7 +68,8 @@ describe('tab auto-close after submit', () => {
     t.diagnostic(`history.length=${hist}; ${texts.join(' -> ')} -> closed after ${dt.toFixed(1)} s`);
   });
 
-  it('does not close a tab with two history entries and asks the user to close it manually', async (t) => { // was AC2
+  it('does not close a tab with two history entries and asks the user to close it manually', async (t) => {
+    // was AC2
     const fx = await fresh('mixed2');
     const p = await openTab('about:blank');
     await p.goto(fx.url);

@@ -1,30 +1,31 @@
 // Global keyboard shortcuts and the actions behind them (J/K, ]/[, N/P, V, O, E, C, ...).
 
 import { isMod, narrowScreen } from './constants.js';
-import { fileByPath, finished, L, S, secByKey, sections, selection, ui } from './state.js';
 import { $main } from './dom.js';
-import { fileBlocks, rowIndex } from './lines.js';
+import { toggleFile, toggleSection } from './events.js';
 import { isWhole, setWholeFile } from './expand.js';
-import { fileOpen, filesMode, isViewed } from './model.js';
-import { setFileViewed, setSectionViewed } from './viewed.js';
-import { fileQ, secQ, stickyOffset } from './rerender.js';
-import { setDrawer, toggleToc } from './toc.js';
-import { setAllFilesOpen, setMode } from './modes.js';
-import { applyCurrent, jumpToSection, scrollToElement, trackCurrent } from './nav.js';
-import { closeSectionComment, openSectionComment } from './section.js';
 import { wholeButton } from './file.js';
 import { closeForm, openLineForm } from './forms.js';
-import { cancelDrag } from './selection.js';
-import { toast } from './toast.js';
-import { toggleFile, toggleSection } from './events.js';
-import { setViewMode, setWrap } from './view.js';
-import { closeMenu } from './menu.js';
 import { openHelp } from './help.js';
-import { openSubmit } from './submit.js';
+import { fileBlocks, rowIndex } from './lines.js';
+import { closeMenu } from './menu.js';
+import { fileOpen, filesMode, isViewed } from './model.js';
+import { setAllFilesOpen, setMode } from './modes.js';
+import { applyCurrent, jumpToSection, scrollToElement, trackCurrent } from './nav.js';
+import { fileQ, secQ, stickyOffset } from './rerender.js';
+import { closeSectionComment, openSectionComment } from './section.js';
+import { cancelDrag } from './selection.js';
+import { fileByPath, finished, L, S, secByKey, sections, selection, ui } from './state.js';
 import { T } from './strings.js';
+import { openSubmit } from './submit.js';
+import { toast } from './toast.js';
+import { setDrawer, toggleToc } from './toc.js';
+import { setViewMode, setWrap } from './view.js';
+import { setFileViewed, setSectionViewed } from './viewed.js';
 
 // Fields where letters are input. "Viewed" checkboxes are not included: keys must keep working after clicking them.
-const TEXT_INPUT = 'textarea, select, [contenteditable]:not([contenteditable="false"]), input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"])';
+const TEXT_INPUT =
+  'textarea, select, [contenteditable]:not([contenteditable="false"]), input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"])';
 
 const KEYS = {
   KeyJ: () => stepFile(1),
@@ -51,7 +52,9 @@ KEYS.BracketLeft = guideOnly(KEYS.BracketLeft);
 const SHIFT_KEYS = {
   KeyV: guideOnly(() => toggleCurrentSectionViewed()),
   KeyO: guideOnly(() => toggleCurrentSection()),
-  KeyC: guideOnly(() => { if (ui.curSec) openSectionComment(ui.curSec); }),
+  KeyC: guideOnly(() => {
+    if (ui.curSec) openSectionComment(ui.curSec);
+  }),
   KeyZ: () => setAllFilesOpen(true),
 };
 
@@ -60,7 +63,10 @@ function focusFilter() {
   if (narrowScreen.matches && !ui.drawer) setDrawer(true);
   else if (!narrowScreen.matches && S.tocOpen === false) toggleToc();
   const input = document.getElementById('tree-filter');
-  if (input) { input.focus(); input.select(); }
+  if (input) {
+    input.focus();
+    input.select();
+  }
 }
 
 export function onKeyDown(e) {
@@ -76,8 +82,15 @@ export function onKeyDown(e) {
     return;
   }
   if (e.ctrlKey || e.metaKey || e.altKey) return;
-  if (e.key === '?' || (code === 'Slash' && e.shiftKey)) { e.preventDefault(); openHelp(); return; }
-  if (code === 'Escape') { onEscape(); return; }
+  if (e.key === '?' || (code === 'Slash' && e.shiftKey)) {
+    e.preventDefault();
+    openHelp();
+    return;
+  }
+  if (code === 'Escape') {
+    onEscape();
+    return;
+  }
   const fn = (e.shiftKey ? SHIFT_KEYS : KEYS)[code];
   if (!fn) return;
   e.preventDefault();
@@ -88,12 +101,30 @@ export function onKeyDown(e) {
 
 // Esc closes, in order: the menu, the slide-out contents, the form (the draft stays), the selection, the cursor.
 function onEscape() {
-  if (ui.menu) { closeMenu(true); return; }
-  if (narrowScreen.matches && ui.drawer) { setDrawer(false); return; }
-  if (ui.drag) { cancelDrag(); return; }
-  if (ui.secForm) { closeSectionComment(); return; }
-  if (ui.form || selection) { closeForm(true); return; }
-  if (ui.cursor) { ui.cursor = null; applyCursor(); }
+  if (ui.menu) {
+    closeMenu(true);
+    return;
+  }
+  if (narrowScreen.matches && ui.drawer) {
+    setDrawer(false);
+    return;
+  }
+  if (ui.drag) {
+    cancelDrag();
+    return;
+  }
+  if (ui.secForm) {
+    closeSectionComment();
+    return;
+  }
+  if (ui.form || selection) {
+    closeForm(true);
+    return;
+  }
+  if (ui.cursor) {
+    ui.cursor = null;
+    applyCursor();
+  }
 }
 
 const openFileEls = () => [...$main().querySelectorAll('.sec:not(.collapsed) .file:not([hidden])')];
@@ -110,8 +141,15 @@ function stepFile(dir) {
     const at = sections.findIndex((s) => s.key === ui.curSec);
     const secIdx = (f) => secByKey.get(f.closest('.sec').dataset.key).idx;
     if (at < 0) next = dir > 0 ? 0 : list.length - 1;
-    else if (dir > 0) { next = list.findIndex((f) => secIdx(f) >= at); if (next < 0) next = list.length; }
-    else { next = -1; list.forEach((f, k) => { if (secIdx(f) < at) next = k; }); }
+    else if (dir > 0) {
+      next = list.findIndex((f) => secIdx(f) >= at);
+      if (next < 0) next = list.length;
+    } else {
+      next = -1;
+      list.forEach((f, k) => {
+        if (secIdx(f) < at) next = k;
+      });
+    }
   }
   if (next < 0 || next >= list.length) {
     toast(dir > 0 ? T.keys.lastFile : T.keys.firstFile);
@@ -170,7 +208,8 @@ function stepChange(dir) {
   const list = [];
   for (const fileEl of $main().querySelectorAll('.sec:not(.collapsed) .file:not(.collapsed):not([hidden])')) {
     if (!fileEl.querySelector('table.diff')) continue;
-    const file = fileByPath.get(fileEl.dataset.path), sec = fileEl.closest('.sec').dataset.key;
+    const file = fileByPath.get(fileEl.dataset.path),
+      sec = fileEl.closest('.sec').dataset.key;
     for (const b of fileBlocks(file)) list.push({ path: file.path, sec, from: b.from, to: b.to });
   }
   const c = ui.cursor;
@@ -180,7 +219,10 @@ function stepChange(dir) {
   else if (list.length) {
     // Without a cursor, start from the screen: the first block below the sticky headers or the last one above them.
     const line = stickyOffset() - 1;
-    const top = (b) => { const r = blockRows(b)[0]; return r ? r.getBoundingClientRect().top : -Infinity; };
+    const top = (b) => {
+      const r = blockRows(b)[0];
+      return r ? r.getBoundingClientRect().top : -Infinity;
+    };
     if (dir > 0) next = list.findIndex((b) => top(b) >= line);
     else for (let k = 0; k < list.length && top(list[k]) < line; k++) next = k;
     if (next < 0) next = dir > 0 ? list.length : -1;
@@ -213,7 +255,14 @@ function commentAtCursor() {
   const side = adds.length ? 'new' : 'old';
   const picked = adds.length ? adds : lines.filter((l) => l.t === 'del');
   const nos = picked.map((l) => (side === 'new' ? l.n : l.o));
-  openLineForm(file, c.sec, { side, start: Math.min(...nos), end: Math.max(...nos) }, { li: picked[0].i, side }, false, blockRows(c)[0]);
+  openLineForm(
+    file,
+    c.sec,
+    { side, start: Math.min(...nos), end: Math.max(...nos) },
+    { li: picked[0].i, side },
+    false,
+    blockRows(c)[0],
+  );
 }
 
 function currentFile() {
@@ -233,7 +282,10 @@ function refocus(secKey, path) {
 
 function toggleCurrentFileViewed() {
   const cur = currentFile();
-  if (!cur) { toast(T.keys.noFile); return; }
+  if (!cur) {
+    toast(T.keys.noFile);
+    return;
+  }
   ui.pin = { sec: cur.sec.key, path: cur.file.path };
   const closed = setFileViewed(cur.file, !isViewed(cur.file), cur.head);
   refocus(closed || cur.sec.key, closed ? null : cur.file.path);
@@ -241,7 +293,10 @@ function toggleCurrentFileViewed() {
 
 function toggleCurrentFile() {
   const cur = currentFile();
-  if (!cur) { toast(T.keys.noFile); return; }
+  if (!cur) {
+    toast(T.keys.noFile);
+    return;
+  }
   if (cur.file.binary) return;
   ui.pin = { sec: cur.sec.key, path: cur.file.path };
   toggleFile(cur.file, cur.sec, !fileOpen(cur.file));
@@ -250,8 +305,14 @@ function toggleCurrentFile() {
 
 function toggleCurrentWholeFile() {
   const cur = currentFile();
-  if (!cur) { toast(T.keys.noFile); return; }
-  if (!wholeButton(cur.file)) { toast(T.keys.wholeInDiff); return; }
+  if (!cur) {
+    toast(T.keys.noFile);
+    return;
+  }
+  if (!wholeButton(cur.file)) {
+    toast(T.keys.wholeInDiff);
+    return;
+  }
   ui.pin = { sec: cur.sec.key, path: cur.file.path };
   setWholeFile(cur.file, !isWhole(cur.file));
 }

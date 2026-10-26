@@ -1,4 +1,5 @@
 """Tests for diff-review validate.py (plain unittest)."""
+
 import copy
 import json
 import subprocess
@@ -116,7 +117,9 @@ class CliTest(unittest.TestCase):
                 guide.write_text(guide_text, encoding="utf-8")
             return subprocess.run(
                 [sys.executable, str(SCRIPT), "--guide", str(guide), "--meta", str(FIXTURES / "mixed2" / "meta.json")],
-                capture_output=True, text=True)
+                capture_output=True,
+                text=True,
+            )
 
     def test_ok_exit_0(self):
         r = self.run_cli((FIXTURES / "mixed2" / "guide.json").read_text(encoding="utf-8"))
