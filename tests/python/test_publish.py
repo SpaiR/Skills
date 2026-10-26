@@ -133,8 +133,8 @@ class MappingTest(unittest.TestCase):
         self.assertEqual(
             pos["line_range"],
             {
-                "start": {"line_code": f"{sha}_3_3", "type": None},
-                "end": {"line_code": f"{sha}_6_7", "type": "new"},
+                "start": {"line_code": f"{sha}_3_3", "type": None, "old_line": 3, "new_line": 3},
+                "end": {"line_code": f"{sha}_6_7", "type": "new", "new_line": 7},
             },
         )
         c = comment(side="old", start=pt("del", 4, 9), end=pt("del", 6, 9))
@@ -359,6 +359,27 @@ class GithubPublishTest(PublishCase):
         self.assertEqual(results["second"], (409, {"error": "already_submitted"}))
         self.assertEqual(len(self.calls("gh", GH_REVIEW)), 1)
 
+    def test_submit_waits_for_a_publish_in_flight(self):
+        self.set_rules(
+            [
+                rule("gh", ["--json headRefOid"], {"headRefOid": HEAD}),
+                rule("gh", [GH_REVIEW], {"html_url": REVIEW_URL}, sleep=1.5),
+            ]
+        )
+        results = {}
+
+        def first():
+            results["publish"] = self.publish()
+
+        t = threading.Thread(target=first)
+        t.start()
+        time.sleep(0.5)
+        status, raw = self.request("POST", "/api/submit", {"action": "close", "markdown": ""})
+        t.join()
+        self.assertEqual(results["publish"][0], 200)
+        self.assertEqual((status, json.loads(raw)), (409, {"error": "already_submitted"}))
+        self.assertTrue(self.finish().startswith("DIFF_REVIEW_RESULT: published"))
+
     def test_bad_requests(self):
         for over, code in (
             ({"event": "bogus"}, "event"),
@@ -448,10 +469,8 @@ class GitlabPublishTest(PublishCase):
         approve = self.calls("glab", "/approve")[0]
         self.assertEqual(approve["argv"][-2:], ["--input", "-"])
         self.assertEqual(json.loads(approve["stdin"]), {})
-        self.assertEqual(
-            json.loads((self.outdir / "published.json").read_text()),
-            {"done": ["c:c1", "c:c2", "c:c3", "body", "approve"]},
-        )
+        # A complete publish forgets its steps: publishing again from this outdir would start over.
+        self.assertFalse((self.outdir / "published.json").exists())
         self.assertEqual(self.finish(), f"DIFF_REVIEW_RESULT: published {self.outdir.resolve() / 'feedback.md'}")
 
     def test_range_comment_carries_line_codes(self):
@@ -459,8 +478,10 @@ class GitlabPublishTest(PublishCase):
         self.assertEqual(self.publish(comments=[c])[0], 200)
         pos = self.payloads("/discussions")[0]["position"]
         sha = hashlib.sha1(b"scripts/collect.py").hexdigest()
-        self.assertEqual(pos["line_range"]["start"], {"line_code": f"{sha}_3_3", "type": None})
-        self.assertEqual(pos["line_range"]["end"], {"line_code": f"{sha}_6_7", "type": "new"})
+        self.assertEqual(
+            pos["line_range"]["start"], {"line_code": f"{sha}_3_3", "type": None, "old_line": 3, "new_line": 3}
+        )
+        self.assertEqual(pos["line_range"]["end"], {"line_code": f"{sha}_6_7", "type": "new", "new_line": 7})
 
     def test_comment_only_event_posts_no_approval(self):
         self.assertEqual(self.publish(comments=[comment("c1")], body="")[0], 200)
@@ -481,10 +502,11 @@ class GitlabPublishTest(PublishCase):
         comments = [comment("c1"), comment("c2"), comment("c3")]
         status, body = self.publish(event="approve", comments=comments)
         self.assertEqual(status, 502)
-        self.assertEqual((body["error"], body["done"]), ("publish_failed", ["c:c1"]))
+        self.assertEqual(body["error"], "publish_failed")
+        self.assertEqual([d.split(":")[:2] for d in body["done"]], [["c", "c1"]])
         self.assertIn("line_code is invalid", body["detail"])
         self.assertTrue(self.alive())
-        self.assertEqual(json.loads((self.outdir / "published.json").read_text()), {"done": ["c:c1"]})
+        self.assertEqual(json.loads((self.outdir / "published.json").read_text()), {"done": body["done"]})
         self.assertFalse((self.outdir / "feedback.md").exists())
 
         status, body = self.publish(event="approve", comments=comments)
@@ -506,10 +528,24 @@ class GitlabPublishTest(PublishCase):
             ]
         )
         status, body = self.publish(event="approve", comments=[comment("c1")])
-        self.assertEqual((status, body["done"]), (502, ["c:c1"]))
+        self.assertEqual((status, len(body["done"])), (502, 1))
+        self.assertTrue(body["done"][0].startswith("c:c1:"))
         self.assertEqual(self.publish(event="approve", comments=[comment("c1")])[0], 200)
         self.assertEqual(self.steps(), ["discussions", "notes", "notes", "approve"])
-        self.assertEqual(json.loads((self.outdir / "published.json").read_text())["done"], ["c:c1", "body", "approve"])
+        self.assertFalse((self.outdir / "published.json").exists())
+
+    def test_retry_posts_a_comment_edited_after_the_failure(self):
+        self.set_rules(
+            [
+                rule("glab", [f"{GL_BASE}/discussions"], {}),
+                rule("glab", [f"{GL_BASE}/notes"], "", exit=1, stderr="500 oops", nth=1),
+                rule("glab", [f"{GL_BASE}/notes"], {}),
+                rule("glab", [GL_MR], {"diff_refs": {"head_sha": HEAD}}),
+            ]
+        )
+        self.assertEqual(self.publish(comments=[comment("c1")])[0], 502)
+        self.assertEqual(self.publish(comments=[comment("c1", body="edited")])[0], 200)
+        self.assertEqual([p["body"] for p in self.payloads("/discussions")], ["body of c1", "edited"])
 
     def test_head_moved_uses_diff_refs_head_sha(self):
         self.set_rules([rule("glab", [GL_MR], {"diff_refs": {"head_sha": MOVED}, "sha": HEAD})])

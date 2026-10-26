@@ -172,6 +172,16 @@ def line_code(path, point):
     return f"{hashlib.sha1(path.encode()).hexdigest()}_{point['old']}_{point['new']}"
 
 
+def gitlab_lines(point):
+    """old_line/new_line of a diff point: an added line has only a new number, a deleted one only an old one."""
+    out = {}
+    if point["type"] in ("del", "ctx"):
+        out["old_line"] = point["old"]
+    if point["type"] in ("add", "ctx"):
+        out["new_line"] = point["new"]
+    return out
+
+
 def gitlab_position(pr, c):
     start, end = c["start"], c["end"]
     pos = {
@@ -182,15 +192,12 @@ def gitlab_position(pr, c):
         "old_path": c.get("oldPath") or c["path"],
         "new_path": c["path"],
     }
-    if end["type"] in ("add", "ctx"):
-        pos["new_line"] = end["new"]
-    if end["type"] in ("del", "ctx"):
-        pos["old_line"] = end["old"]
+    pos.update(gitlab_lines(end))
     if (start["type"], start["old"], start["new"]) != (end["type"], end["old"], end["new"]):
         kind = {"add": "new", "del": "old", "ctx": None}
         pos["line_range"] = {
-            "start": {"line_code": line_code(c["path"], start), "type": kind[start["type"]]},
-            "end": {"line_code": line_code(c["path"], end), "type": kind[end["type"]]},
+            k: {"line_code": line_code(c["path"], p), "type": kind[p["type"]], **gitlab_lines(p)}
+            for k, p in (("start", start), ("end", end))
         }
     return pos
 
@@ -211,6 +218,15 @@ class Progress:
         tmp.write_text(json.dumps({"done": self.done}, indent=2), encoding="utf-8")
         os.replace(tmp, self.path)
 
+    def clear(self):
+        """After a complete publish: a later publish from the same outdir starts over."""
+        self.path.unlink(missing_ok=True)
+
+
+def digest(*parts):
+    """Short hash of a step's content: an edited comment or body is a new step on a retry, not a skipped one."""
+    return hashlib.sha1(json.dumps(parts, ensure_ascii=False, sort_keys=True).encode()).hexdigest()[:12]
+
 
 def publish_gitlab(pr, req, outdir):
     comments = req.get("comments") or []
@@ -227,13 +243,14 @@ def publish_gitlab(pr, req, outdir):
         progress.add(name)
 
     for c in comments:
-        step(f"c:{c['id']}", f"{base}/discussions", {"body": c["body"], "position": gitlab_position(pr, c)})
+        payload = {"body": c["body"], "position": gitlab_position(pr, c)}
+        step(f"c:{c['id']}:{digest(payload)}", f"{base}/discussions", payload)
     if body.strip():
-        step("body", f"{base}/notes", {"body": body})
+        step(f"body:{digest(body)}", f"{base}/notes", {"body": body})
     if req["event"] == "approve":
         step("approve", f"{base}/approve", {})
-    inline = sum(1 for c in comments if f"c:{c['id']}" in progress.done)
-    return {"url": pr["url"], "inline": inline, "folded": False}
+    progress.clear()
+    return {"url": pr["url"], "inline": len(comments), "folded": False}
 
 
 # --- entry point ------------------------------------------------------------------------------------------------

@@ -120,7 +120,7 @@ def main():
     done = threading.Event()
     result = {}
     state_lock = threading.Lock()
-    publish_lock = threading.Lock()
+    finish_lock = threading.Lock()
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "diff-review"
@@ -193,7 +193,9 @@ def main():
                 return self._send(HTTPStatus.BAD_REQUEST, {"error": "body"})
             markdown = body.get("markdown")
             markdown = markdown.strip() if isinstance(markdown, str) else ""
-            with publish_lock:  # one publish at a time; a request that waited sees the outcome of the first
+            # One finishing action at a time: a submit, another publish or the timeout waits for a publish in flight
+            # and then sees its outcome.
+            with finish_lock:
                 if done.is_set():
                     return self._send(HTTPStatus.CONFLICT, {"error": ERR_ALREADY_SUBMITTED})
                 try:
@@ -223,15 +225,16 @@ def main():
                 return self._publish(body)
             action = body.get("action")
             markdown = (body.get("markdown") or "").strip()
-            rejected = submit_error(action, markdown, done.is_set())
-            if rejected:
-                return self._send(rejected[0], {"error": rejected[1]})
-            if markdown and action != "close":
-                feedback_path.write_text(markdown + "\n", encoding="utf-8")
-            result["status"] = {"feedback": "feedback", "approve": "approved", "close": "closed"}[action]
-            result["file"] = str(feedback_path) if markdown and action != "close" else ""
-            self._send(HTTPStatus.OK, {"ok": True})
-            done.set()
+            with finish_lock:
+                rejected = submit_error(action, markdown, done.is_set())
+                if rejected:
+                    return self._send(rejected[0], {"error": rejected[1]})
+                if markdown and action != "close":
+                    feedback_path.write_text(markdown + "\n", encoding="utf-8")
+                result["status"] = {"feedback": "feedback", "approve": "approved", "close": "closed"}[action]
+                result["file"] = str(feedback_path) if markdown and action != "close" else ""
+                self._send(HTTPStatus.OK, {"ok": True})
+                done.set()
 
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
     url = f"http://127.0.0.1:{server.server_address[1]}/?t={token}"
@@ -242,7 +245,10 @@ def main():
         subprocess.run([opener, url], check=False, capture_output=True)
 
     if not done.wait(timeout=args.timeout_min * 60):
-        result["status"], result["file"] = "timeout", ""
+        with finish_lock:  # a publish in flight wins over the timeout
+            if not done.is_set():
+                result["status"], result["file"] = "timeout", ""
+                done.set()
     server.shutdown()
     print(f"DIFF_REVIEW_RESULT: {result['status']} {result['file']}".rstrip(), flush=True)
 
