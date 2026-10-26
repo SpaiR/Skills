@@ -1,0 +1,50 @@
+{
+  "version": 2,
+  "root": "/private/var/folders/fp/m6vmxbdx6bv9bz1w82wbt7m00000gp/T/tmp.lL2xfNTRvG/harness/large-repo",
+  "repoName": "large-repo",
+  "worktree": null,
+  "branch": "feature",
+  "head": "a97efc0e91b934ec042d7823948d72ef4f4ece99",
+  "mode": "since-base",
+  "label": "main...HEAD + незакоммиченное",
+  "base": "main",
+  "mergeBase": "1006e1926682e1461767810f635b4a5ee21c2615",
+  "newRev": "worktree",
+  "untrackedIncluded": 0,
+  "commits": [
+    "a97efc0 change"
+  ],
+  "notes": [],
+  "createdAt": "2026-10-26T08:17:35+02:00",
+  "files": [
+    {
+      "path": "src/big.js",
+      "oldPath": null,
+      "status": "modified",
+      "additions": 7,
+      "deletions": 6,
+      "binary": false,
+      "content": {
+        "available": true,
+        "lines": 10001
+      }
+    },
+    {
+      "path": "src/small.js",
+      "oldPath": null,
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "binary": false,
+      "content": {
+        "available": true,
+        "lines": 200
+      }
+    }
+  ],
+  "totals": {
+    "files": 2,
+    "additions": 8,
+    "deletions": 7
+  }
+}

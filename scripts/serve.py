@@ -32,12 +32,24 @@ from collect import split_patch  # noqa: E402
 from validate import validate  # noqa: E402
 
 ASSETS = SCRIPTS.parent / "assets"
-STATIC = {
-    "/": ("viewer.html", "text/html; charset=utf-8"),
-    "/assets/viewer.css": ("viewer.css", "text/css; charset=utf-8"),
-    "/assets/viewer.js": ("viewer.js", "text/javascript; charset=utf-8"),
-    "/assets/diffcore.js": ("diffcore.js", "text/javascript; charset=utf-8"),
+MIME = {
+    ".html": "text/html; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".svg": "image/svg+xml",
 }
+
+
+def asset_file(path):
+    """Файл из assets/ для пути запроса или None: только известные расширения, без выхода за assets/."""
+    if path == "/":
+        path = "/assets/viewer.html"
+    if not path.startswith("/assets/"):
+        return None
+    target = (ASSETS / path[len("/assets/"):]).resolve()
+    if not target.is_relative_to(ASSETS.resolve()) or target.suffix not in MIME or not target.is_file():
+        return None
+    return target
 MAX_BODY = 20 * 1024 * 1024
 
 
@@ -114,9 +126,9 @@ def main():
             path = self.path.split("?")[0]
             if not self._host_ok():
                 return self._send(HTTPStatus.FORBIDDEN, {"error": "host"})
-            if path in STATIC:
-                name, ctype = STATIC[path]
-                return self._send(HTTPStatus.OK, (ASSETS / name).read_bytes(), ctype)
+            asset = asset_file(path)
+            if asset:
+                return self._send(HTTPStatus.OK, asset.read_bytes(), MIME[asset.suffix])
             if path == "/api/full":
                 if not self._api_ok():
                     return self._send(HTTPStatus.FORBIDDEN, {"error": "token"})

@@ -1,0 +1,1782 @@
+diff --git a/SKILL.md b/SKILL.md
+new file mode 100644
+index 0000000..08ccb14
+--- /dev/null
++++ b/SKILL.md
+@@ -0,0 +1,108 @@
++---
++name: diff-review
++description: Guided review локальных git-изменений на русском. Субагент разбивает изменения на главы с объяснениями «что, зачем, к чему ведёт», рядом лежат диффы. Ревью открывается в браузере, комментарии к строкам возвращаются в сессию. Без аргумента берёт изменение из контекста сессии, включая worktree.
++argument-hint: "[путь] [uncommitted | staged | <sha> | <A>..<B> | <ветка>] [--base <ref>] [свободный текст]"
++disable-model-invocation: true
++allowed-tools: Bash(python3 ${CLAUDE_SKILL_DIR}/scripts/*), Bash(git -C * rev-parse *), Bash(git -C * status *), Bash(git -C * worktree list*), Bash(git -C * log *), Bash(git -C * branch *)
++---
++
++# diff-review
++
++Guided review по образцу plannotator. Ты, основная сессия, определяешь, что ревьюить, и собираешь дифф. Гайд пишет субагент. Ты валидируешь результат, поднимаешь локальную страницу и обрабатываешь фидбек пользователя.
++
++Аргументы: `$ARGUMENTS`
++
++Скрипты лежат в `${CLAUDE_SKILL_DIR}/scripts/`, у каждого есть `--help`. Сам дифф не читай: он нужен субагенту, а не тебе.
++
++## 1. Определи цель
++
++Цель — это **репозиторий** (каталог, часто worktree) плюс **режим** для `collect.py`.
++
++Токены аргумента, в любом порядке:
++
++| Токен | Что делать |
++|---|---|
++| путь к каталогу | `--repo <путь>` |
++| `uncommitted` | `--mode uncommitted`: HEAD против рабочего дерева, включая untracked |
++| `staged` | `--mode staged`: только индекс |
++| `<sha>` | `--mode commit --ref <sha>` |
++| `<A>..<B>`, `<A>...<B>` | `--mode range --ref <A>..<B>` |
++| имя ветки | `--mode branch --ref <ветка>`: от merge-base с базой до ветки |
++| `--base <ref>` | передать как есть |
++| ничего из этого | режим по умолчанию `since-base`: от merge-base с базовой веткой до рабочего дерева, включая untracked |
++
++Ветку от sha отличай через `git -C <repo> rev-parse --verify`. Свободный текст («worktree с фиксом логина») сопоставь с контекстом сессии по правилам ниже.
++
++**Если репозиторий не указан**, выведи его из этой сессии, по приоритету:
++1. Где делалось обсуждаемое изменение: пути из Edit и Write, `EnterWorktree`, `git worktree add`, `cd` в Bash-командах. Корень: `git -C <каталог> rev-parse --show-toplevel`. Сессия могла начаться в основной ветке, а правки шли в worktree. Тогда цель — worktree.
++2. Ветка, которую создавали или обсуждали. Её worktree можно найти через `git -C <repo> worktree list`.
++3. Иначе репозиторий текущего каталога.
++
++Если подходят несколько кандидатов и выбор не очевиден, спроси через AskUserQuestion со списком. Не угадывай.
++
++## 2. Собери дифф
++
++```bash
++python3 ${CLAUDE_SKILL_DIR}/scripts/collect.py --repo <repo> [--mode <режим>] [--ref <ref>] [--base <ref>]
++```
++
++Скрипт пишет `guide.patch` и `meta.json` в новый каталог `$TMPDIR/diff-review/...` и печатает JSON-сводку с `outdir`. Индекс пользователя не трогает.
++- Код 3 — изменений нет. Скажи об этом одной строкой и остановись.
++- Код 2 — ошибка, текст в stderr. Покажи её пользователю.
++- Если в сводке есть `notes` (например, базовая ветка не найдена), передай их пользователю.
++
++Перед запуском субагента одна строка пользователю: «Ревьюю `<root>`, `<label>`: N файлов (+a −d). Гайд пишет субагент.»
++
++## 3. Запусти субагента
++
++Вызови Agent с параметрами `subagent_type: "general-purpose"`, `model: "sonnet"`, `effort: "medium"`, `description: "Guided review: <repoName>"`. Промпт ниже, подставь значения:
++
++```
++Напиши guided review на русском для набора изменений.
++
++Методология и формат — прочитай первым: ${CLAUDE_SKILL_DIR}/references/guide-method.md
++Дифф: <outdir>/guide.patch
++Метаданные и авторитетный список файлов: <outdir>/meta.json
++Репозиторий (только для точечных справок): <root>
++Результат запиши в: <outdir>/guide.json
++
++Контекст от автора изменения: <1–3 предложения о том, зачем делалось изменение, из этой сессии; если не обсуждалось — «нет»>
++
++Правила:
++- Ничего не меняй в репозитории: не редактируй файлы, не коммить, не трогай индекс. Писать можно только в <outdir>.
++- Перед завершением запусти проверку и исправляй guide.json, пока она не пройдёт:
++  python3 ${CLAUDE_SKILL_DIR}/scripts/validate.py --guide <outdir>/guide.json --meta <outdir>/meta.json
++- Ответь одной строкой: число глав и вывод валидатора.
++```
++
++Дождись уведомления о завершении. Не пиши гайд сам и не читай дифф, пока субагент работает.
++
++## 4. Проверь
++
++```bash
++python3 ${CLAUDE_SKILL_DIR}/scripts/validate.py --guide <outdir>/guide.json --meta <outdir>/meta.json
++```
++
++Не прошло — один раз отправь вывод валидатора тому же субагенту через SendMessage с просьбой исправить. Снова не прошло — покажи пользователю ошибки и путь к `outdir` и остановись.
++
++## 5. Открой страницу
++
++Запусти в фоне, Bash с `run_in_background: true`:
++
++```bash
++python3 ${CLAUDE_SKILL_DIR}/scripts/serve.py --dir <outdir> --open
++```
++
++Первая строка вывода — `DIFF_REVIEW_URL: <url>`. Сообщи пользователю URL и что сессия свободна, пока он читает. Сервер ждёт до 3 часов.
++
++## 6. Обработай решение
++
++Когда фоновая команда завершится, последняя строка вывода будет такой:
++
++```
++DIFF_REVIEW_RESULT: feedback|approved|closed|timeout [<путь к feedback.md>]
++```
++
++- `feedback` — прочитай `feedback.md` и отнесись к нему как к сообщению пользователя. Это его ревью твоих или чужих изменений в репозитории `<root>`. На вопросы ответь. Просьбы о правках выполни в `<root>`, то есть в том worktree, который ревьюился, а не в каталоге сессии. Неоднозначное уточни. Потом предложи перезапустить `/diff-review`, чтобы проверить результат.
++- `approved` — подтверди одной строкой. Если приложен `feedback.md`, прочитай и учти комментарии. Ничего не коммить без отдельной просьбы.
++- `closed` или `timeout` — сообщи одной строкой, что ревью закрыто без ответа.
+diff --git a/assets/viewer.css b/assets/viewer.css
+new file mode 100644
+index 0000000..ef392e9
+--- /dev/null
++++ b/assets/viewer.css
+@@ -0,0 +1,162 @@
++:root {
++  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f5; --border: #d9dde3; --text: #1d2228; --muted: #67707c;
++  --accent: #3b5bdb; --accent-soft: #e7ecff;
++  --add-bg: #e6f6ea; --add-num: #ccebd4; --add-text: #1a7f37;
++  --del-bg: #fdecec; --del-num: #f7d4d4; --del-text: #c62828;
++  --hunk-bg: #eef2fb; --sel: #fff3bf; --sel-num: #ffe066;
++  --warn-bg: #fff4e5; --warn-border: #f0a43a; --imp-bg: #eef1ff; --imp-border: #5c7cfa; --note-bg: #f1f3f5; --note-border: #adb5bd;
++  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
++  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
++  color-scheme: light dark;
++}
++@media (prefers-color-scheme: dark) {
++  :root {
++    --bg: #15181d; --panel: #1c2027; --panel-2: #232831; --border: #323844; --text: #e3e6ea; --muted: #8d96a3;
++    --accent: #7c95ff; --accent-soft: #252d4a;
++    --add-bg: #13291b; --add-num: #1a3a25; --add-text: #56d27a;
++    --del-bg: #331a1c; --del-num: #4a2226; --del-text: #ff7b7b;
++    --hunk-bg: #1e2638; --sel: #3d3415; --sel-num: #5c4b12;
++    --warn-bg: #33270f; --warn-border: #d08a1e; --imp-bg: #1f2547; --imp-border: #6b83ff; --note-bg: #232831; --note-border: #5a6270;
++  }
++}
++
++* { box-sizing: border-box; }
++html { scroll-padding-top: 96px; }
++body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.55 var(--sans); }
++code, pre, .mono { font-family: var(--mono); font-size: 13px; }
++p code, li code, .file-summary code, .md code { background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
++.muted { color: var(--muted); }
++.small { font-size: 12.5px; }
++.add { color: var(--add-text); }
++.del { color: var(--del-text); }
++.loading { padding: 40px; color: var(--muted); }
++
++/* шапка */
++#top { position: sticky; top: 0; z-index: 20; background: var(--panel); border-bottom: 1px solid var(--border); }
++.top-row { display: flex; gap: 16px; align-items: center; justify-content: space-between; padding: 10px 20px; flex-wrap: wrap; }
++.top-title h1 { margin: 0; font-size: 18px; line-height: 1.3; }
++.top-meta { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; font-size: 13px; margin-top: 2px; }
++.pill { font-family: var(--mono); font-size: 12px; background: var(--accent-soft); color: var(--accent); padding: 1px 8px; border-radius: 999px; }
++.top-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
++.progress { position: relative; width: 110px; height: 26px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 12.5px; }
++.progress-bar { position: absolute; left: 0; top: 0; bottom: 0; background: var(--add-num); }
++.progress span { position: relative; }
++.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
++.seg button { border: 0; background: transparent; color: var(--text); padding: 4px 10px; cursor: pointer; font: inherit; font-size: 13px; }
++.seg button.on { background: var(--accent-soft); color: var(--accent); }
++.save-error { background: var(--del-bg); color: var(--del-text); padding: 6px 20px; font-size: 13px; }
++
++.btn { border: 1px solid var(--border); background: var(--panel); color: var(--text); border-radius: 6px; padding: 5px 12px; font: inherit; font-size: 13.5px; cursor: pointer; }
++.btn:hover { background: var(--panel-2); }
++.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
++.btn.primary:hover { filter: brightness(1.08); }
++.btn:disabled { opacity: .5; cursor: default; }
++.btn.small { padding: 3px 10px; font-size: 13px; }
++.link { border: 0; background: none; color: var(--accent); cursor: pointer; padding: 0; font: inherit; font-size: 13px; }
++.link.danger { color: var(--del-text); }
++
++/* раскладка */
++#layout { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 24px; padding: 20px; max-width: 1700px; margin: 0 auto; }
++@media (max-width: 1000px) { #layout { grid-template-columns: 1fr; } #toc { position: static !important; max-height: none !important; } }
++
++/* оглавление */
++#toc { position: sticky; top: 84px; align-self: start; max-height: calc(100vh - 104px); overflow: auto; font-size: 13.5px; }
++.toc-head { text-transform: uppercase; letter-spacing: .06em; font-size: 11.5px; color: var(--muted); margin-bottom: 8px; }
++.toc-sec { padding: 6px 0 8px; border-bottom: 1px solid var(--border); }
++.toc-row { display: flex; gap: 6px; align-items: flex-start; }
++.toc-row input { margin-top: 4px; }
++.toc-row a { color: var(--text); text-decoration: none; }
++.toc-row a:hover { color: var(--accent); }
++.toc-sec.reviewed .toc-row a { color: var(--muted); text-decoration: line-through; }
++.toc-num { font-family: var(--mono); color: var(--muted); font-size: 12px; }
++.chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 0 22px; }
++.chip { border: 1px solid var(--border); background: var(--panel); color: var(--text); border-radius: 4px; padding: 0 6px; font: 12px var(--mono); cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
++.chip:hover { border-color: var(--accent); }
++.chip-stat { color: var(--muted); }
++
++/* основная колонка */
++#main { min-width: 0; }
++.intent { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 20px; margin-bottom: 18px; font-size: 16px; }
++.intent .md p { margin: 0 0 6px; }
++.commits summary { cursor: pointer; color: var(--muted); font-size: 13px; }
++.commits ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
++
++.sec { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 18px; overflow: hidden; }
++.sec.flash, .file.flash { outline: 2px solid var(--accent); outline-offset: 2px; }
++.sec-head { display: flex; gap: 12px; align-items: center; padding: 12px 18px; cursor: pointer; user-select: none; }
++.sec-head:hover { background: var(--panel-2); }
++.sec-head h2 { margin: 0; font-size: 17px; flex: 1; }
++.sec.reviewed .sec-head h2 { color: var(--muted); }
++.sec-num { font-family: var(--mono); font-size: 12px; color: var(--muted); min-width: 56px; }
++.reviewed-toggle { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); cursor: pointer; }
++.caret { display: inline-block; transition: transform .12s; color: var(--muted); }
++.caret.open { transform: rotate(90deg); }
++.overview { padding: 0 22px 4px; border-top: 1px solid var(--border); padding-top: 12px; }
++.md p { margin: 0 0 10px; }
++.md ul, .md ol { margin: 0 0 10px; padding-left: 22px; }
++.md h4 { margin: 12px 0 6px; font-size: 15px; }
++.md blockquote { margin: 0 0 10px; padding-left: 12px; border-left: 3px solid var(--border); color: var(--muted); }
++.md-code { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; overflow: auto; margin: 0 0 10px; }
++.md-code code { background: none; border: 0; padding: 0; }
++.callout { border-left: 4px solid var(--note-border); background: var(--note-bg); border-radius: 6px; padding: 8px 12px; margin: 0 0 10px; }
++.callout p:last-child { margin-bottom: 0; }
++.callout-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
++.callout-important, .callout-tip, .callout-note { border-color: var(--imp-border); background: var(--imp-bg); }
++.callout-warning, .callout-caution { border-color: var(--warn-border); background: var(--warn-bg); }
++.sec-comment { padding: 0 22px 12px; }
++
++/* файлы */
++.file { margin: 0 14px 14px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
++.file-head { display: flex; gap: 10px; align-items: center; padding: 7px 12px; background: var(--panel-2); cursor: pointer; font-family: var(--mono); font-size: 13px; user-select: none; }
++.file-head .path { flex: 1; min-width: 0; overflow-wrap: anywhere; }
++.status { font-weight: 700; font-size: 11px; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; background: var(--border); }
++.st-added { background: var(--add-num); color: var(--add-text); }
++.st-deleted { background: var(--del-num); color: var(--del-text); }
++.st-renamed, .st-copied { background: var(--accent-soft); color: var(--accent); }
++.badge { background: var(--sel-num); border-radius: 999px; padding: 0 8px; font-size: 11.5px; font-family: var(--sans); }
++.stat { white-space: nowrap; }
++.file-summary { padding: 7px 14px; font-size: 14px; border-top: 1px solid var(--border); }
++.file-empty { padding: 10px 14px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--border); }
++
++.diff-wrap { overflow-x: auto; border-top: 1px solid var(--border); }
++table.diff { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12.5px; line-height: 1.5; }
++table.diff.split { table-layout: fixed; }
++table.diff.split col.c-num { width: 56px; }
++table.diff td { padding: 0 8px; vertical-align: top; }
++td.num { width: 1%; min-width: 44px; text-align: right; color: var(--muted); user-select: none; cursor: pointer; white-space: nowrap; }
++td.num:hover { color: var(--accent); text-decoration: underline; }
++td.num.empty { cursor: default; text-decoration: none; }
++td.code { white-space: pre-wrap; word-break: break-word; }
++.sign { user-select: none; color: var(--muted); display: inline-block; width: 1.2ch; }
++tr.add td.code, td.code.add { background: var(--add-bg); }
++tr.add td.num { background: var(--add-num); }
++tr.del td.code, td.code.del { background: var(--del-bg); }
++tr.del td.num { background: var(--del-num); }
++td.code.filler { background: var(--panel-2); }
++tr.hunk td { background: var(--hunk-bg); color: var(--muted); padding: 3px 10px; }
++tr.ln.sel td.code { background: var(--sel) !important; }
++td.num.sel { background: var(--sel-num) !important; color: var(--text); }
++.nonl { color: var(--del-text); }
++
++/* аннотации */
++tr.annot-row td { padding: 6px 10px; background: var(--panel); font-family: var(--sans); font-size: 14px; }
++.note { border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 6px; padding: 6px 10px; background: var(--panel); }
++.note-head { display: flex; gap: 12px; align-items: center; justify-content: space-between; font-size: 12.5px; color: var(--muted); }
++.note-actions { display: inline-flex; gap: 12px; }
++.note-text { white-space: pre-wrap; margin-top: 2px; }
++pre.suggestion { background: var(--add-bg); border-radius: 4px; padding: 6px 8px; margin: 4px 0 0; white-space: pre-wrap; }
++.editor { display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--accent); border-radius: 6px; padding: 8px 10px; background: var(--panel); }
++.editor textarea { width: 100%; resize: vertical; border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; background: var(--bg); color: var(--text); font: 14px/1.45 var(--sans); }
++.editor textarea.mono { font: 12.5px/1.45 var(--mono); }
++.editor-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
++.editor .link { align-self: flex-start; }
++
++/* модалка */
++.modal-back { position: fixed; inset: 0; background: rgba(0, 0, 0, .45); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 20px; }
++.modal { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px 22px; width: min(760px, 100%); max-height: 90vh; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
++.modal h3 { margin: 0; }
++.modal p { margin: 0; }
++.modal textarea { width: 100%; resize: vertical; border: 1px solid var(--border); border-radius: 6px; padding: 8px; background: var(--bg); color: var(--text); font: 14px/1.45 var(--sans); }
++.modal summary { cursor: pointer; color: var(--muted); font-size: 13px; }
++.preview { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 10px; max-height: 40vh; overflow: auto; white-space: pre-wrap; margin: 6px 0 0; }
++.finished { max-width: 640px; margin: 18vh auto; text-align: center; }
+diff --git a/assets/viewer.html b/assets/viewer.html
+new file mode 100644
+index 0000000..8790d37
+--- /dev/null
++++ b/assets/viewer.html
+@@ -0,0 +1,20 @@
++<!doctype html>
++<html lang="ru">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="referrer" content="no-referrer">
++  <title>Diff review</title>
++  <link rel="icon" href="data:,">
++  <link rel="stylesheet" href="/assets/viewer.css">
++</head>
++<body>
++  <header id="top"></header>
++  <div id="layout">
++    <nav id="toc" aria-label="Главы"></nav>
++    <main id="main"><p class="loading">Загружаю ревью…</p></main>
++  </div>
++  <div id="modal-root"></div>
++  <script src="/assets/viewer.js"></script>
++</body>
++</html>
+diff --git a/assets/viewer.js b/assets/viewer.js
+new file mode 100644
+index 0000000..ea07b2c
+--- /dev/null
++++ b/assets/viewer.js
+@@ -0,0 +1,682 @@
++/* diff-review viewer: главы гайда, диффы, аннотации к строкам, отправка фидбека. Без зависимостей. */
++(() => {
++  'use strict';
++
++  const TOKEN = new URLSearchParams(location.search).get('t') || '';
++  const BIG_FILE_LINES = 400;
++  const LOCKFILE = /(^|\/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|bun\.lockb?|Cargo\.lock|poetry\.lock|uv\.lock|Pipfile\.lock|Gemfile\.lock|composer\.lock|go\.sum|packages\.lock\.json)$/;
++  const STATUS = {
++    added: ['A', 'новый'], modified: ['M', 'изменён'], deleted: ['D', 'удалён'],
++    renamed: ['R', 'переименован'], copied: ['C', 'скопирован'], typechange: ['T', 'тип изменён'],
++  };
++
++  let R = null;          // данные ревью с сервера
++  let S = null;          // состояние пользователя (сохраняется в state.json)
++  let sections = [];     // главы + «Остальные файлы»
++  const fileByPath = new Map();
++  let selection = null;  // {file, side, start, end}
++  let editingId = null;  // id редактируемой аннотации
++  let finished = false;
++
++  // ---------- утилиты ----------
++
++  function h(tag, attrs, ...children) {
++    const node = document.createElement(tag);
++    for (const [k, v] of Object.entries(attrs || {})) {
++      if (v == null || v === false) continue;
++      if (k === 'class') node.className = v;
++      else if (k === 'html') node.innerHTML = v; // только для уже экранированного HTML
++      else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
++      else if (k === 'dataset') Object.assign(node.dataset, v);
++      else node.setAttribute(k, v === true ? '' : v);
++    }
++    for (const c of children.flat()) {
++      if (c == null || c === false) continue;
++      node.append(c instanceof Node ? c : document.createTextNode(String(c)));
++    }
++    return node;
++  }
++
++  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
++  const basename = (p) => p.split('/').pop();
++  const rangeLabel = (a) => (a.start === a.end ? `строка ${a.start}` : `строки ${a.start}–${a.end}`);
++  const sideLabel = (side) => (side === 'new' ? 'новая версия' : 'старая версия');
++  const cap = (s) => s[0].toUpperCase() + s.slice(1);
++  const uid = () => Math.random().toString(36).slice(2, 10);
++
++  async function api(method, path, body, keepalive) {
++    const res = await fetch(path, {
++      method,
++      keepalive: !!keepalive,
++      headers: { 'X-Review-Token': TOKEN, 'Content-Type': 'application/json' },
++      body: body === undefined ? undefined : JSON.stringify(body),
++    });
++    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
++    return res.json();
++  }
++
++  // ---------- мини-Markdown для intent/overview ----------
++
++  function inline(src) {
++    return src.split(/(`[^`]+`)/).map((part) => {
++      if (/^`[^`]+`$/.test(part)) return `<code>${esc(part.slice(1, -1))}</code>`;
++      return esc(part)
++        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
++        .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
++    }).join('');
++  }
++
++  function md(src) {
++    const lines = String(src || '').replace(/\r/g, '').split('\n');
++    const out = [];
++    let i = 0;
++    const isBlockStart = (l) => /^```/.test(l) || /^>/.test(l) || /^\s*[-*]\s+/.test(l) || /^\s*\d+[.)]\s+/.test(l) || /^#{1,6}\s/.test(l);
++    while (i < lines.length) {
++      const line = lines[i];
++      if (/^```/.test(line)) {
++        const body = [];
++        i++;
++        while (i < lines.length && !/^```/.test(lines[i])) body.push(lines[i++]);
++        i++;
++        out.push(`<pre class="md-code"><code>${esc(body.join('\n'))}</code></pre>`);
++      } else if (/^>/.test(line)) {
++        const body = [];
++        while (i < lines.length && /^>/.test(lines[i])) body.push(lines[i++].replace(/^>\s?/, ''));
++        const m = /^\[!(IMPORTANT|WARNING|NOTE|TIP|CAUTION)\]\s*$/i.exec(body[0] || '');
++        if (m) {
++          const kind = m[1].toLowerCase();
++          const title = { important: 'Важно', warning: 'Внимание', note: 'Заметка', tip: 'Совет', caution: 'Осторожно' }[kind];
++          out.push(`<div class="callout callout-${kind}"><div class="callout-title">${title}</div>${md(body.slice(1).join('\n'))}</div>`);
++        } else {
++          out.push(`<blockquote>${md(body.join('\n'))}</blockquote>`);
++        }
++      } else if (/^\s*[-*]\s+/.test(line) || /^\s*\d+[.)]\s+/.test(line)) {
++        const ordered = /^\s*\d+[.)]\s+/.test(line);
++        const re = ordered ? /^\s*\d+[.)]\s+/ : /^\s*[-*]\s+/;
++        const items = [];
++        while (i < lines.length && re.test(lines[i])) {
++          let item = lines[i++].replace(re, '');
++          while (i < lines.length && /^\s{2,}\S/.test(lines[i]) && !re.test(lines[i])) item += ' ' + lines[i++].trim();
++          items.push(`<li>${inline(item)}</li>`);
++        }
++        out.push(ordered ? `<ol>${items.join('')}</ol>` : `<ul>${items.join('')}</ul>`);
++      } else if (/^#{1,6}\s/.test(line)) {
++        out.push(`<h4>${inline(line.replace(/^#+\s/, ''))}</h4>`);
++        i++;
++      } else if (!line.trim()) {
++        i++;
++      } else {
++        const para = [];
++        while (i < lines.length && lines[i].trim() && !isBlockStart(lines[i])) para.push(lines[i++].trim());
++        out.push(`<p>${inline(para.join(' '))}</p>`);
++      }
++    }
++    return out.join('');
++  }
++
++  // ---------- разбор патча ----------
++
++  function parsePatch(patch) {
++    const lines = patch.split('\n');
++    if (lines[lines.length - 1] === '') lines.pop();
++    const hunks = [];
++    let hunk = null, o = 0, n = 0;
++    for (const line of lines) {
++      const m = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*)$/.exec(line);
++      if (m) {
++        hunk = { header: line, lines: [] };
++        hunks.push(hunk);
++        o = +m[1];
++        n = +m[2];
++        continue;
++      }
++      if (!hunk) continue;
++      const c = line[0];
++      if (c === '+') hunk.lines.push({ t: 'add', o: null, n: n++, s: line.slice(1) });
++      else if (c === '-') hunk.lines.push({ t: 'del', o: o++, n: null, s: line.slice(1) });
++      else if (c === ' ') hunk.lines.push({ t: 'ctx', o: o++, n: n++, s: line.slice(1) });
++      else if (c === '\\' && hunk.lines.length) hunk.lines[hunk.lines.length - 1].nonl = true;
++    }
++    return hunks;
++  }
++
++  function linesOf(file, side, start, end) {
++    const out = [];
++    for (const hk of file.hunks) {
++      for (const l of hk.lines) {
++        const no = side === 'new' ? l.n : l.o;
++        if (no != null && no >= start && no <= end) out.push(l);
++      }
++    }
++    return out;
++  }
++
++  // ---------- состояние ----------
++
++  function normalizeState(raw) {
++    const s = raw && typeof raw === 'object' ? raw : {};
++    return {
++      version: 1,
++      reviewed: s.reviewed || {},
++      sectionOpen: s.sectionOpen || {},
++      fileOpen: s.fileOpen || {},
++      annotations: Array.isArray(s.annotations) ? s.annotations : [],
++      sectionComments: s.sectionComments || {},
++      globalComment: s.globalComment || '',
++      viewMode: s.viewMode === 'split' ? 'split' : 'unified',
++    };
++  }
++
++  let saveTimer = null;
++  function save() {
++    if (finished) return;
++    clearTimeout(saveTimer);
++    saveTimer = setTimeout(() => api('PUT', '/api/state', S).catch(showSaveError), 400);
++  }
++  function flushSave() {
++    if (finished || !saveTimer) return;
++    clearTimeout(saveTimer);
++    saveTimer = null;
++    api('PUT', '/api/state', S, true).catch(() => {});
++  }
++  function showSaveError() {
++    const bar = document.getElementById('save-error');
++    if (bar) bar.hidden = false;
++  }
++
++  const sectionOpen = (sec) => (sec.key in S.sectionOpen ? S.sectionOpen[sec.key] : !S.reviewed[sec.key]);
++  function fileOpen(file) {
++    if (file.path in S.fileOpen) return S.fileOpen[file.path];
++    const size = file.hunks.reduce((a, hk) => a + hk.lines.length, 0);
++    return !(file.binary || file.status === 'deleted' || LOCKFILE.test(file.path) || size > BIG_FILE_LINES);
++  }
++
++  function commentCount() {
++    return S.annotations.length
++      + Object.values(S.sectionComments).filter((c) => c && c.trim()).length
++      + (S.globalComment.trim() ? 1 : 0);
++  }
++
++  // ---------- шапка и оглавление ----------
++
++  function renderHeader() {
++    const g = R.guide, m = R.meta;
++    const done = sections.filter((s) => S.reviewed[s.key]).length;
++    const top = document.getElementById('top');
++    top.replaceChildren(
++      h('div', { class: 'top-row' },
++        h('div', { class: 'top-title' },
++          h('h1', {}, g.title),
++          h('div', { class: 'top-meta' },
++            h('span', { class: 'pill' }, m.label),
++            m.branch && h('span', { class: 'muted' }, `ветка ${m.branch}`),
++            h('span', { class: 'muted', title: m.root }, m.worktree ? `${m.repoName} (worktree ${m.worktree})` : m.repoName),
++            h('span', {}, `${m.totals.files} файл(ов) `,
++              h('span', { class: 'add' }, `+${m.totals.additions}`), ' ',
++              h('span', { class: 'del' }, `−${m.totals.deletions}`)),
++            g.generator && g.generator.model && h('span', { class: 'muted' }, `гайд: ${g.generator.model}`))),
++        h('div', { class: 'top-actions' },
++          h('div', { class: 'progress', title: 'Просмотрено глав' },
++            h('div', { class: 'progress-bar', style: `width:${sections.length ? (100 * done) / sections.length : 0}%` }),
++            h('span', {}, `${done} / ${sections.length}`)),
++          h('div', { class: 'seg', role: 'group', 'aria-label': 'Вид диффа' },
++            ['unified', 'split'].map((mode) => h('button', {
++              class: S.viewMode === mode ? 'on' : '',
++              onclick: () => { S.viewMode = mode; save(); renderAll(); },
++            }, mode === 'unified' ? 'Единый' : 'Рядом'))),
++          h('button', { class: 'btn', onclick: () => openSubmit('close') }, 'Закрыть'),
++          h('button', { class: 'btn', onclick: () => openSubmit('approve') }, 'Одобрить'),
++          h('button', { class: 'btn primary', onclick: () => openSubmit('feedback') }, `Отправить фидбек (${commentCount()})`))),
++      h('div', { id: 'save-error', class: 'save-error', hidden: true },
++        'Не удалось сохранить прогресс: сервер недоступен. Комментарии на странице пока целы, но отправить их не получится.'),
++    );
++  }
++
++  function renderToc() {
++    const toc = document.getElementById('toc');
++    toc.replaceChildren(h('div', { class: 'toc-head' }, 'Главы'), ...sections.map((sec, i) =>
++      h('div', { class: `toc-sec${S.reviewed[sec.key] ? ' reviewed' : ''}` },
++        h('div', { class: 'toc-row' },
++          h('input', {
++            type: 'checkbox', checked: !!S.reviewed[sec.key], title: 'Просмотрено',
++            onchange: (e) => setReviewed(sec, e.target.checked),
++          }),
++          h('a', { href: `#${sec.key}`, onclick: (e) => { e.preventDefault(); jumpTo(sec); } },
++            h('span', { class: 'toc-num' }, sec.synthetic ? '·' : String(i + 1).padStart(2, '0')), ' ', sec.title)),
++        h('div', { class: 'chips' }, sec.diffs.map((d) => {
++          const f = fileByPath.get(d.file);
++          return h('button', {
++            class: 'chip', title: d.file,
++            onclick: () => jumpTo(sec, d.file),
++          }, basename(d.file), f && h('span', { class: 'chip-stat' }, ` +${f.additions} −${f.deletions}`));
++        })))));
++  }
++
++  function setReviewed(sec, value) {
++    S.reviewed[sec.key] = value;
++    delete S.sectionOpen[sec.key];
++    save();
++    renderAll();
++  }
++
++  function jumpTo(sec, path) {
++    S.sectionOpen[sec.key] = true;
++    if (path) S.fileOpen[path] = true;
++    save();
++    renderAll();
++    const target = document.getElementById(path ? fileDomId(path) : sec.key);
++    if (target) {
++      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
++      target.classList.add('flash');
++      setTimeout(() => target.classList.remove('flash'), 1200);
++    }
++  }
++
++  const fileDomId = (path) => 'f-' + Array.from(path).map((c) => c.charCodeAt(0).toString(36)).join('');
++
++  // ---------- основная колонка ----------
++
++  function renderMain() {
++    const g = R.guide, m = R.meta;
++    const main = document.getElementById('main');
++    const parts = [];
++    if (m.notes && m.notes.length) parts.push(h('div', { class: 'callout callout-note' }, m.notes.join('. ')));
++    parts.push(h('section', { class: 'intent' },
++      h('div', { class: 'md', html: md(g.intent) }),
++      m.commits && m.commits.length > 0 && h('details', { class: 'commits' },
++        h('summary', {}, `Коммиты (${m.commits.length})`),
++        h('ul', {}, m.commits.map((c) => h('li', {}, h('code', {}, c.slice(0, c.indexOf(' '))), c.slice(c.indexOf(' ')))))),
++      m.untrackedIncluded > 0 && h('p', { class: 'muted small' }, `Включены неотслеживаемые файлы: ${m.untrackedIncluded}.`)));
++    sections.forEach((sec, i) => parts.push(renderSection(sec, i)));
++    main.replaceChildren(...parts);
++  }
++
++  function renderSection(sec, idx) {
++    const open = sectionOpen(sec);
++    const total = sections.length;
++    const head = h('div', {
++      class: 'sec-head',
++      onclick: (e) => {
++        if (e.target.closest('input')) return;
++        S.sectionOpen[sec.key] = !open;
++        save();
++        renderAll();
++      },
++    },
++    h('span', { class: 'sec-num' }, sec.synthetic ? '' : `${String(idx + 1).padStart(2, '0')} / ${String(total).padStart(2, '0')}`),
++    h('h2', {}, sec.title),
++    h('span', { class: 'muted small' }, `${sec.diffs.length} файл(ов)`),
++    h('label', { class: 'reviewed-toggle' },
++      h('input', { type: 'checkbox', checked: !!S.reviewed[sec.key], onchange: (e) => setReviewed(sec, e.target.checked) }),
++      'Просмотрено'),
++    h('span', { class: `caret${open ? ' open' : ''}` }, '▸'));
++
++    const card = h('section', { class: `sec${S.reviewed[sec.key] ? ' reviewed' : ''}`, id: sec.key }, head);
++    if (!open) return card;
++
++    if (sec.overview) card.append(h('div', { class: 'md overview', html: md(sec.overview) }));
++    card.append(renderSectionComment(sec));
++    for (const d of sec.diffs) {
++      const f = fileByPath.get(d.file);
++      if (f) card.append(renderFile(f, d.summary));
++    }
++    return card;
++  }
++
++  function renderSectionComment(sec) {
++    const value = S.sectionComments[sec.key] || '';
++    const wrap = h('div', { class: 'sec-comment' });
++    const edit = () => {
++      wrap.replaceChildren(sectionCommentEditor(sec));
++      wrap.querySelector('textarea').focus();
++    };
++    if (!value) {
++      wrap.append(h('button', { class: 'link', onclick: edit }, '+ Комментарий к главе'));
++    } else {
++      wrap.append(h('div', { class: 'note' },
++        h('div', { class: 'note-head' }, 'Комментарий к главе',
++          h('button', { class: 'link', onclick: edit }, 'изменить')),
++        h('div', { class: 'note-text' }, value)));
++    }
++    return wrap;
++  }
++
++  function sectionCommentEditor(sec) {
++    const ta = h('textarea', { rows: 3, placeholder: 'Что думаешь о главе целиком' });
++    ta.value = S.sectionComments[sec.key] || '';
++    const commit = () => {
++      if (ta.value.trim()) S.sectionComments[sec.key] = ta.value.trim();
++      else delete S.sectionComments[sec.key];
++      save();
++      renderAll();
++    };
++    ta.addEventListener('keydown', (e) => {
++      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) commit();
++      if (e.key === 'Escape') renderAll();
++    });
++    return h('div', { class: 'editor' }, ta,
++      h('div', { class: 'editor-actions' },
++        h('button', { class: 'btn small primary', onclick: commit }, 'Сохранить'),
++        h('button', { class: 'btn small', onclick: renderAll }, 'Отмена')));
++  }
++
++  // ---------- файл и дифф ----------
++
++  function renderFile(file, summary) {
++    const open = fileOpen(file);
++    const [code, word] = STATUS[file.status] || STATUS.modified;
++    const count = S.annotations.filter((a) => a.file === file.path).length;
++    const head = h('div', {
++      class: 'file-head',
++      onclick: () => { S.fileOpen[file.path] = !open; save(); renderAll(); },
++    },
++    h('span', { class: `caret${open ? ' open' : ''}` }, '▸'),
++    h('span', { class: `status st-${file.status}`, title: word }, code),
++    h('span', { class: 'path' },
++      file.oldPath ? [h('span', { class: 'muted' }, file.oldPath), ' → '] : null, file.path),
++    count > 0 && h('span', { class: 'badge' }, `${count} комм.`),
++    h('span', { class: 'stat' }, h('span', { class: 'add' }, `+${file.additions}`), ' ', h('span', { class: 'del' }, `−${file.deletions}`)));
++
++    const box = h('div', { class: 'file', id: fileDomId(file.path) }, head);
++    if (summary) box.append(h('div', { class: 'file-summary', html: inline(summary) }));
++    if (!open) return box;
++
++    if (file.binary) box.append(h('div', { class: 'file-empty' }, 'Бинарный файл, содержимое не показывается.'));
++    else if (!file.hunks.length) box.append(h('div', { class: 'file-empty' }, 'Содержимое не менялось (переименование или смена прав).'));
++    else box.append(S.viewMode === 'split' ? renderSplit(file) : renderUnified(file));
++    return box;
++  }
++
++  function numCell(file, side, no) {
++    if (no == null) return h('td', { class: 'num empty' });
++    const selected = selection && selection.file === file.path && selection.side === side && no >= selection.start && no <= selection.end;
++    return h('td', {
++      class: `num${selected ? ' sel' : ''}`,
++      title: 'Клик — комментарий к строке, Shift+клик — к диапазону',
++      onclick: (e) => selectLine(file, side, no, e.shiftKey),
++    }, String(no));
++  }
++
++  function codeCell(l, extraClass) {
++    const sign = l.t === 'add' ? '+' : l.t === 'del' ? '-' : ' ';
++    return h('td', { class: `code ${extraClass || ''}` },
++      h('span', { class: 'sign' }, sign), l.s,
++      l.nonl && h('span', { class: 'nonl', title: 'Нет перевода строки в конце файла' }, ' ⏎̸'));
++  }
++
++  function inSelection(file, keys) {
++    if (!selection || selection.file !== file.path) return false;
++    return keys.some(([side, no]) => side === selection.side && no != null && no >= selection.start && no <= selection.end);
++  }
++
++  // Строки, после которых показываются аннотации и форма: ключи вида "new:12".
++  function trailing(file, keys, cols) {
++    const rows = [];
++    const keySet = new Set(keys.filter(([, no]) => no != null).map(([side, no]) => `${side}:${no}`));
++    for (const a of S.annotations) {
++      if (a.file === file.path && keySet.has(`${a.side}:${a.end}`)) rows.push(annotationRow(file, a, cols));
++    }
++    if (selection && selection.file === file.path && !editingId && keySet.has(`${selection.side}:${selection.end}`)) {
++      rows.push(formRow(file, null, cols));
++    }
++    return rows;
++  }
++
++  function renderUnified(file) {
++    const body = [];
++    for (const hk of file.hunks) {
++      body.push(h('tr', { class: 'hunk' }, h('td', { colspan: 3 }, hk.header)));
++      for (const l of hk.lines) {
++        const keys = l.t === 'ctx' ? [['new', l.n], ['old', l.o]] : l.t === 'add' ? [['new', l.n]] : [['old', l.o]];
++        body.push(h('tr', { class: `ln ${l.t}${inSelection(file, keys) ? ' sel' : ''}` },
++          numCell(file, 'old', l.o), numCell(file, 'new', l.n), codeCell(l)));
++        body.push(...trailing(file, keys, 3));
++      }
++    }
++    return h('div', { class: 'diff-wrap' }, h('table', { class: 'diff unified' }, h('tbody', {}, body)));
++  }
++
++  function splitPairs(lines) {
++    const pairs = [];
++    let i = 0;
++    while (i < lines.length) {
++      if (lines[i].t === 'ctx') { pairs.push([lines[i], lines[i]]); i++; continue; }
++      const dels = [], adds = [];
++      while (i < lines.length && lines[i].t === 'del') dels.push(lines[i++]);
++      while (i < lines.length && lines[i].t === 'add') adds.push(lines[i++]);
++      for (let k = 0; k < Math.max(dels.length, adds.length); k++) pairs.push([dels[k] || null, adds[k] || null]);
++    }
++    return pairs;
++  }
++
++  function renderSplit(file) {
++    const body = [];
++    for (const hk of file.hunks) {
++      body.push(h('tr', { class: 'hunk' }, h('td', { colspan: 4 }, hk.header)));
++      for (const [left, right] of splitPairs(hk.lines)) {
++        const keys = [['old', left && left.o], ['new', right && right.n]];
++        body.push(h('tr', { class: `ln${inSelection(file, keys) ? ' sel' : ''}` },
++          numCell(file, 'old', left && left.o),
++          left ? codeCell(left, left.t === 'del' ? 'del' : '') : h('td', { class: 'code filler' }),
++          numCell(file, 'new', right && right.n),
++          right ? codeCell(right, right.t === 'add' ? 'add' : '') : h('td', { class: 'code filler' })));
++        body.push(...trailing(file, keys, 4));
++      }
++    }
++    const cols = h('colgroup', {}, h('col', { class: 'c-num' }), h('col'), h('col', { class: 'c-num' }), h('col'));
++    return h('div', { class: 'diff-wrap' }, h('table', { class: 'diff split' }, cols, h('tbody', {}, body)));
++  }
++
++  function selectLine(file, side, no, extend) {
++    if (finished) return;
++    editingId = null;
++    if (extend && selection && selection.file === file.path && selection.side === side) {
++      const anchor = selection.anchor;
++      selection = { file: file.path, side, anchor, start: Math.min(anchor, no), end: Math.max(anchor, no) };
++    } else {
++      selection = { file: file.path, side, anchor: no, start: no, end: no };
++    }
++    renderAll();
++    const ta = document.querySelector('.annot-form textarea');
++    if (ta) ta.focus({ preventScroll: true });
++  }
++
++  function annotationRow(file, a, cols) {
++    if (editingId === a.id) return formRow(file, a, cols);
++    return h('tr', { class: 'annot-row' }, h('td', { colspan: cols },
++      h('div', { class: 'note' },
++        h('div', { class: 'note-head' },
++          `${cap(rangeLabel(a))} · ${sideLabel(a.side)}`,
++          h('span', { class: 'note-actions' },
++            h('button', { class: 'link', onclick: () => { editingId = a.id; selection = null; renderAll(); } }, 'изменить'),
++            h('button', {
++              class: 'link danger', onclick: () => {
++                S.annotations = S.annotations.filter((x) => x.id !== a.id);
++                save();
++                renderAll();
++              },
++            }, 'удалить'))),
++        h('div', { class: 'note-text' }, a.text),
++        a.suggestion && h('div', {}, h('div', { class: 'muted small' }, 'Предложенный код:'), h('pre', { class: 'suggestion' }, a.suggestion)))));
++  }
++
++  function formRow(file, existing, cols) {
++    const target = existing || selection;
++    const ta = h('textarea', { rows: 3, placeholder: 'Комментарий: вопрос, замечание, просьба' });
++    ta.value = existing ? existing.text : '';
++    const sug = h('textarea', { rows: 4, class: 'mono', placeholder: 'Код, которым заменить выделенные строки' });
++    const hasSug = !!(existing && existing.suggestion);
++    sug.value = hasSug ? existing.suggestion : '';
++    const sugBox = h('div', { class: 'sug-box', hidden: !hasSug }, h('div', { class: 'muted small' }, 'Предложенный код'), sug);
++    const sugToggle = h('button', {
++      class: 'link', hidden: hasSug, onclick: () => {
++        sugBox.hidden = false;
++        sugToggle.hidden = true;
++        if (!sug.value) sug.value = linesOf(file, target.side, target.start, target.end).map((l) => l.s).join('\n');
++        sug.focus();
++      },
++    }, '+ предложить код');
++
++    const cancel = () => { selection = null; editingId = null; renderAll(); };
++    const commit = () => {
++      const text = ta.value.trim();
++      const suggestion = sugBox.hidden ? '' : sug.value.replace(/\s+$/, '');
++      if (!text && !suggestion) return cancel();
++      if (existing) Object.assign(existing, { text, suggestion });
++      else S.annotations.push({ id: uid(), file: file.path, side: target.side, start: target.start, end: target.end, text, suggestion });
++      save();
++      cancel();
++    };
++    for (const t of [ta, sug]) {
++      t.addEventListener('keydown', (e) => {
++        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); commit(); }
++        if (e.key === 'Escape') cancel();
++      });
++    }
++    return h('tr', { class: 'annot-row' }, h('td', { colspan: cols },
++      h('div', { class: 'annot-form editor' },
++        h('div', { class: 'note-head' }, `${cap(rangeLabel(target))} · ${sideLabel(target.side)}`,
++          h('span', { class: 'muted small' }, 'Shift+клик по номеру расширяет выделение')),
++        ta, sugToggle, sugBox,
++        h('div', { class: 'editor-actions' },
++          h('button', { class: 'btn small primary', onclick: commit }, 'Сохранить'),
++          h('button', { class: 'btn small', onclick: cancel }, 'Отмена'),
++          h('span', { class: 'muted small' }, '⌘/Ctrl+Enter — сохранить, Esc — отмена')))));
++  }
++
++  // ---------- фидбек ----------
++
++  function fence(text, lang) {
++    const longest = Math.max(2, ...(text.match(/`+/g) || []).map((s) => s.length));
++    const f = '`'.repeat(longest + 1);
++    return `${f}${lang || ''}\n${text}\n${f}`;
++  }
++
++  function buildMarkdown(action) {
++    const g = R.guide, m = R.meta;
++    const out = [];
++    out.push(`# ${action === 'approve' ? 'Ревью одобрено' : 'Фидбек по ревью'}: ${g.title}`, '');
++    out.push(`- Диапазон: ${m.label}`);
++    out.push(`- Репозиторий: \`${m.root}\`${m.branch ? `, ветка \`${m.branch}\`` : ''}`);
++    out.push('');
++    if (S.globalComment.trim()) out.push('## Общий комментарий', '', S.globalComment.trim(), '');
++
++    sections.forEach((sec, i) => {
++      const c = S.sectionComments[sec.key];
++      if (c && c.trim()) out.push(`## Глава ${sec.synthetic ? '' : `${i + 1}. `}${sec.title}`, '', c.trim(), '');
++    });
++
++    const order = new Map(R.files.map((f, i) => [f.path, i]));
++    const notes = [...S.annotations].sort((a, b) =>
++      (order.get(a.file) ?? 1e9) - (order.get(b.file) ?? 1e9) || a.start - b.start);
++    for (const a of notes) {
++      const file = fileByPath.get(a.file);
++      out.push(`## \`${a.file}\`, ${rangeLabel(a)} (${sideLabel(a.side)})`, '');
++      if (file) {
++        const quoted = linesOf(file, a.side, a.start, a.end).slice(0, 20)
++          .map((l) => (l.t === 'add' ? '+' : l.t === 'del' ? '-' : ' ') + l.s).join('\n');
++        if (quoted) out.push(fence(quoted, 'diff'), '');
++      }
++      if (a.text) out.push(a.text, '');
++      if (a.suggestion) out.push('Предложенная замена:', '', fence(a.suggestion, 'suggestion'), '');
++    }
++    return out.join('\n').trim();
++  }
++
++  function openSubmit(action) {
++    if (finished) return;
++    const titles = { feedback: 'Отправить фидбек', approve: 'Одобрить изменения', close: 'Закрыть без ответа' };
++    const hints = {
++      feedback: 'Сессия Claude Code получит этот текст как твоё сообщение: ответит на вопросы и внесёт просьбы о правках.',
++      approve: 'Сессия получит одобрение. Ничего не будет закоммичено. Комментарии, если есть, приложатся.',
++      close: 'Сервер остановится, в сессию уйдёт только отметка, что ревью закрыто. Комментарии останутся в state.json.',
++    };
++    const root = document.getElementById('modal-root');
++    const ta = h('textarea', { rows: 4, placeholder: 'Общий комментарий к ревью (необязательно)' });
++    ta.value = S.globalComment;
++    const preview = h('pre', { class: 'preview' });
++    const send = h('button', { class: 'btn primary' }, titles[action]);
++    const refresh = () => {
++      S.globalComment = ta.value;
++      const text = buildMarkdown(action);
++      preview.textContent = text;
++      send.disabled = action === 'feedback' && commentCount() === 0;
++    };
++    ta.addEventListener('input', () => { refresh(); save(); });
++    const close = () => { root.replaceChildren(); renderHeader(); };
++    send.addEventListener('click', async () => {
++      send.disabled = true;
++      const markdown = action === 'close' || (action === 'approve' && commentCount() === 0) ? '' : buildMarkdown(action);
++      try {
++        clearTimeout(saveTimer);
++        await api('PUT', '/api/state', S);
++        await api('POST', '/api/submit', { action, markdown });
++        finished = true;
++        root.replaceChildren();
++        showFinished(action);
++      } catch (err) {
++        send.disabled = false;
++        alert(`Не удалось отправить: ${err.message}`);
++      }
++    });
++    const dialog = h('div', { class: 'modal-back', onclick: (e) => { if (e.target === e.currentTarget) close(); } },
++      h('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true' },
++        h('h3', {}, titles[action]),
++        h('p', { class: 'muted' }, hints[action]),
++        action !== 'close' && ta,
++        action !== 'close' && h('details', { open: action === 'feedback' }, h('summary', {}, 'Что уйдёт в сессию'), preview),
++        action === 'feedback' && commentCount() === 0 && h('p', { class: 'muted small' }, 'Комментариев пока нет: кликни по номеру строки в диффе или напиши общий комментарий.'),
++        h('div', { class: 'editor-actions' }, send, h('button', { class: 'btn', onclick: close }, 'Отмена'))));
++    root.replaceChildren(dialog);
++    refresh();
++    if (action !== 'close') ta.focus();
++    document.addEventListener('keydown', function onEsc(e) {
++      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onEsc); }
++    });
++  }
++
++  function showFinished(action) {
++    const text = {
++      feedback: 'Фидбек отправлен в сессию Claude Code.',
++      approve: 'Одобрение отправлено в сессию Claude Code.',
++      close: 'Ревью закрыто.',
++    }[action];
++    document.body.replaceChildren(h('div', { class: 'finished' }, h('h1', {}, text), h('p', { class: 'muted' }, 'Сервер остановлен, вкладку можно закрыть.')));
++  }
++
++  // ---------- сборка ----------
++
++  function renderAll() {
++    const y = window.scrollY;
++    renderHeader();
++    renderToc();
++    renderMain();
++    window.scrollTo(0, y);
++  }
++
++  async function init() {
++    try {
++      R = await api('GET', '/api/review');
++    } catch (err) {
++      document.getElementById('main').replaceChildren(h('div', { class: 'callout callout-warning' },
++        `Не удалось загрузить ревью: ${err.message}. Возможно, сервер уже остановлен или ссылка без токена.`));
++      return;
++    }
++    S = normalizeState(R.state);
++    for (const f of R.files) fileByPath.set(f.path, { ...f, hunks: parsePatch(f.patch) });
++    sections = R.guide.sections.map((s, i) => ({ ...s, key: `s${i + 1}` }));
++    if (R.guide.unplacedFiles && R.guide.unplacedFiles.length) {
++      sections.push({
++        key: 'rest', synthetic: true, title: 'Остальные файлы',
++        overview: 'Файлы, которые не вошли ни в одну главу: шум или мелочи без отдельной истории.',
++        diffs: R.guide.unplacedFiles.map((file) => ({ file })),
++      });
++    }
++    document.title = `Ревью: ${R.guide.title}`;
++    renderAll();
++    window.addEventListener('beforeunload', flushSave);
++    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSave(); });
++  }
++
++  init();
++})();
+diff --git a/references/guide-method.md b/references/guide-method.md
+new file mode 100644
+index 0000000..0077001
+--- /dev/null
++++ b/references/guide-method.md
+@@ -0,0 +1,144 @@
++# Методология guided review
++
++Адаптация Guided Review из plannotator (github.com/plannotator/guides) на русский.
++
++## Задача
++
++Ты опытный инженер, который хорошо понял этот набор изменений. Твоя задача — разбить его на главы так, чтобы ревьюер понял большое изменение за один заход. Глава объясняет, что изменилось, зачем, и к чему это ведёт. Диффы покажутся рядом с твоим текстом, поэтому текст несёт смысл и форму изменения, а не пересказ кода.
++
++Ты **не ищешь баги** и **не пишешь отчёт о находках**. Если, читая дифф, заметил что-то похожее на настоящую ошибку, упомяни коротко в обзоре нужной главы. Специально проблемы не ищи. В большинстве обзоров багов нет, и это нормально.
++
++Пиши по-русски. Идентификаторы, пути, имена файлов и флаги остаются как в коде.
++
++## Голос
++
++Пиши так, будто объясняешь изменение толковому коллеге, который этот код не видел.
++
++- Короткие предложения, одна мысль в каждом. Предел 25 слов, обычно меньше.
++- Простые слова: файл, функция, модуль, запрос, сервер. Без «артефакт», «поверхность», «примитив». Назвал вещь — дальше называй её так же.
++- Имена из кода в бэктиках, не больше двух на предложение. Предложение должно читаться, даже если закрыть бэктики.
++- Никаких оценок и рекламы: «элегантно», «надёжно», «бесшовно», «критически важно», «просто». Только факты.
++- Без эмодзи.
++
++## Скорость
++
++Дифф у тебя уже есть. Внимательно прочитать его один раз — 90% работы. Ты раскладываешь готовый дифф по главам, а не аудируешь кодовую базу.
++
++- Главный и обычно единственный источник — `guide.patch`. Список файлов в `meta.json` — авторитетный набор путей.
++- Допустимы несколько **точечных** справок, когда истории главы не хватает одного факта: определение, на которое ссылается дифф, одно место вызова. Каждая справка отвечает на вопрос, который можно сформулировать. «Понять кодовую базу» — не вопрос.
++- Не исследуй репозиторий, не читай неизменённые файлы «для контекста», не запускай широкий поиск. Поймал себя на третьем исследовательском вызове — остановись и пиши с тем, что есть.
++
++Медленный исчерпывающий гайд — провал: ревьюер сидит и ждёт.
++
++## Поля guide.json
++
++### title
++Одна строка. Что делает изменение по сути, а не заглушка вроде «Изменения в коде».
++
++### intent
++1–2 предложения: зачем существует это изменение. Источники по порядку:
++1. Контекст от основной сессии, если он передан в задаче.
++2. Сообщения коммитов из `meta.json` (`commits`) и имя ветки.
++3. Характер самих изменений.
++
++Не ищи задачи и тикеты, на которые нет явной ссылки.
++
++### sections
++Каждая глава — это `title`, `overview` и одна или несколько ссылок на файлы в `diffs`.
++
++**Порядок — по важности**, а не по пути файла, размеру диффа или хронологии. Ревьюер должен иметь право остановиться после любой главы и уже увидеть самое важное.
++
++1. Первая глава — сердце реализации. Часть, поняв которую, понимаешь остальное. Ревьюер не должен искать точку входа.
++2. Дальше следствия по убыванию значимости: обновлённые вызовы, поправленная логика ниже по течению, тесты нового поведения. Тесты идут вместе с кодом, который проверяют, если они не тривиальны.
++3. Обвязка и мелочи — в конце, одной группой: подключение, импорты, переименования, конфиги, сгенерированные файлы. Честное название («Обвязка и конфиги», «Уборка») и обзор в одно-два предложения.
++
++**Нарезка — по логике.** Глава — логическая единица изменения, а не файл и не папка. Три файла изменились по одной причине — это одна глава с тремя файлами. В одном файле два несвязанных изменения — выбери главу по основному смыслу файла: файл может попасть только в одно место. Не делай по главе на файл по умолчанию. Если в наборе две независимые работы (две фичи, фича плюс посторонний рефакторинг), у каждой свои главы.
++
++**title главы** — на уровне понятия: «Локализация платежей». Никогда не пересказ имени файла вроде «Изменения в payments/locale.ts».
++
++**overview** — Markdown, 2–6 предложений. Три задачи по порядку:
++1. Что конкретно изменилось.
++2. Зачем: мотивация и неочевидные решения. «Сделали X, а не Y, потому что Z» — ровно то, чего ревьюер не получит из диффа.
++3. Последствия: что меняется в поведении системы, в опыте пользователя, в контрактах API и данных, в производительности или эксплуатации. Это касается не только UI: миграция схемы, политика ретраев, замена инфраструктуры тоже стоят одного простого предложения.
++
++Если на одной главе держится основной риск, **скажи это прямо**: «вот место, где стоит читать медленно, остальное следует из него». Для действительно рискованной смены поведения или контракта используй отдельный блок:
++
++```markdown
++> [!WARNING]
++> Сигнатура `login` изменилась: вызовы с одним аргументом сломаются.
++```
++
++Также доступен `> [!IMPORTANT]`. В большинстве глав таких блоков нет.
++
++Markdown — только когда он делает текст точнее:
++- бэктики вокруг каждого имени файла, символа, функции, типа, ключа конфига, флага;
++- **жирный** для одной фразы, которую нельзя пропустить при беглом чтении, не больше одной на обзор;
++- короткий список, когда глава параллельно меняет три и больше вещей, иначе проза;
++- маленький блок кода (2–5 строк), только когда код скажет лучше фразы, например новая форма API. Никогда не вставляй куски диффа: они и так рядом.
++
++**diffs** — ссылки на файлы, у каждой два поля:
++- `file` — путь **дословно** из `meta.json` (`files[].path`). Скопируй, не придумывай, не сокращай, не меняй регистр и слеши. Для переименованных файлов — новый путь.
++- `summary` — 1–2 предложения о смысловом изменении в этом файле, по ханкам, которые ты уже видел. Что изменение делает («выносит логику индексации в карту переопределений»), а не где оно («меняет строки 30–80»). Не открывай файл и не ищи по коду ради summary. Не повторяй обзор главы. Для тривиальной правки хватит короткой фразы.
++
++Глава без `diffs` допустима только как чисто текстовая глава контекста с непустым обзором. Нужна она редко.
++
++### unplacedFiles
++Всегда присутствует; пустой массив, если всё размещено. Сюда идут изменённые файлы, которым нет места ни в одной главе: чистый шум или настолько мелкие остатки, что в главе они бы её размыли. Это редкость. Не используй поле как свалку, чтобы не писать обзор. Файлы обвязки обычно идут в последнюю групповую главу, а не сюда.
++
++## Правило покрытия (жёсткое)
++
++Каждый файл из `meta.json` встречается **ровно в одном месте**: в `diffs` одной главы или в `unplacedFiles`. Не в двух местах, не дважды, не нигде.
++
++## Жёсткие ограничения
++
++- `diffs[].file` — точный путь из `meta.json`.
++- Обычно 2–6 глав, никогда больше 10. Если изменение умещается в одну главу — одна глава, не раздувай.
++- `title` — одна строка; `intent` — 1–2 предложения; обзор главы — 2–6 предложений.
++- Без эмодзи.
++
++## Порядок работы
++
++1. Прочитай `meta.json` и `guide.patch` целиком. Если патч очень большой, читай частями, но весь.
++2. Сообщения коммитов уже лежат в `meta.json`. Отдельно `git log` не нужен.
++3. По желанию, не обязательно: загляни в `CLAUDE.md`, `AGENTS.md` или `README.md`, только если проект незнаком и «зачем» какой-то главы от этого зависит.
++4. Найди логические группы изменений, включая группы через несколько файлов. Это главы. Это работа мысли, а не вызовов инструментов.
++5. Упорядочи: сердце реализации первым (точка входа раньше, определения раньше потребителей, причина раньше следствия), затем следствия, затем одна общая глава для обвязки.
++6. Напиши `title`, `intent` и обзор каждой главы.
++7. Запиши `guide.json` и запусти валидатор. Исправляй, пока он не пройдёт.
++
++## Форма guide.json
++
++```json
++{
++  "title": "Токены обновляются до истечения срока",
++  "intent": "Пользователей выкидывало из сессии посреди работы. Теперь токен обновляется в фоне, а каждый запрос к API ждёт свежий.",
++  "sections": [
++    {
++      "title": "Цикл обновления",
++      "overview": "Всё остальное держится на `refresh.ts`. Он планирует обновление за минуту до истечения и даёт `waitForToken()`, чтобы вызывающий код не гонялся с обновлением.\n\nЭто место стоит читать медленно: ошибка здесь снова начнёт разлогинивать пользователей.",
++      "diffs": [
++        { "file": "src/auth/refresh.ts", "summary": "Новый планировщик и `waitForToken()`." },
++        { "file": "src/auth/session.ts", "summary": "Хранит время истечения рядом с токеном." }
++      ]
++    },
++    {
++      "title": "Запросы ждут свежий токен",
++      "overview": "Клиент API перед каждым запросом ждёт `waitForToken()`, а не читает токен синхронно. Правка маленькая, но защита работает именно из-за неё.",
++      "diffs": [
++        { "file": "src/api/client.ts", "summary": "Ждёт токен перед отправкой." }
++      ]
++    },
++    {
++      "title": "Тесты",
++      "overview": "Тесты на поддельных часах. Проверяют, что обновление срабатывает до истечения, а запрос из очереди получает новый токен.",
++      "diffs": [
++        { "file": "src/auth/refresh.test.ts", "summary": "Покрывают таймер и гонку." }
++      ]
++    }
++  ],
++  "unplacedFiles": [],
++  "generator": { "engine": "claude-code", "model": "<модель, если знаешь>" }
++}
++```
++
++`generator` необязателен. Укажи модель, только если точно знаешь, кто ты.
+diff --git a/scripts/collect.py b/scripts/collect.py
+new file mode 100644
+index 0000000..bdf57c0
+--- /dev/null
++++ b/scripts/collect.py
+@@ -0,0 +1,328 @@
++#!/usr/bin/env python3
++"""Собирает дифф для diff-review: guide.patch + meta.json в выходной каталог.
++
++Режимы:
++  since-base   merge-base(base, HEAD) против рабочего дерева, плюс untracked (по умолчанию)
++  uncommitted  HEAD против рабочего дерева, плюс untracked
++  staged       индекс против HEAD
++  commit       один коммит (--ref <sha>)
++  range        диапазон (--ref A..B или A...B)
++  branch       merge-base(base, ветка)..ветка (--ref <ветка>)
++
++Индекс пользователя не меняется: untracked-файлы добавляются через `git add -N`
++во временную копию индекса (GIT_INDEX_FILE).
++
++Код выхода: 0 — успех, 2 — ошибка аргументов/git, 3 — изменений нет.
++"""
++
++import argparse
++import datetime
++import json
++import os
++import re
++import shutil
++import subprocess
++import sys
++import tempfile
++from pathlib import Path
++
++EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
++DIFF_FLAGS = [
++    "--no-color", "--no-ext-diff", "--no-textconv", "--find-renames",
++    "--src-prefix=a/", "--dst-prefix=b/", "-U3",
++]
++LOG_LIMIT = 50
++
++
++class CollectError(Exception):
++    pass
++
++
++def git(root, *args, env=None, check=True):
++    cmd = ["git", "-c", "core.quotePath=false", "-C", str(root), *args]
++    res = subprocess.run(cmd, capture_output=True, env=env)
++    if check and res.returncode != 0:
++        raise CollectError(f"git {' '.join(args)}: {res.stderr.decode(errors='replace').strip()}")
++    return res
++
++
++def out(root, *args, **kw):
++    return git(root, *args, **kw).stdout.decode(errors="replace").strip()
++
++
++def verify(root, ref):
++    res = git(root, "rev-parse", "--verify", "-q", f"{ref}^{{commit}}", check=False)
++    return res.stdout.decode().strip() if res.returncode == 0 else None
++
++
++def resolve_base(root, explicit):
++    if explicit:
++        if not verify(root, explicit):
++            raise CollectError(f"база `{explicit}` не найдена")
++        return explicit
++    res = git(root, "symbolic-ref", "-q", "refs/remotes/origin/HEAD", check=False)
++    if res.returncode == 0:
++        ref = res.stdout.decode().strip().removeprefix("refs/remotes/")
++        if verify(root, ref):
++            return ref
++    for name in ("main", "master", "develop"):
++        for ref in (f"origin/{name}", name):
++            if verify(root, ref):
++                return ref
++    return None
++
++
++def untracked_index_env(root):
++    """Временный индекс с untracked-файлами в режиме intent-to-add."""
++    files = [f for f in git(root, "ls-files", "--others", "--exclude-standard", "-z")
++             .stdout.decode(errors="surrogateescape").split("\0") if f]
++    if not files:
++        return None, None, 0
++    index = Path(out(root, "rev-parse", "--path-format=absolute", "--git-path", "index"))
++    tmpdir = tempfile.mkdtemp(prefix="diff-review-index-")
++    tmp_index = Path(tmpdir) / "index"
++    if index.exists():
++        shutil.copyfile(index, tmp_index)
++    env = {**os.environ, "GIT_INDEX_FILE": str(tmp_index)}
++    # Через stdin, чтобы не упереться в лимит длины командной строки.
++    subprocess.run(
++        ["git", "-C", str(root), "add", "-N", "--pathspec-from-file=-", "--pathspec-file-nul"],
++        input="\0".join(files).encode(errors="surrogateescape"), env=env, check=True,
++        capture_output=True,
++    )
++    return env, tmpdir, len(files)
++
++
++def parse_name_status(raw):
++    parts = raw.split("\0")
++    entries, i = [], 0
++    while i < len(parts) and parts[i]:
++        code = parts[i]
++        kind = code[0]
++        if kind in "RC":
++            entries.append({"status": kind, "oldPath": parts[i + 1], "path": parts[i + 2]})
++            i += 3
++        else:
++            entries.append({"status": kind, "oldPath": None, "path": parts[i + 1]})
++            i += 2
++    return entries
++
++
++def parse_numstat(raw):
++    parts = raw.split("\0")
++    stats, i = [], 0
++    while i < len(parts) and parts[i]:
++        adds, dels, path = parts[i].split("\t", 2)
++        if path == "":  # переименование: дальше идут старый и новый путь
++            path = parts[i + 2]
++            i += 3
++        else:
++            i += 1
++        binary = adds == "-"
++        stats.append({"path": path, "additions": 0 if binary else int(adds),
++                      "deletions": 0 if binary else int(dels), "binary": binary})
++    return stats
++
++
++def split_patch(patch):
++    """Режет патч на куски по файлам. Строки контента всегда начинаются с ' ', '+', '-',
++    поэтому 'diff --git ' в начале строки — только заголовок файла."""
++    chunks = re.split(r"(?m)^(?=diff --git )", patch)
++    return [c for c in chunks if c.startswith("diff --git ")]
++
++
++def log_lines(root, log_args):
++    if not log_args:
++        return []
++    res = git(root, "log", "--oneline", "--no-decorate", f"-{LOG_LIMIT}", *log_args, check=False)
++    return [l for l in res.stdout.decode(errors="replace").splitlines() if l]
++
++
++def collect(args):
++    repo = Path(args.repo).expanduser().resolve()
++    if not repo.exists():
++        raise CollectError(f"каталог `{repo}` не существует")
++    res = git(repo, "rev-parse", "--show-toplevel", check=False)
++    if res.returncode != 0:
++        raise CollectError(f"`{repo}` не внутри git-репозитория")
++    root = Path(res.stdout.decode().strip())
++    # Для worktree имя репозитория берём у общего .git, а не у каталога worktree.
++    common = Path(out(root, "rev-parse", "--path-format=absolute", "--git-common-dir"))
++    repo_name = common.parent.name if common.name == ".git" else root.name
++
++    head = verify(root, "HEAD")
++    branch = out(root, "rev-parse", "--abbrev-ref", "HEAD") if head else out(
++        root, "symbolic-ref", "--short", "-q", "HEAD", check=False)
++    mode = args.mode
++    notes = []
++    base = merge_base = None
++    use_untracked = False
++    log_args = []
++
++    if mode == "since-base":
++        base = resolve_base(root, args.base)
++        if not head:
++            notes.append("в репозитории нет коммитов, взяты все файлы рабочего дерева")
++            mode = "uncommitted"
++        elif not base:
++            notes.append("базовая ветка не найдена, взяты только незакоммиченные изменения")
++            mode = "uncommitted"
++        else:
++            merge_base = out(root, "merge-base", base, "HEAD")
++            diff_args, use_untracked = [merge_base], True
++            log_args = [f"{merge_base}..HEAD"]
++            label = f"{base}...HEAD + незакоммиченное"
++
++    if mode == "uncommitted":
++        diff_args, use_untracked = ["HEAD" if head else EMPTY_TREE], True
++        label = "HEAD + незакоммиченное" if head else "рабочее дерево (коммитов нет)"
++    elif mode == "staged":
++        diff_args = ["--cached", "HEAD" if head else EMPTY_TREE]
++        label = "индекс (staged)"
++    elif mode == "commit":
++        if not args.ref:
++            raise CollectError("для режима commit нужен --ref <sha>")
++        sha = verify(root, args.ref)
++        if not sha:
++            raise CollectError(f"коммит `{args.ref}` не найден")
++        parent = verify(root, f"{sha}^") or EMPTY_TREE
++        diff_args, log_args = [parent, sha], ["-1", sha]
++        label = f"{sha[:10]} {out(root, 'log', '-1', '--format=%s', sha)}"
++    elif mode == "range":
++        m = re.fullmatch(r"(.*?)(\.\.\.?)(.*)", args.ref or "")
++        if not m:
++            raise CollectError("для режима range нужен --ref A..B или A...B")
++        a, dots, b = m.group(1) or "HEAD", m.group(2), m.group(3) or "HEAD"
++        for r in (a, b):
++            if not verify(root, r):
++                raise CollectError(f"ревизия `{r}` не найдена")
++        if dots == "...":
++            merge_base = out(root, "merge-base", a, b)
++            diff_args, log_args = [merge_base, b], [f"{merge_base}..{b}"]
++        else:
++            diff_args, log_args = [a, b], [f"{a}..{b}"]
++        label = f"{a}{dots}{b}"
++    elif mode == "branch":
++        if not args.ref or not verify(root, args.ref):
++            raise CollectError(f"ветка `{args.ref}` не найдена")
++        base = resolve_base(root, args.base)
++        if not base:
++            raise CollectError("базовая ветка не найдена, укажите --base")
++        merge_base = out(root, "merge-base", base, args.ref)
++        diff_args, log_args = [merge_base, args.ref], [f"{merge_base}..{args.ref}"]
++        label = f"{base}...{args.ref}"
++
++    env, tmpdir, untracked = (None, None, 0)
++    try:
++        if use_untracked:
++            env, tmpdir, untracked = untracked_index_env(root)
++        patch = git(root, "diff", *DIFF_FLAGS, *diff_args, env=env).stdout.decode(errors="replace")
++        name_status = parse_name_status(
++            git(root, "diff", "--name-status", "-z", "--find-renames", *diff_args, env=env)
++            .stdout.decode(errors="replace"))
++        numstat = parse_numstat(
++            git(root, "diff", "--numstat", "-z", "--find-renames", *diff_args, env=env)
++            .stdout.decode(errors="replace"))
++    finally:
++        if tmpdir:
++            shutil.rmtree(tmpdir, ignore_errors=True)
++
++    chunks = split_patch(patch)
++    if not chunks:
++        return None, {"root": str(root), "label": label, "notes": notes}
++    if not (len(chunks) == len(name_status) == len(numstat)):
++        raise CollectError(
++            f"рассинхрон: {len(chunks)} кусков патча, {len(name_status)} в name-status, "
++            f"{len(numstat)} в numstat")
++
++    status_names = {"A": "added", "M": "modified", "D": "deleted", "R": "renamed",
++                    "C": "copied", "T": "typechange"}
++    files = []
++    for ns, st, chunk in zip(name_status, numstat, chunks):
++        if ns["path"] != st["path"]:
++            raise CollectError(f"рассинхрон путей: `{ns['path']}` и `{st['path']}`")
++        files.append({
++            "path": ns["path"],
++            "oldPath": ns["oldPath"],
++            "status": status_names.get(ns["status"], "modified"),
++            "additions": st["additions"],
++            "deletions": st["deletions"],
++            "binary": st["binary"],
++        })
++
++    meta = {
++        "version": 1,
++        "root": str(root),
++        "repoName": repo_name,
++        "worktree": root.name if repo_name != root.name else None,
++        "branch": branch or None,
++        "head": head,
++        "mode": mode,
++        "label": label,
++        "base": base,
++        "mergeBase": merge_base,
++        "untrackedIncluded": untracked,
++        "commits": log_lines(root, log_args),
++        "notes": notes,
++        "createdAt": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
++        "files": files,
++        "totals": {
++            "files": len(files),
++            "additions": sum(f["additions"] for f in files),
++            "deletions": sum(f["deletions"] for f in files),
++        },
++    }
++    return patch, meta
++
++
++def default_outdir(meta):
++    stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
++    branch = re.sub(r"[^A-Za-z0-9._-]+", "-", meta.get("branch") or "detached")
++    return Path(tempfile.gettempdir()) / "diff-review" / f"{meta['repoName']}-{branch}-{stamp}"
++
++
++def main():
++    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
++    p.add_argument("--repo", default=".", help="каталог репозитория или worktree")
++    p.add_argument("--mode", default="since-base",
++                   choices=["since-base", "uncommitted", "staged", "commit", "range", "branch"])
++    p.add_argument("--ref", help="sha, A..B / A...B или имя ветки — в зависимости от режима")
++    p.add_argument("--base", help="база для since-base и branch")
++    p.add_argument("--out", help="выходной каталог (по умолчанию $TMPDIR/diff-review/...)")
++    args = p.parse_args()
++
++    try:
++        patch, meta = collect(args)
++    except CollectError as e:
++        print(f"Ошибка: {e}", file=sys.stderr)
++        sys.exit(2)
++
++    if patch is None:
++        print(json.dumps({"ok": False, "reason": "no-changes", **meta}, ensure_ascii=False))
++        print(f"Изменений нет: `{meta['root']}`, {meta['label']}.", file=sys.stderr)
++        sys.exit(3)
++
++    outdir = Path(args.out).expanduser() if args.out else default_outdir(meta)
++    outdir.mkdir(parents=True, exist_ok=True)
++    (outdir / "guide.patch").write_text(patch, encoding="utf-8")
++    (outdir / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
++
++    t = meta["totals"]
++    print(json.dumps({
++        "ok": True,
++        "outdir": str(outdir),
++        "root": meta["root"],
++        "branch": meta["branch"],
++        "mode": meta["mode"],
++        "label": meta["label"],
++        "files": t["files"],
++        "additions": t["additions"],
++        "deletions": t["deletions"],
++        "untrackedIncluded": meta["untrackedIncluded"],
++        "commits": len(meta["commits"]),
++        "notes": meta["notes"],
++    }, ensure_ascii=False, indent=2))
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/scripts/serve.py b/scripts/serve.py
+new file mode 100644
+index 0000000..9eb759b
+--- /dev/null
++++ b/scripts/serve.py
+@@ -0,0 +1,166 @@
++#!/usr/bin/env python3
++"""Локальный сервер просмотра diff-review.
++
++Отдаёт вьюер и данные ревью из каталога --dir (guide.json, guide.patch, meta.json),
++хранит прогресс в state.json и ждёт решения пользователя. После «Отправить»,
++«Одобрить» или «Закрыть» пишет feedback.md (если есть что писать), печатает
++последней строкой маркер и завершается:
++
++  DIFF_REVIEW_RESULT: feedback|approved|closed|timeout [<путь к feedback.md>]
++
++Слушает только 127.0.0.1. API требует токен из URL (заголовок X-Review-Token),
++чтобы сторонние страницы в браузере не могли подсунуть фидбек.
++
++Использование: serve.py --dir <outdir> [--open] [--port N] [--timeout-min N]
++"""
++
++import argparse
++import json
++import os
++import secrets
++import subprocess
++import sys
++import threading
++from http import HTTPStatus
++from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
++from pathlib import Path
++
++SCRIPTS = Path(__file__).resolve().parent
++sys.path.insert(0, str(SCRIPTS))
++from collect import split_patch  # noqa: E402
++from validate import validate  # noqa: E402
++
++ASSETS = SCRIPTS.parent / "assets"
++STATIC = {
++    "/": ("viewer.html", "text/html; charset=utf-8"),
++    "/assets/viewer.css": ("viewer.css", "text/css; charset=utf-8"),
++    "/assets/viewer.js": ("viewer.js", "text/javascript; charset=utf-8"),
++}
++MAX_BODY = 20 * 1024 * 1024
++
++
++def load_review(outdir):
++    meta = json.loads((outdir / "meta.json").read_text(encoding="utf-8"))
++    guide = json.loads((outdir / "guide.json").read_text(encoding="utf-8"))
++    errors = validate(guide, meta)
++    if errors:
++        raise SystemExit("guide.json не прошёл проверку:\n" + "\n".join(f"- {e}" for e in errors))
++    chunks = split_patch((outdir / "guide.patch").read_text(encoding="utf-8"))
++    if len(chunks) != len(meta["files"]):
++        raise SystemExit(f"guide.patch ({len(chunks)} файлов) не совпадает с meta.json ({len(meta['files'])})")
++    files = [{**f, "patch": c} for f, c in zip(meta["files"], chunks)]
++    return {"guide": guide, "meta": {k: v for k, v in meta.items() if k != "files"}, "files": files}
++
++
++def main():
++    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
++    p.add_argument("--dir", required=True, help="каталог с guide.json, guide.patch, meta.json")
++    p.add_argument("--port", type=int, default=0, help="порт (0 — выбрать свободный)")
++    p.add_argument("--open", action="store_true", help="открыть страницу в браузере")
++    p.add_argument("--timeout-min", type=float, default=180, help="завершиться через N минут без решения")
++    args = p.parse_args()
++
++    outdir = Path(args.dir).expanduser().resolve()
++    review = load_review(outdir)
++    state_path = outdir / "state.json"
++    feedback_path = outdir / "feedback.md"
++    token = secrets.token_urlsafe(16)
++    done = threading.Event()
++    result = {}
++    state_lock = threading.Lock()
++
++    class Handler(BaseHTTPRequestHandler):
++        server_version = "diff-review"
++
++        def log_message(self, *a):  # stdout читает сессия, не шумим
++            pass
++
++        def _host_ok(self):
++            host = (self.headers.get("Host") or "").split(":")[0]
++            return host in ("127.0.0.1", "localhost")
++
++        def _api_ok(self):
++            return self._host_ok() and secrets.compare_digest(self.headers.get("X-Review-Token", ""), token)
++
++        def _send(self, code, body, ctype="application/json; charset=utf-8"):
++            data = body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False).encode()
++            self.send_response(code)
++            self.send_header("Content-Type", ctype)
++            self.send_header("Content-Length", str(len(data)))
++            self.send_header("Cache-Control", "no-store")
++            self.send_header("X-Content-Type-Options", "nosniff")
++            self.end_headers()
++            self.wfile.write(data)
++
++        def _body(self):
++            length = int(self.headers.get("Content-Length") or 0)
++            if length > MAX_BODY:
++                raise ValueError("слишком большой запрос")
++            return json.loads(self.rfile.read(length) or b"{}")
++
++        def do_GET(self):
++            path = self.path.split("?")[0]
++            if not self._host_ok():
++                return self._send(HTTPStatus.FORBIDDEN, {"error": "host"})
++            if path in STATIC:
++                name, ctype = STATIC[path]
++                return self._send(HTTPStatus.OK, (ASSETS / name).read_bytes(), ctype)
++            if path == "/api/review":
++                if not self._api_ok():
++                    return self._send(HTTPStatus.FORBIDDEN, {"error": "token"})
++                with state_lock:
++                    state = json.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else None
++                return self._send(HTTPStatus.OK, {**review, "state": state})
++            return self._send(HTTPStatus.NOT_FOUND, {"error": "not found"})
++
++        def do_PUT(self):
++            if self.path != "/api/state" or not self._api_ok():
++                return self._send(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
++            try:
++                state = self._body()
++            except ValueError as e:
++                return self._send(HTTPStatus.BAD_REQUEST, {"error": str(e)})
++            with state_lock:
++                tmp = state_path.with_suffix(".tmp")
++                tmp.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
++                os.replace(tmp, state_path)
++            return self._send(HTTPStatus.OK, {"ok": True})
++
++        def do_POST(self):
++            if self.path != "/api/submit" or not self._api_ok():
++                return self._send(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
++            try:
++                body = self._body()
++            except ValueError as e:
++                return self._send(HTTPStatus.BAD_REQUEST, {"error": str(e)})
++            action = body.get("action")
++            markdown = (body.get("markdown") or "").strip()
++            if action not in ("feedback", "approve", "close"):
++                return self._send(HTTPStatus.BAD_REQUEST, {"error": "action"})
++            if action == "feedback" and not markdown:
++                return self._send(HTTPStatus.BAD_REQUEST, {"error": "пустой фидбек"})
++            if done.is_set():
++                return self._send(HTTPStatus.CONFLICT, {"error": "уже отправлено"})
++            if markdown and action != "close":
++                feedback_path.write_text(markdown + "\n", encoding="utf-8")
++            result["status"] = {"feedback": "feedback", "approve": "approved", "close": "closed"}[action]
++            result["file"] = str(feedback_path) if markdown and action != "close" else ""
++            self._send(HTTPStatus.OK, {"ok": True})
++            done.set()
++
++    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
++    url = f"http://127.0.0.1:{server.server_address[1]}/?t={token}"
++    threading.Thread(target=server.serve_forever, daemon=True).start()
++    print(f"DIFF_REVIEW_URL: {url}", flush=True)
++    if args.open:
++        opener = "open" if sys.platform == "darwin" else "xdg-open"
++        subprocess.run([opener, url], check=False, capture_output=True)
++
++    if not done.wait(timeout=args.timeout_min * 60):
++        result["status"], result["file"] = "timeout", ""
++    server.shutdown()
++    print(f"DIFF_REVIEW_RESULT: {result['status']} {result['file']}".rstrip(), flush=True)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/scripts/validate.py b/scripts/validate.py
+new file mode 100644
+index 0000000..ac4fe6c
+--- /dev/null
++++ b/scripts/validate.py
+@@ -0,0 +1,124 @@
++#!/usr/bin/env python3
++"""Проверяет guide.json против meta.json (правило покрытия guided review).
++
++Каждый изменённый файл из meta.json должен встретиться ровно один раз:
++в diffs одной главы или в unplacedFiles. Ничего не чинит молча — печатает
++все ошибки и выходит с кодом 1. При успехе печатает краткую сводку, код 0.
++
++Использование: validate.py --guide guide.json --meta meta.json
++"""
++
++import argparse
++import json
++import sys
++from pathlib import Path
++
++MAX_SECTIONS = 10
++
++
++def validate(guide, meta):
++    """Возвращает список ошибок (пустой — гайд корректен)."""
++    errors = []
++    changed = [f["path"] for f in meta["files"]]
++    changed_set = set(changed)
++
++    if not isinstance(guide, dict):
++        return ["guide.json должен быть JSON-объектом"]
++
++    for key in ("title", "intent"):
++        if not isinstance(guide.get(key), str) or not guide[key].strip():
++            errors.append(f"поле `{key}` должно быть непустой строкой")
++    if isinstance(guide.get("title"), str) and "\n" in guide["title"].strip():
++        errors.append("`title` должен быть одной строкой")
++
++    sections = guide.get("sections")
++    if not isinstance(sections, list) or not sections:
++        errors.append("`sections` должен быть непустым массивом")
++        sections = []
++    elif len(sections) > MAX_SECTIONS:
++        errors.append(f"глав {len(sections)}, максимум {MAX_SECTIONS}: объедините близкие")
++
++    unplaced = guide.get("unplacedFiles")
++    if not isinstance(unplaced, list) or not all(isinstance(f, str) for f in unplaced):
++        errors.append("`unplacedFiles` должен быть массивом строк (пустым, если всё размещено)")
++        unplaced = []
++
++    placements = {}  # путь -> список мест
++    unknown = []
++
++    for i, s in enumerate(sections, 1):
++        where = f"глава {i}"
++        if not isinstance(s, dict):
++            errors.append(f"{where}: должна быть объектом")
++            continue
++        if not isinstance(s.get("title"), str) or not s["title"].strip():
++            errors.append(f"{where}: пустой `title`")
++        else:
++            where = f"глава {i} «{s['title'].strip()}»"
++        if not isinstance(s.get("overview"), str) or not s["overview"].strip():
++            errors.append(f"{where}: пустой `overview`")
++        diffs = s.get("diffs")
++        if not isinstance(diffs, list):
++            errors.append(f"{where}: `diffs` должен быть массивом")
++            continue
++        for d in diffs:
++            if not isinstance(d, dict) or not isinstance(d.get("file"), str):
++                errors.append(f"{where}: каждый элемент `diffs` — объект с полем `file`")
++                continue
++            if not isinstance(d.get("summary"), str) or not d["summary"].strip():
++                errors.append(f"{where}: у `{d['file']}` пустой `summary`")
++            if d["file"] not in changed_set:
++                unknown.append((where, d["file"]))
++            else:
++                placements.setdefault(d["file"], []).append(where)
++
++    for f in unplaced:
++        if f not in changed_set:
++            unknown.append(("unplacedFiles", f))
++        else:
++            placements.setdefault(f, []).append("unplacedFiles")
++
++    for where, f in unknown:
++        errors.append(f"{where}: `{f}` нет среди изменённых файлов")
++    for f, places in placements.items():
++        if len(places) > 1:
++            errors.append(f"`{f}` размещён несколько раз ({', '.join(places)}), нужно ровно одно место")
++    missing = [f for f in changed if f not in placements]
++    for f in missing:
++        errors.append(f"`{f}` не размещён: добавьте в главу или в `unplacedFiles`")
++
++    if unknown:
++        errors.append("Допустимые пути (копируйте дословно):\n" + "\n".join(f"  {p}" for p in changed))
++    return errors
++
++
++def main():
++    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
++    p.add_argument("--guide", required=True)
++    p.add_argument("--meta", required=True)
++    args = p.parse_args()
++
++    meta = json.loads(Path(args.meta).read_text(encoding="utf-8"))
++    try:
++        guide = json.loads(Path(args.guide).read_text(encoding="utf-8"))
++    except FileNotFoundError:
++        print(f"Ошибка: файла {args.guide} нет", file=sys.stderr)
++        sys.exit(1)
++    except json.JSONDecodeError as e:
++        print(f"Ошибка: guide.json не парсится как JSON: {e}", file=sys.stderr)
++        sys.exit(1)
++
++    errors = validate(guide, meta)
++    if errors:
++        print(f"guide.json не прошёл проверку ({len(errors)}):", file=sys.stderr)
++        for e in errors:
++            print(f"- {e}", file=sys.stderr)
++        sys.exit(1)
++
++    n_placed = sum(len(s["diffs"]) for s in guide["sections"])
++    print(f"OK: {len(guide['sections'])} глав, {n_placed} файлов в главах, "
++          f"{len(guide['unplacedFiles'])} в unplacedFiles")
++
++
++if __name__ == "__main__":
++    main()
