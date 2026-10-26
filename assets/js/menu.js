@@ -1,30 +1,68 @@
 // The "More" menu in the top bar.
 
-import { S, ui } from './state.js';
 import { h, icon, uid } from './dom.js';
-import { filesMode } from './model.js';
-import { tocVisible, toggleToc } from './toc.js';
-import { setAllFilesOpen } from './modes.js';
-import { setTheme, setWrap } from './view.js';
 import { openHelp } from './help.js';
-import { openSubmit } from './submit.js';
+import { filesMode } from './model.js';
+import { setAllFilesOpen } from './modes.js';
+import { S, ui } from './state.js';
 import { T } from './strings.js';
+import { openSubmit } from './submit.js';
+import { tocVisible, toggleToc } from './toc.js';
+import { setTheme, setWrap } from './view.js';
 
 function menuItems() {
   return [
     { kind: 'check', label: T.menu.wrap, key: 'W', on: () => S.wrap, run: () => setWrap(!S.wrap) },
     'sep',
     { kind: 'label', label: T.menu.theme },
-    { kind: 'radio', label: T.menu.auto, hint: T.menu.autoHint, on: () => S.theme === 'auto', run: () => setTheme('auto') },
+    {
+      kind: 'radio',
+      label: T.menu.auto,
+      hint: T.menu.autoHint,
+      on: () => S.theme === 'auto',
+      run: () => setTheme('auto'),
+    },
     { kind: 'radio', label: T.menu.light, icon: 'sun', on: () => S.theme === 'light', run: () => setTheme('light') },
     { kind: 'radio', label: T.menu.dark, icon: 'moon', on: () => S.theme === 'dark', run: () => setTheme('dark') },
     'sep',
-    { kind: 'check', label: filesMode() ? T.menu.tree : T.menu.toc, key: 'T', on: tocVisible, run: () => { toggleToc(); renderMenuState(); } },
-    { kind: 'item', label: T.menu.collapseAll, key: 'Z', run: () => { closeMenu(true); setAllFilesOpen(false); } },
-    { kind: 'item', label: T.menu.expandAll, key: '⇧Z', run: () => { closeMenu(true); setAllFilesOpen(true); } },
+    {
+      kind: 'check',
+      label: filesMode() ? T.menu.tree : T.menu.toc,
+      key: 'T',
+      on: tocVisible,
+      run: () => {
+        toggleToc();
+        renderMenuState();
+      },
+    },
+    {
+      kind: 'item',
+      label: T.menu.collapseAll,
+      key: 'Z',
+      run: () => {
+        closeMenu(true);
+        setAllFilesOpen(false);
+      },
+    },
+    {
+      kind: 'item',
+      label: T.menu.expandAll,
+      key: '⇧Z',
+      run: () => {
+        closeMenu(true);
+        setAllFilesOpen(true);
+      },
+    },
     { kind: 'item', label: T.menu.help, key: '?', run: () => openHelp() },
     'sep',
-    { kind: 'item', label: T.menu.closeReview, run: () => { closeMenu(); openSubmit('close'); } },
+    {
+      kind: 'item',
+      label: T.menu.closeReview,
+      run: () => {
+        closeMenu();
+        openSubmit('close');
+      },
+    },
   ];
 }
 
@@ -40,7 +78,11 @@ function openMenu() {
   // Theme items are a labelled group: the screen reader reads the label once, and the items do not repeat the word.
   let box = menu;
   for (const it of items) {
-    if (it === 'sep') { box = menu; menu.append(h('div', { class: 'menu-sep', role: 'separator' })); continue; }
+    if (it === 'sep') {
+      box = menu;
+      menu.append(h('div', { class: 'menu-sep', role: 'separator' }));
+      continue;
+    }
     if (it.kind === 'label') {
       const id = `menu-group-${uid()}`;
       box = h('div', { role: 'group', 'aria-labelledby': id }, h('div', { class: 'menu-group-label', id }, it.label));
@@ -48,12 +90,15 @@ function openMenu() {
       continue;
     }
     const role = it.kind === 'check' ? 'menuitemcheckbox' : it.kind === 'radio' ? 'menuitemradio' : 'menuitem';
-    const b = h('button', { class: 'menu-item', type: 'button', role, tabindex: '-1' },
+    const b = h(
+      'button',
+      { class: 'menu-item', type: 'button', role, tabindex: '-1' },
       h('span', { class: 'menu-mark' }, it.kind !== 'item' && icon('check')),
       h('span', { class: 'menu-label' }, it.label),
       it.hint && h('span', { class: 'menu-hint' }, it.hint),
       it.icon && h('span', { class: 'menu-icon' }, icon(it.icon)),
-      it.key && h('kbd', {}, it.key));
+      it.key && h('kbd', {}, it.key),
+    );
     b._item = it;
     b.addEventListener('click', () => it.run());
     box.append(b);

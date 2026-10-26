@@ -1,4 +1,5 @@
 """Tests for diff-review collect.py full.patch (plain unittest; pytest is not installed)."""
+
 import argparse
 import json
 import os
@@ -15,8 +16,15 @@ sys.path.insert(0, str(SCRIPTS))
 import collect  # noqa: E402
 import serve  # noqa: E402
 
-ENV = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
-       "GIT_COMMITTER_EMAIL": "t@t", "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null"}
+ENV = {
+    **os.environ,
+    "GIT_AUTHOR_NAME": "t",
+    "GIT_AUTHOR_EMAIL": "t@t",
+    "GIT_COMMITTER_NAME": "t",
+    "GIT_COMMITTER_EMAIL": "t@t",
+    "GIT_CONFIG_GLOBAL": "/dev/null",
+    "GIT_CONFIG_SYSTEM": "/dev/null",
+}
 WHOLE = "in_diff"
 
 
@@ -44,14 +52,16 @@ def lines(n, tag="x"):
 
 
 def run_collect(repo, out, *extra, expect=0):
-    r = subprocess.run([sys.executable, str(COLLECT), "--repo", str(repo), "--out", str(out), *extra],
-                       capture_output=True, env=ENV)
+    r = subprocess.run(
+        [sys.executable, str(COLLECT), "--repo", str(repo), "--out", str(out), *extra], capture_output=True, env=ENV
+    )
     assert r.returncode == expect, (r.returncode, r.stdout.decode(), r.stderr.decode())
     return r
 
 
 def split(patch):
     import re
+
     return [c for c in re.split(r"(?m)^(?=diff --git )", patch) if c.startswith("diff --git ")]
 
 
@@ -117,10 +127,14 @@ class Base(unittest.TestCase):
 
 
 def write_guide(out, meta):
-    g = {"title": "t", "intent": "i",
-         "sections": [{"title": "A", "overview": "o",
-                       "diffs": [{"file": f["path"], "summary": "s"} for f in meta["files"]]}],
-         "unplacedFiles": []}
+    g = {
+        "title": "t",
+        "intent": "i",
+        "sections": [
+            {"title": "A", "overview": "o", "diffs": [{"file": f["path"], "summary": "s"} for f in meta["files"]]}
+        ],
+        "unplacedFiles": [],
+    }
     (out / "guide.json").write_text(json.dumps(g))
 
 
@@ -157,7 +171,9 @@ class Modes(Base):
 
     def test_since_base(self):
         self.build()
-        write(self.repo, "b.txt", lines(30, "b").replace("b29\n", "B29x\n"))  # uncommitted (size changes: avoid racy-git flake)
+        write(
+            self.repo, "b.txt", lines(30, "b").replace("b29\n", "B29x\n")
+        )  # uncommitted (size changes: avoid racy-git flake)
         write(self.repo, "u.txt", "untracked\n")
         out, meta = self.collect("--mode", "since-base", "--base", "main")
         self.assertEqual(meta["mode"], "since-base")
@@ -390,18 +406,33 @@ class MetaV3(Base):
         self.build()
         git(self.repo, "add", "a.txt")  # gives staged mode something to show
         cases = [
-            (["--mode", "since-base", "--base", "main"], {"mode": "since-base", "base": "main"},
-             "main...HEAD + uncommitted"),
+            (
+                ["--mode", "since-base", "--base", "main"],
+                {"mode": "since-base", "base": "main"},
+                "main...HEAD + uncommitted",
+            ),
             (["--mode", "uncommitted"], {"mode": "uncommitted", "hasCommits": True}, "HEAD + uncommitted"),
             (["--mode", "staged"], {"mode": "staged"}, "index (staged)"),
-            (["--mode", "commit", "--ref", self.f1], {"mode": "commit", "sha": self.f1, "subject": "feature: change a"},
-             f"{self.f1[:10]} feature: change a"),
-            (["--mode", "range", "--ref", "main..feature"], {"mode": "range", "from": "main", "dots": "..", "to": "feature"},
-             "main..feature"),
-            (["--mode", "range", "--ref", "main...feature"],
-             {"mode": "range", "from": "main", "dots": "...", "to": "feature"}, "main...feature"),
-            (["--mode", "branch", "--ref", "feature", "--base", "main"], {"mode": "branch", "base": "main", "ref": "feature"},
-             "main...feature"),
+            (
+                ["--mode", "commit", "--ref", self.f1],
+                {"mode": "commit", "sha": self.f1, "subject": "feature: change a"},
+                f"{self.f1[:10]} feature: change a",
+            ),
+            (
+                ["--mode", "range", "--ref", "main..feature"],
+                {"mode": "range", "from": "main", "dots": "..", "to": "feature"},
+                "main..feature",
+            ),
+            (
+                ["--mode", "range", "--ref", "main...feature"],
+                {"mode": "range", "from": "main", "dots": "...", "to": "feature"},
+                "main...feature",
+            ),
+            (
+                ["--mode", "branch", "--ref", "feature", "--base", "main"],
+                {"mode": "branch", "base": "main", "ref": "feature"},
+                "main...feature",
+            ),
         ]
         for i, (extra, rng, label) in enumerate(cases):
             with self.subTest(args=extra):
@@ -469,8 +500,10 @@ class MetaV3(Base):
     def test_file_content(self):
         full = {"chunks": {0: "diff"}, "lines": {0: 12}, "reasons": {1: "too_large", 2: "binary"}}
         self.assertEqual(collect.file_content(0, full), {"available": True, "lines": 12})
-        self.assertEqual(collect.file_content(1, full),
-                         {"available": False, "reason": "too_large", "limitKiB": collect.FULL_FILE_MAX // 1024})
+        self.assertEqual(
+            collect.file_content(1, full),
+            {"available": False, "reason": "too_large", "limitKiB": collect.FULL_FILE_MAX // 1024},
+        )
         self.assertEqual(collect.file_content(2, full), {"available": False, "reason": "binary"})
         self.assertEqual(collect.file_content(3, full), {"available": False, "reason": "in_diff"})
 

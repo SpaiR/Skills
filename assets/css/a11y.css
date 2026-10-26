@@ -1,7 +1,19 @@
 /* Accessibility: forced-colors mode. */
 
 @media (forced-colors: active) {
-  td.sign { forced-color-adjust: none; }
-  tr.ln.sel td.code, td.num.sel, tr.ln.cursor td.code, .file-head.is-current, .sec-head.is-current, .toc-sec[aria-current="true"], .file-row[aria-current="true"] { outline: 1px solid Highlight; }
-  .check:checked::after { background: CanvasText; }
+  td.sign {
+    forced-color-adjust: none;
+  }
+  tr.ln.sel td.code,
+  td.num.sel,
+  tr.ln.cursor td.code,
+  .file-head.is-current,
+  .sec-head.is-current,
+  .toc-sec[aria-current="true"],
+  .file-row[aria-current="true"] {
+    outline: 1px solid Highlight;
+  }
+  .check:checked::after {
+    background: CanvasText;
+  }
 }

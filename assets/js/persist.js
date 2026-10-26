@@ -1,9 +1,9 @@
 // Server API calls and persistence of the user state: normalization, migration, debounced saves.
 
-import * as D from './diffcore.js';
 import { TOKEN, TREE_MAX, TREE_MIN } from './constants.js';
-import { finished, S, sections } from './state.js';
+import * as D from './diffcore.js';
 import { secFiles } from './model.js';
+import { finished, S, sections } from './state.js';
 import { T } from './strings.js';
 
 export async function api(method, path, body, keepalive) {
@@ -39,9 +39,14 @@ export function normalizeState(raw) {
     treeW: Number.isFinite(s.treeW) ? Math.min(TREE_MAX, Math.max(TREE_MIN, s.treeW)) : null,
     hideViewed: !!s.hideViewed,
     // Expanded context per file: {ranges: [[from, to]] in new line numbers, full: whole file}.
-    expanded: Object.fromEntries(Object.entries(obj(s.expanded))
-      .map(([p, e]) => [p, { ranges: D.mergeRanges(Array.isArray(e && e.ranges) ? e.ranges : []), full: !!(e && e.full) }])
-      .filter(([, e]) => e.full || e.ranges.length)),
+    expanded: Object.fromEntries(
+      Object.entries(obj(s.expanded))
+        .map(([p, e]) => [
+          p,
+          { ranges: D.mergeRanges(Array.isArray(e && e.ranges) ? e.ranges : []), full: !!(e && e.full) },
+        ])
+        .filter(([, e]) => e.full || e.ranges.length),
+    ),
   };
 }
 

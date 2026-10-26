@@ -1,4 +1,5 @@
 """Tests for diff-review serve.py: asset_file() path handling and the HTTP API (plain unittest)."""
+
 import http.client
 import json
 import shutil
@@ -33,8 +34,13 @@ class AssetFileTest(unittest.TestCase):
             self.assertEqual(serve.asset_file(f"/assets/{Path(td).name}/x.js"), nested.resolve())
 
     def test_path_traversal_rejected(self):
-        for path in ("/assets/../scripts/serve.py", "/assets/../SKILL.md", "/assets/../../etc/passwd",
-                     "/assets/../assets/../package.json", "/assets/..%2fscripts/serve.py"):
+        for path in (
+            "/assets/../scripts/serve.py",
+            "/assets/../SKILL.md",
+            "/assets/../../etc/passwd",
+            "/assets/../assets/../package.json",
+            "/assets/..%2fscripts/serve.py",
+        ):
             with self.subTest(path=path):
                 self.assertIsNone(serve.asset_file(path))
 
@@ -81,7 +87,10 @@ class ServerCase(unittest.TestCase):
         shutil.copytree(FIXTURES / self.fixture, self.outdir)
         self.proc = subprocess.Popen(
             [sys.executable, str(SCRIPTS / "serve.py"), "--dir", str(self.outdir), "--timeout-min", "5"],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
         self.addCleanup(self._stop)
         line = self.proc.stdout.readline()
         if not line.startswith("DIFF_REVIEW_URL: "):
@@ -209,8 +218,9 @@ class ServerHttpTest(ServerCase):
         self.assertEqual(self.request("POST", "/api/submit", {"action": "bogus"})[0], 400)
         self.assertEqual(self.request("POST", "/api/submit", {"action": "feedback", "markdown": "fix"})[0], 200)
         out, _ = self.proc.communicate(timeout=15)
-        self.assertEqual(out.strip().splitlines()[-1],
-                         f"DIFF_REVIEW_RESULT: feedback {self.outdir.resolve() / 'feedback.md'}")
+        self.assertEqual(
+            out.strip().splitlines()[-1], f"DIFF_REVIEW_RESULT: feedback {self.outdir.resolve() / 'feedback.md'}"
+        )
         self.assertEqual((self.outdir / "feedback.md").read_text(encoding="utf-8"), "fix\n")
 
 

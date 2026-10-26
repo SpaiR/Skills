@@ -5,7 +5,8 @@ import * as D from './diffcore.js';
 import { fileView } from './model.js';
 
 // Lines of a range for a quote: from the full text if loaded, otherwise from what is visible in the diff.
-export const quote = (file, side, start, end) => D.quoteLines(file.full && !file.fullBad ? file.full : file.lines, side, start, end);
+export const quote = (file, side, start, end) =>
+  D.quoteLines(file.full && !file.fullBad ? file.full : file.lines, side, start, end);
 
 export const lineAt = (file, side, no) => file.lines.find((l) => (side === 'new' ? l.n : l.o) === no) || null;
 const otherSide = (side) => (side === 'new' ? 'old' : 'new');
@@ -13,7 +14,8 @@ const otherSide = (side) => (side === 'new' ? 'old' : 'new');
 // Side-by-side pairs per hunk, and a map from file line index to pair number (the data-i of a side-by-side row).
 export function splitIndex(file) {
   if (!file.split) {
-    const pairs = [], at = new Int32Array(file.lines.length);
+    const pairs = [],
+      at = new Int32Array(file.lines.length);
     for (const hk of file.hunks) {
       hk.pairs = D.splitPairs(hk.lines);
       for (const [l, r] of hk.pairs) {
@@ -34,12 +36,23 @@ export const rowIndex = (file, li) => (fileView(file) === 'split' ? splitIndex(f
 // if it has numbers within the range, otherwise on the opposite side.
 export function rangeOf(file, anchor, line) {
   const split = fileView(file) === 'split';
-  const a = rowIndex(file, anchor.li), b = rowIndex(file, line.i);
-  const lo = Math.min(a, b), hi = Math.max(a, b);
-  const rows = split ? splitIndex(file).pairs.slice(lo, hi + 1).flat().filter(Boolean) : file.lines.slice(lo, hi + 1);
+  const a = rowIndex(file, anchor.li),
+    b = rowIndex(file, line.i);
+  const lo = Math.min(a, b),
+    hi = Math.max(a, b);
+  const rows = split
+    ? splitIndex(file)
+        .pairs.slice(lo, hi + 1)
+        .flat()
+        .filter(Boolean)
+    : file.lines.slice(lo, hi + 1);
   const pick = (s) => rows.map((l) => (s === 'new' ? l.n : l.o)).filter((x) => x != null);
-  let side = anchor.side, nos = pick(side);
-  if (!nos.length) { side = otherSide(side); nos = pick(side); }
+  let side = anchor.side,
+    nos = pick(side);
+  if (!nos.length) {
+    side = otherSide(side);
+    nos = pick(side);
+  }
   return { side, start: Math.min(...nos), end: Math.max(...nos) };
 }
 
@@ -60,7 +73,9 @@ export function wordRangesOf(file) {
     file.wd = new Array(file.lines.length).fill(null);
     for (const hk of file.hunks) {
       const r = D.intraline(hk.lines);
-      hk.lines.forEach((l, k) => { file.wd[l.i] = r[k]; });
+      hk.lines.forEach((l, k) => {
+        file.wd[l.i] = r[k];
+      });
     }
   }
   return file.wd;

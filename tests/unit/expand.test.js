@@ -9,7 +9,11 @@ import { after, test } from 'node:test';
 import * as D from '../../assets/js/diffcore.js';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dr-expand-'));
-const git = (cwd, ...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'core.autocrlf=false', ...args], { cwd, encoding: 'utf8' });
+const git = (cwd, ...args) =>
+  execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'core.autocrlf=false', ...args], {
+    cwd,
+    encoding: 'utf8',
+  });
 let seq = 0;
 
 // before/after are the file contents; rename is the new file name. Returns {base, full} as parsed hunks.
@@ -20,7 +24,9 @@ function diffOf(before, after, rename) {
   fs.writeFileSync(path.join(dir, 'f.txt'), before);
   git(dir, 'add', '.');
   git(dir, 'commit', '-qm', 'a');
-  if (rename) { git(dir, 'mv', 'f.txt', rename); }
+  if (rename) {
+    git(dir, 'mv', 'f.txt', rename);
+  }
   fs.writeFileSync(path.join(dir, rename || 'f.txt'), after);
   git(dir, 'add', '-A');
   const flags = ['diff', '--cached', '--no-color', '--find-renames', 'HEAD'];
@@ -37,7 +43,8 @@ const sig = (lines) => lines.map((l) => `${l.t}:${l.o ?? ''}:${l.n ?? ''}:${l.s}
 
 // A 100-line file edited at lines 30 and 70: two hunks, three gaps.
 const two = () => {
-  const a = nums(1, 100), b = a.slice();
+  const a = nums(1, 100),
+    b = a.slice();
   b[29] = 'changed 30';
   b[69] = 'changed 70';
   return diffOf(text(a), text(b));
@@ -48,14 +55,24 @@ test('buildView without expansions reproduces the original hunks', () => {
   const v = D.buildView(full, base, [], false);
   assert.equal(v.hunks.length, base.length);
   assert.deepEqual(sig(visible(v)), sig(base.flatMap((h) => h.lines)));
-  assert.deepEqual(v.hunks.map((h) => h.header.replace(/ @@.*/, ' @@')), base.map((h) => h.header.replace(/ @@.*/, ' @@')));
+  assert.deepEqual(
+    v.hunks.map((h) => h.header.replace(/ @@.*/, ' @@')),
+    base.map((h) => h.header.replace(/ @@.*/, ' @@')),
+  );
   visible(v).forEach((l, k) => assert.equal(l.i, k, 'running index'));
 });
 
 test('gaps: start, middle and tail, with new line numbers and the at position', () => {
   const { base, full } = two();
   const v = D.buildView(full, base, [], false);
-  assert.deepEqual(v.gaps.map((g) => [g.at, g.newFrom, g.newTo, g.n]), [[0, 1, 26, 26], [1, 34, 66, 33], [2, 74, 100, 27]]);
+  assert.deepEqual(
+    v.gaps.map((g) => [g.at, g.newFrom, g.newTo, g.n]),
+    [
+      [0, 1, 26, 26],
+      [1, 34, 66, 33],
+      [2, 74, 100, 27],
+    ],
+  );
 });
 
 test('expandRange: up reveals above the next hunk, down below the previous one, a short gap in full', () => {
@@ -80,7 +97,10 @@ test('a closed gap merges the hunks and leaves no separator', () => {
   const v0 = D.buildView(full, base, [], false);
   const v = D.buildView(full, base, [D.expandRange(v0.gaps[1], 'all', 20)], false);
   assert.equal(v.hunks.length, 1);
-  assert.deepEqual(v.gaps.map((g) => g.at), [0, 1]);
+  assert.deepEqual(
+    v.gaps.map((g) => g.at),
+    [0, 1],
+  );
 });
 
 test('whole file shows every line and no gaps', () => {
@@ -111,7 +131,8 @@ test('an insertion at the start of the file and a deletion at the end', () => {
 });
 
 test('no newline at end of file: nonl is carried over and the tail can be expanded', () => {
-  const a = nums(1, 60), b = a.slice();
+  const a = nums(1, 60),
+    b = a.slice();
   b[9] = 'changed 10';
   const { base, full } = diffOf(text(a, false), text(b, false));
   const v0 = D.buildView(full, base, [], false);
@@ -124,7 +145,8 @@ test('no newline at end of file: nonl is carried over and the tail can be expand
 });
 
 test('CRLF: \\r stays in the line text and the consistency check passes', () => {
-  const a = nums(1, 30).map((s) => `${s}\r`), b = a.slice();
+  const a = nums(1, 30).map((s) => `${s}\r`),
+    b = a.slice();
   b[14] = 'changed 15\r';
   const { base, full } = diffOf(text(a), text(b));
   const v = D.buildView(full, base, [], true);
@@ -133,7 +155,8 @@ test('CRLF: \\r stays in the line text and the consistency check passes', () => 
 });
 
 test('a rename with an edit works the same way', () => {
-  const a = nums(1, 50), b = a.slice();
+  const a = nums(1, 50),
+    b = a.slice();
   b[24] = 'changed 25';
   const { base, full } = diffOf(text(a), text(b), 'g.txt');
   const v = D.buildView(full, base, [], false);
@@ -154,24 +177,43 @@ test('gapsOf on hunks matches the gaps of buildView before and after expansions'
   const cases = [two()];
   const a = nums(1, 40);
   cases.push(diffOf(text(a), text(['new top', ...a.slice(0, 39)])));
-  const b = nums(1, 60), b2 = b.slice(); b2[9] = 'x';
+  const b = nums(1, 60),
+    b2 = b.slice();
+  b2[9] = 'x';
   cases.push(diffOf(text(b, false), text(b2, false)));
   for (const { base, full } of cases) {
     const total = full.filter((l) => l.n != null).length;
     assert.deepEqual(strip(D.gapsOf(base, total)), strip(D.buildView(full, base, [], false).gaps));
-    const v = D.buildView(full, base, [[total - 2, total], [5, 6]], false);
+    const v = D.buildView(
+      full,
+      base,
+      [
+        [total - 2, total],
+        [5, 6],
+      ],
+      false,
+    );
     assert.deepEqual(strip(D.gapsOf(v.hunks, total)), strip(v.gaps));
   }
 });
 
 test('mergeRanges merges adjacent and overlapping ranges and drops garbage', () => {
-  assert.deepEqual(D.mergeRanges([[10, 12], [1, 3], [4, 5], [11, 20], [30, 29], 'x']), [[1, 5], [10, 20]]);
+  assert.deepEqual(D.mergeRanges([[10, 12], [1, 3], [4, 5], [11, 20], [30, 29], 'x']), [
+    [1, 5],
+    [10, 20],
+  ]);
 });
 
 test('quoteLines returns the lines of a side by number from the full list', () => {
   const { full } = two();
-  assert.deepEqual(D.quoteLines(full, 'new', 29, 31).map((l) => l.s), ['line 29', 'changed 30', 'line 31']);
-  assert.deepEqual(D.quoteLines(full, 'old', 30, 30).map((l) => l.s), ['line 30']);
+  assert.deepEqual(
+    D.quoteLines(full, 'new', 29, 31).map((l) => l.s),
+    ['line 29', 'changed 30', 'line 31'],
+  );
+  assert.deepEqual(
+    D.quoteLines(full, 'old', 30, 30).map((l) => l.s),
+    ['line 30'],
+  );
 });
 
 after(() => fs.rmSync(tmp, { recursive: true, force: true }));

@@ -1,6 +1,6 @@
 // Line comments: drafts, selection by click and drag, saving, deleting with undo, and suggested edits.
 import assert from 'node:assert/strict';
-import { describe, it, before } from 'node:test';
+import { before, describe, it } from 'node:test';
 import { expectCleanSession, fileSel, MOD, numSel, sleep, useEnv } from './lib.js';
 
 const COLLECT = fileSel('scripts/collect.py');
@@ -13,11 +13,24 @@ describe('line comments', () => {
     shared = await env.server('mixed');
   });
 
-  const formText = (page) => page.evaluate(() => { const t = document.querySelector('.annot-form textarea'); return t ? t.value : null; });
-  const formTitle = (page) => page.evaluate(() => { const t = document.querySelector('.annot-form .editor-title'); return t ? t.textContent : null; });
-  const toFile = (page, sel, dy = 100) => page.evaluate(([s, d]) => window.scrollTo(0, document.querySelector(s).getBoundingClientRect().top + scrollY - d), [sel, dy]);
+  const formText = (page) =>
+    page.evaluate(() => {
+      const t = document.querySelector('.annot-form textarea');
+      return t ? t.value : null;
+    });
+  const formTitle = (page) =>
+    page.evaluate(() => {
+      const t = document.querySelector('.annot-form .editor-title');
+      return t ? t.textContent : null;
+    });
+  const toFile = (page, sel, dy = 100) =>
+    page.evaluate(
+      ([s, d]) => window.scrollTo(0, document.querySelector(s).getBoundingClientRect().top + scrollY - d),
+      [sel, dy],
+    );
 
-  it('keeps the form text through collapsing a file, S twice and marking chapter 2, and stores the draft in state.json', async (t) => { // was 24
+  it('keeps the form text through collapsing a file, S twice and marking chapter 2, and stores the draft in state.json', async (t) => {
+    // was 24
     const fx = await env.server('mixed');
     const page = await env.open(fx);
     await toFile(page, COLLECT);
@@ -27,7 +40,9 @@ describe('line comments', () => {
     const ensure = async (label) => {
       await sleep(600);
       const inForm = await formText(page);
-      const inRow = await page.evaluate(() => [...document.querySelectorAll('.draft-row')].map((r) => r.textContent).join('|'));
+      const inRow = await page.evaluate(() =>
+        [...document.querySelectorAll('.draft-row')].map((r) => r.textContent).join('|'),
+      );
       const st = fx.state();
       const onDisk = Object.values(st.drafts || {}).some((d) => d.text === 'тест');
       assert.ok(inForm === 'тест' || inRow.includes('тест'), `${label}: form=${inForm}, drafts=${inRow}`);
@@ -51,8 +66,21 @@ describe('line comments', () => {
     t.diagnostic(steps.join(', '));
   });
 
-  it('shows a .draft-row after reload and "Продолжить" opens the form with the text and focus', async (t) => { // was 25
-    const fx = await env.server('mixed', { version: 1, drafts: { 'scripts/collect.py|new|54|54': { file: 'scripts/collect.py', side: 'new', start: 54, end: 54, text: 'тест', suggestion: '' } } });
+  it('shows a .draft-row after reload and "Продолжить" opens the form with the text and focus', async (t) => {
+    // was 25
+    const fx = await env.server('mixed', {
+      version: 1,
+      drafts: {
+        'scripts/collect.py|new|54|54': {
+          file: 'scripts/collect.py',
+          side: 'new',
+          start: 54,
+          end: 54,
+          text: 'тест',
+          suggestion: '',
+        },
+      },
+    });
     const page = await env.open(fx);
     // First the same path as in the keep-the-text test: a draft created by typing survives a reload.
     await toFile(page, COLLECT);
@@ -62,17 +90,26 @@ describe('line comments', () => {
     await page.reload();
     await page.waitForFunction(() => performance.getEntriesByName('dr-ready').length > 0);
     const rows = await page.$$eval('.draft-row', (els) => els.map((e) => e.textContent));
-    assert.ok(rows.some((x) => x.includes('тест')), JSON.stringify(rows));
-    assert.ok(rows.some((x) => x.includes('второй')), JSON.stringify(rows));
+    assert.ok(
+      rows.some((x) => x.includes('тест')),
+      JSON.stringify(rows),
+    );
+    assert.ok(
+      rows.some((x) => x.includes('второй')),
+      JSON.stringify(rows),
+    );
     await page.click(`${COLLECT} .draft-row[data-key="scripts/collect.py|new|54|54"] [data-act=draft-continue]`);
     const v = await formText(page);
     assert.equal(v, 'тест', `in the form: ${v}`);
-    const focused = await page.evaluate(() => document.activeElement && document.activeElement.matches('.annot-form textarea'));
+    const focused = await page.evaluate(
+      () => document.activeElement && document.activeElement.matches('.annot-form textarea'),
+    );
     assert.ok(focused, 'focus is not in the field');
     t.diagnostic(rows.join(' | '));
   });
 
-  it('turns the first text into a .has-draft draft when another line is clicked, and opens an empty form there', async (t) => { // was 26
+  it('turns the first text into a .has-draft draft when another line is clicked, and opens an empty form there', async (t) => {
+    // was 26
     const fx = await env.server('mixed');
     const page = await env.open(fx);
     await toFile(page, COLLECT);
@@ -97,7 +134,8 @@ describe('line comments', () => {
     t.diagnostic(r.draft);
   });
 
-  it('selects old line 53 (del) to new line 56 by Shift-click, by dragging and in side-by-side view: "Строки 53–55 · старая версия"', async (t) => { // was 27
+  it('selects old line 53 (del) to new line 56 by Shift-click, by dragging and in side-by-side view: "Строки 53–55 · старая версия"', async (t) => {
+    // was 27
     const page = await env.open(shared);
     await toFile(page, COLLECT);
     await page.click(num('old', 53));
@@ -130,7 +168,8 @@ describe('line comments', () => {
     t.diagnostic(`${title}; drag: ${title2}; side-by-side: ${title3}`);
   });
 
-  it('treats a click on the old number of a context line as the new version', async (t) => { // was 28
+  it('treats a click on the old number of a context line as the new version', async (t) => {
+    // was 28
     const page = await env.open(shared);
     await toFile(page, COLLECT);
     await page.click(num('old', 56)); // ctx: old 56 = new 59
@@ -140,7 +179,8 @@ describe('line comments', () => {
     t.diagnostic(title);
   });
 
-  it('marks new lines 54–58 with .has-note after saving, and paints the selected add line with --add-line plus an overlay', async (t) => { // was 29
+  it('marks new lines 54–58 with .has-note after saving, and paints the selected add line with --add-line plus an overlay', async (t) => {
+    // was 29
     const fx = await env.server('mixed');
     const page = await env.open(fx);
     await toFile(page, COLLECT);
@@ -148,7 +188,9 @@ describe('line comments', () => {
     await page.click(num('new', 58), { modifiers: ['Shift'] });
     await page.keyboard.type('Почему так?');
     await page.keyboard.press(`${MOD}+Enter`);
-    const marks = await page.$$eval(`${COLLECT} td.num.has-note`, (els) => els.map((e) => `${e.dataset.side}${e.dataset.no}`));
+    const marks = await page.$$eval(`${COLLECT} td.num.has-note`, (els) =>
+      els.map((e) => `${e.dataset.side}${e.dataset.no}`),
+    );
     assert.equal(marks.join(), 'new54,new55,new56,new57,new58');
     await page.click(num('new', 55));
     const r = await page.evaluate(() => {
@@ -168,7 +210,8 @@ describe('line comments', () => {
     t.diagnostic(`${marks.join()}; ${r.bg}; ${r.img.slice(0, 40)}`);
   });
 
-  it('reveals .cmt-btn on row hover, opens the form on click, and offers it on del lines but not on old numbers of context lines', async (t) => { // was 30
+  it('reveals .cmt-btn on row hover, opens the form on click, and offers it on del lines but not on old numbers of context lines', async (t) => {
+    // was 30
     const page = await env.open(shared);
     await toFile(page, COLLECT);
     const row = page.locator(`${COLLECT} tr.ln`).filter({ has: page.locator(`td.num[data-side=new][data-no="57"]`) });
@@ -190,7 +233,8 @@ describe('line comments', () => {
     t.diagnostic(title);
   });
 
-  it('removes a comment with a toast offering "Вернуть", and undo restores the same id in the same place', async (t) => { // was 31
+  it('removes a comment with a toast offering "Вернуть", and undo restores the same id in the same place', async (t) => {
+    // was 31
     const notes = [
       { id: 'aaa', file: 'scripts/collect.py', side: 'new', start: 34, end: 34, text: 'первый', suggestion: '' },
       { id: 'bbb', file: 'scripts/collect.py', side: 'new', start: 54, end: 55, text: 'второй', suggestion: '' },
@@ -202,23 +246,37 @@ describe('line comments', () => {
     const note = page.locator(`${COLLECT} .note[data-id=bbb]`);
     await note.hover();
     await note.locator('[data-act=note-delete]').click();
-    const toast = await page.evaluate(() => { const el = document.getElementById('toast'); return { cls: el.className, text: el.textContent, gone: !document.querySelector('.note[data-id=bbb]') }; });
+    const toast = await page.evaluate(() => {
+      const el = document.getElementById('toast');
+      return { cls: el.className, text: el.textContent, gone: !document.querySelector('.note[data-id=bbb]') };
+    });
     assert.ok(toast.cls.includes('show'), JSON.stringify(toast));
     assert.ok(toast.text.includes('Комментарий удалён'), JSON.stringify(toast));
     assert.ok(toast.text.includes('Вернуть'), JSON.stringify(toast));
     assert.ok(toast.gone, JSON.stringify(toast));
     await sleep(600);
-    assert.equal(fx.state().annotations.map((a) => a.id).join(), 'aaa,ccc', 'not removed from state');
+    assert.equal(
+      fx
+        .state()
+        .annotations.map((a) => a.id)
+        .join(),
+      'aaa,ccc',
+      'not removed from state',
+    );
     await page.click('#toast .toast-btn');
     await sleep(600);
-    const ids = fx.state().annotations.map((a) => a.id).join();
+    const ids = fx
+      .state()
+      .annotations.map((a) => a.id)
+      .join();
     const back = await page.$$eval('.note[data-id]', (els) => els.map((e) => e.dataset.id).join());
     assert.equal(ids, 'aaa,bbb,ccc', `${ids} / ${back}`);
     assert.ok(back.includes('bbb'), `${ids} / ${back}`);
     t.diagnostic(ids);
   });
 
-  it('fills the suggestion field with the original lines, indents with Tab, and renders a "Предложенная правка" card with − and +', async (t) => { // was 32
+  it('fills the suggestion field with the original lines, indents with Tab, and renders a "Предложенная правка" card with − and +', async (t) => {
+    // was 32
     const fx = await env.server('mixed');
     const page = await env.open(fx);
     await toFile(page, COLLECT);
@@ -236,12 +294,20 @@ describe('line comments', () => {
     const untabbed = await page.$eval(`${COLLECT} .annot-form textarea.mono`, (e) => e.value);
     assert.ok(tabbed.endsWith('None  '), JSON.stringify([tabbed, untabbed]));
     assert.equal(untabbed, tabbed.replace(/\n {2}/, '\n'), JSON.stringify([tabbed, untabbed]));
-    await page.$eval(`${COLLECT} .annot-form textarea.mono`, (e) => { e.value = '    return None'; e.dispatchEvent(new Event('input', { bubbles: true })); });
+    await page.$eval(`${COLLECT} .annot-form textarea.mono`, (e) => {
+      e.value = '    return None';
+      e.dispatchEvent(new Event('input', { bubbles: true }));
+    });
     await page.click(`${COLLECT} .annot-form .btn.primary`);
     await page.locator(`${COLLECT} .note .suggestion`).scrollIntoViewIfNeeded();
     const card = await page.evaluate(() => {
       const s = document.querySelector('.file[data-path="scripts/collect.py"] .note .suggestion');
-      return s && { head: s.querySelector('.suggestion-head').innerText, signs: [...s.querySelectorAll('.sg-sign')].map((x) => x.textContent).join('') };
+      return (
+        s && {
+          head: s.querySelector('.suggestion-head').innerText,
+          signs: [...s.querySelectorAll('.sg-sign')].map((x) => x.textContent).join(''),
+        }
+      );
     });
     assert.ok(card, 'no suggestion card');
     assert.equal(card.head, 'Предложенная правка', JSON.stringify(card));

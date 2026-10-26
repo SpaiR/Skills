@@ -3,6 +3,7 @@
 // Takes a fixed set of screenshots (light and dark, three widths) and prints console errors.
 // For other scenarios write a separate script that imports playwright-core.
 import { chromium } from 'playwright-core';
+
 const [url, dir, prefix = ''] = process.argv.slice(2);
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
@@ -18,7 +19,9 @@ const [url, dir, prefix = ''] = process.argv.slice(2);
   for (const [name, viewport, colorScheme, fullPage] of shots) {
     const page = await browser.newPage({ viewport, colorScheme });
     page.on('pageerror', (e) => errors.push(name + ' pageerror: ' + e.message));
-    page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errors.push(name + ' console.' + m.type() + ': ' + m.text()); });
+    page.on('console', (m) => {
+      if (m.type() === 'error' || m.type() === 'warning') errors.push(name + ' console.' + m.type() + ': ' + m.text());
+    });
     await page.goto(url);
     await page.waitForTimeout(600);
     const p = dir + '/' + prefix + name + '.png';
@@ -28,4 +31,7 @@ const [url, dir, prefix = ''] = process.argv.slice(2);
   }
   console.log('errors:', JSON.stringify(errors));
   await browser.close();
-})().catch((e) => { console.error('SHOOT FAIL', e); process.exit(1); });
+})().catch((e) => {
+  console.error('SHOOT FAIL', e);
+  process.exit(1);
+});

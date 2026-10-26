@@ -1,49 +1,147 @@
 /* Buttons: .btn, .icon-btn and the segmented control. */
 
 .btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  height: 32px; padding: 0 12px; border-radius: var(--r-sm);
-  font-size: var(--fs-sm); font-weight: 500; line-height: 1; white-space: nowrap;
-  background: var(--surface); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow-xs);
-  cursor: pointer; transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-xs);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
 }
-.btn:hover { background: var(--tint); }
-.btn:active { background: var(--hair); }
-.btn:disabled { opacity: .5; cursor: default; }
-.btn:disabled:hover { background: var(--surface); }
+.btn:hover {
+  background: var(--tint);
+}
+.btn:active {
+  background: var(--hair);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.btn:disabled:hover {
+  background: var(--surface);
+}
 .btn.primary {
-  background: var(--accent); color: var(--accent-ink); border-color: var(--accent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 1px 2px rgba(16, 24, 40, .12);
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 1px 2px rgba(16, 24, 40, 0.12);
 }
-.btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
-.btn.primary:disabled:hover { background: var(--accent); border-color: var(--accent); }
-.btn.ghost { background: transparent; border-color: transparent; box-shadow: none; }
-.btn.ghost:hover { background: var(--tint); }
-.btn.ghost:active { background: var(--hair); }
-.btn.sm { height: 28px; padding: 0 8px; font-size: var(--fs-xs); gap: 4px; }
-.btn.danger { color: var(--danger); }
-.btn .icon { width: 16px; height: 16px; }
-.btn.sm .icon { width: 14px; height: 14px; }
+.btn.primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.btn.primary:disabled:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.btn.ghost {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.btn.ghost:hover {
+  background: var(--tint);
+}
+.btn.ghost:active {
+  background: var(--hair);
+}
+.btn.sm {
+  height: 28px;
+  padding: 0 8px;
+  font-size: var(--fs-xs);
+  gap: 4px;
+}
+.btn.danger {
+  color: var(--danger);
+}
+.btn .icon {
+  width: 16px;
+  height: 16px;
+}
+.btn.sm .icon {
+  width: 14px;
+  height: 14px;
+}
 
 .icon-btn {
-  display: inline-flex; align-items: center; justify-content: center; flex: none;
-  width: 32px; height: 32px; padding: 0; border: 0; border-radius: var(--r-sm);
-  background: transparent; color: var(--ink-2); cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease);
 }
-.icon-btn:hover { background: var(--tint); color: var(--ink); }
-.icon-btn:active { background: var(--hair); }
-.icon-btn.sm { width: 26px; height: 26px; }
+.icon-btn:hover {
+  background: var(--tint);
+  color: var(--ink);
+}
+.icon-btn:active {
+  background: var(--hair);
+}
+.icon-btn.sm {
+  width: 26px;
+  height: 26px;
+}
 
-.seg { display: inline-flex; border: 1px solid var(--hair); border-radius: var(--r-sm); padding: 1px; gap: 1px; background: var(--tint); }
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-sm);
+  padding: 1px;
+  gap: 1px;
+  background: var(--tint);
+}
 .seg button {
-  height: 28px; padding: 0 10px; border: 0; border-radius: calc(var(--r-sm) - 2px); background: transparent;
-  color: var(--ink-2); font-size: var(--fs-sm); font-weight: 500; cursor: pointer;
-  transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: calc(var(--r-sm) - 2px);
+  background: transparent;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
 }
-.seg button:hover:not(:disabled) { background: var(--tint); color: var(--ink); }
+.seg button:hover:not(:disabled) {
+  background: var(--tint);
+  color: var(--ink);
+}
 /* The selected segment is a raised plate, not an accent fill: blue stays reserved for the primary button. */
-.seg button[aria-pressed="true"], .seg button[aria-pressed="true"]:hover {
-  background: var(--raised); color: var(--ink); box-shadow: 0 0 0 1px var(--line), var(--shadow-xs);
+.seg button[aria-pressed="true"],
+.seg button[aria-pressed="true"]:hover {
+  background: var(--raised);
+  color: var(--ink);
+  box-shadow:
+    0 0 0 1px var(--line),
+    var(--shadow-xs);
 }
-.seg button:disabled { opacity: .5; cursor: default; }
+.seg button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

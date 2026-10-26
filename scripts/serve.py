@@ -46,7 +46,7 @@ def asset_file(path):
         path = "/assets/viewer.html"
     if not path.startswith("/assets/"):
         return None
-    target = (ASSETS / path[len("/assets/"):]).resolve()
+    target = (ASSETS / path[len("/assets/") :]).resolve()
     if not target.is_relative_to(ASSETS.resolve()) or target.suffix not in MIME or not target.is_file():
         return None
     return target

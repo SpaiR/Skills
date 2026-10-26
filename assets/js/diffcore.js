@@ -12,12 +12,18 @@ export function parsePatch(patch) {
   const lines = String(patch || '').split('\n');
   if (lines[lines.length - 1] === '') lines.pop();
   const hunks = [];
-  let hunk = null, o = 0, n = 0, idx = 0, prevEnd = 1;
+  let hunk = null,
+    o = 0,
+    n = 0,
+    idx = 0,
+    prevEnd = 1;
   for (const line of lines) {
     const m = HUNK_RE.exec(line);
     if (m) {
-      const oldStart = +m[1], oldLen = m[2] == null ? 1 : +m[2];
-      const newStart = +m[3], newLen = m[4] == null ? 1 : +m[4];
+      const oldStart = +m[1],
+        oldLen = m[2] == null ? 1 : +m[2];
+      const newStart = +m[3],
+        newLen = m[4] == null ? 1 : +m[4];
       // With a zero length git points at the line after which the insertion goes: the first real line is one further.
       const first = oldLen ? oldStart : oldStart + 1;
       const gap = first - prevEnd;
@@ -44,8 +50,13 @@ export function splitPairs(lines) {
   const pairs = [];
   let i = 0;
   while (i < lines.length) {
-    if (lines[i].t === 'ctx') { pairs.push([lines[i], lines[i]]); i++; continue; }
-    const dels = [], adds = [];
+    if (lines[i].t === 'ctx') {
+      pairs.push([lines[i], lines[i]]);
+      i++;
+      continue;
+    }
+    const dels = [],
+      adds = [];
     while (i < lines.length && lines[i].t === 'del') dels.push(lines[i++]);
     while (i < lines.length && lines[i].t === 'add') adds.push(lines[i++]);
     for (let k = 0; k < Math.max(dels.length, adds.length); k++) pairs.push([dels[k] || null, adds[k] || null]);
@@ -58,8 +69,12 @@ export function changeBlocks(lines) {
   const blocks = [];
   let start = -1;
   lines.forEach((l, k) => {
-    if (l.t !== 'ctx') { if (start < 0) start = k; }
-    else if (start >= 0) { blocks.push({ from: start, to: k - 1 }); start = -1; }
+    if (l.t !== 'ctx') {
+      if (start < 0) start = k;
+    } else if (start >= 0) {
+      blocks.push({ from: start, to: k - 1 });
+      start = -1;
+    }
   });
   if (start >= 0) blocks.push({ from: start, to: lines.length - 1 });
   return blocks;
@@ -93,12 +108,28 @@ export function buildView(fullLines, baseHunks, ranges, all) {
   }
   for (let k = 0; k < fullLines.length; k++) {
     const l = fullLines[k];
-    if (all || l.t !== 'ctx') { show[k] = 1; continue; }
-    for (const [a, b] of ranges || []) if (l.n >= a && l.n <= b) { show[k] = 1; break; }
+    if (all || l.t !== 'ctx') {
+      show[k] = 1;
+      continue;
+    }
+    for (const [a, b] of ranges || [])
+      if (l.n >= a && l.n <= b) {
+        show[k] = 1;
+        break;
+      }
   }
-  const hunks = [], gaps = [];
-  let idx = 0, k = 0;
-  const gapOf = (from, to) => ({ at: hunks.length, from, to, n: to - from + 1, newFrom: fullLines[from].n, newTo: fullLines[to].n });
+  const hunks = [],
+    gaps = [];
+  let idx = 0,
+    k = 0;
+  const gapOf = (from, to) => ({
+    at: hunks.length,
+    from,
+    to,
+    n: to - from + 1,
+    newFrom: fullLines[from].n,
+    newTo: fullLines[to].n,
+  });
   while (k < fullLines.length) {
     if (!show[k]) {
       const from = k;
@@ -120,12 +151,20 @@ export function buildView(fullLines, baseHunks, ranges, all) {
       for (let p = from - 1; p >= 0; p--) if (fullLines[p][side] != null) return fullLines[p][side];
       return 0;
     };
-    const oldLen = lines.filter((l) => l.o != null).length, newLen = lines.filter((l) => l.n != null).length;
-    const oldStart = startOf('o'), newStart = startOf('n');
+    const oldLen = lines.filter((l) => l.o != null).length,
+      newLen = lines.filter((l) => l.n != null).length;
+    const oldStart = startOf('o'),
+      newStart = startOf('n');
     const fn = fnAt.get(from) || '';
     hunks.push({
       header: `@@ -${oldStart},${oldLen} +${newStart},${newLen} @@${fn ? ` ${fn}` : ''}`,
-      oldStart, oldLen, newStart, newLen, fn, skip: null, lines,
+      oldStart,
+      oldLen,
+      newStart,
+      newLen,
+      fn,
+      skip: null,
+      lines,
     });
   }
   return { hunks, gaps };
@@ -142,7 +181,8 @@ export function gapsOf(hunks, newTotal) {
     if (first > prevEnd) gaps.push({ at: k, n: first - prevEnd, newFrom: prevEnd, newTo: first - 1 });
     prevEnd = first + hk.newLen;
   });
-  if (newTotal != null && newTotal >= prevEnd) gaps.push({ at: hunks.length, n: newTotal - prevEnd + 1, newFrom: prevEnd, newTo: newTotal });
+  if (newTotal != null && newTotal >= prevEnd)
+    gaps.push({ at: hunks.length, n: newTotal - prevEnd + 1, newFrom: prevEnd, newTo: newTotal });
   return gaps;
 }
 
@@ -155,7 +195,10 @@ export function expandRange(gap, dir, step) {
 
 // Merge overlapping and adjacent ranges [from, to].
 export function mergeRanges(ranges) {
-  const sorted = ranges.filter((r) => Array.isArray(r) && r[0] <= r[1]).map((r) => [r[0], r[1]]).sort((a, b) => a[0] - b[0]);
+  const sorted = ranges
+    .filter((r) => Array.isArray(r) && r[0] <= r[1])
+    .map((r) => [r[0], r[1]])
+    .sort((a, b) => a[0] - b[0]);
   const out = [];
   for (const r of sorted) {
     const last = out[out.length - 1];
@@ -193,12 +236,16 @@ const isSpace = (tok) => /^\s+$/.test(tok.s);
 // Unmatched tokens -> character ranges; neighbours are merged if only whitespace lies between them.
 function toRanges(tokens, changed) {
   const ranges = [];
-  let cur = null, gapOnlySpace = true;
+  let cur = null,
+    gapOnlySpace = true;
   for (let k = 0; k < tokens.length; k++) {
     const tok = tokens[k];
     if (changed[k]) {
       if (cur && gapOnlySpace) cur[1] = tok.to;
-      else { cur = [tok.from, tok.to]; ranges.push(cur); }
+      else {
+        cur = [tok.from, tok.to];
+        ranges.push(cur);
+      }
       gapOnlySpace = true;
     } else if (cur && !isSpace(tok)) {
       gapOnlySpace = false;
@@ -210,8 +257,10 @@ function toRanges(tokens, changed) {
 export function wordDiff(a, b) {
   if (a === b) return null;
   if (a.length > MAX_LINE || b.length > MAX_LINE) return null;
-  const ta = tokenize(a), tb = tokenize(b);
-  const na = ta.length, nb = tb.length;
+  const ta = tokenize(a),
+    tb = tokenize(b);
+  const na = ta.length,
+    nb = tb.length;
   let pre = 0;
   while (pre < na && pre < nb && ta[pre].s === tb[pre].s) pre++;
   let suf = 0;
@@ -221,9 +270,12 @@ export function wordDiff(a, b) {
   for (let k = 0; k < pre; k++) common += ta[k].s.length;
   for (let k = 0; k < suf; k++) common += ta[na - 1 - k].s.length;
 
-  const A = ta.slice(pre, na - suf), B = tb.slice(pre, nb - suf);
-  const n = A.length, m = B.length;
-  const chA = new Array(na).fill(false), chB = new Array(nb).fill(false);
+  const A = ta.slice(pre, na - suf),
+    B = tb.slice(pre, nb - suf);
+  const n = A.length,
+    m = B.length;
+  const chA = new Array(na).fill(false),
+    chB = new Array(nb).fill(false);
   for (let k = 0; k < n; k++) chA[pre + k] = true;
   for (let k = 0; k < m; k++) chB[pre + k] = true;
 
@@ -232,20 +284,23 @@ export function wordDiff(a, b) {
     const w = m + 1;
     const dp = new Uint32Array((n + 1) * w);
     for (let i = n - 1; i >= 0; i--) {
-      const row = i * w, next = (i + 1) * w;
+      const row = i * w,
+        next = (i + 1) * w;
       const ai = A[i].s;
       for (let j = m - 1; j >= 0; j--) {
-        dp[row + j] = ai === B[j].s ? dp[next + j + 1] + 1
-          : (dp[next + j] >= dp[row + j + 1] ? dp[next + j] : dp[row + j + 1]);
+        dp[row + j] =
+          ai === B[j].s ? dp[next + j + 1] + 1 : dp[next + j] >= dp[row + j + 1] ? dp[next + j] : dp[row + j + 1];
       }
     }
-    let i = 0, j = 0;
+    let i = 0,
+      j = 0;
     while (i < n && j < m) {
       if (A[i].s === B[j].s) {
         chA[pre + i] = false;
         chB[pre + j] = false;
         common += A[i].s.length;
-        i++; j++;
+        i++;
+        j++;
       } else if (dp[(i + 1) * w + j] >= dp[i * w + j + 1]) i++;
       else j++;
     }
@@ -253,7 +308,8 @@ export function wordDiff(a, b) {
 
   const total = a.length + b.length;
   if (!total || (2 * common) / total < MIN_SIMILARITY) return null;
-  const del = toRanges(ta, chA), add = toRanges(tb, chB);
+  const del = toRanges(ta, chA),
+    add = toRanges(tb, chB);
   if (!del.length && !add.length) return null;
   return { del, add };
 }
@@ -263,8 +319,12 @@ export function intraline(lines) {
   const out = new Array(lines.length).fill(null);
   let i = 0;
   while (i < lines.length) {
-    if (lines[i].t === 'ctx') { i++; continue; }
-    const dels = [], adds = [];
+    if (lines[i].t === 'ctx') {
+      i++;
+      continue;
+    }
+    const dels = [],
+      adds = [];
     while (i < lines.length && lines[i].t === 'del') dels.push(i++);
     while (i < lines.length && lines[i].t === 'add') adds.push(i++);
     if (dels.length > MAX_RUN || adds.length > MAX_RUN) continue;
@@ -276,7 +336,8 @@ export function intraline(lines) {
     const shifts = extra && extra <= MAX_SHIFT ? extra : 0;
     let best = null;
     for (let o = 0; o <= shifts; o++) {
-      const dOff = dels.length > adds.length ? o : 0, aOff = adds.length > dels.length ? o : 0;
+      const dOff = dels.length > adds.length ? o : 0,
+        aOff = adds.length > dels.length ? o : 0;
       const pairs = [];
       for (let p = 0; p < k; p++) {
         const r = wordDiff(lines[dels[p + dOff]].s, lines[adds[p + aOff]].s);
@@ -302,35 +363,78 @@ export function intraline(lines) {
 const kw = (s) => new Set(s.split(' ').filter(Boolean));
 export const LANGS = {
   js: {
-    exts: 'js mjs cjs jsx ts tsx', line: '//', block: [['/*', '*/']], quotes: '\'"`', regex: true,
-    kw: kw('const let var function return if else for while do switch case break continue new class extends import export from default async await try catch finally throw typeof instanceof in of this null undefined true false yield static get set interface type enum implements readonly as delete void super'),
+    exts: 'js mjs cjs jsx ts tsx',
+    line: '//',
+    block: [['/*', '*/']],
+    quotes: '\'"`',
+    regex: true,
+    kw: kw(
+      'const let var function return if else for while do switch case break continue new class extends import export from default async await try catch finally throw typeof instanceof in of this null undefined true false yield static get set interface type enum implements readonly as delete void super',
+    ),
   },
   python: {
-    exts: 'py pyi', line: '#', quotes: '\'"', prefixes: true,
-    kw: kw('def class return if elif else for while in not and or is import from as with try except finally raise lambda yield None True False pass break continue global nonlocal async await assert del match case'),
+    exts: 'py pyi',
+    line: '#',
+    quotes: '\'"',
+    prefixes: true,
+    kw: kw(
+      'def class return if elif else for while in not and or is import from as with try except finally raise lambda yield None True False pass break continue global nonlocal async await assert del match case',
+    ),
   },
   shell: {
-    exts: 'sh bash zsh', line: '#', lineAfterSpace: true, quotes: '\'"',
-    kw: kw('if then else elif fi for while do done case esac function return in local export readonly set unset echo exit'),
+    exts: 'sh bash zsh',
+    line: '#',
+    lineAfterSpace: true,
+    quotes: '\'"',
+    kw: kw(
+      'if then else elif fi for while do done case esac function return in local export readonly set unset echo exit',
+    ),
   },
   css: { exts: 'css', block: [['/*', '*/']], quotes: '\'"', css: true, kw: kw('') },
   json: { exts: 'json', quotes: '"', kw: kw('true false null') },
-  yaml: { exts: 'yml yaml', line: '#', lineAfterSpace: true, quotes: '\'"', quoteAfter: /[\s:[{,-]/, kw: kw('true false null yes no') },
+  yaml: {
+    exts: 'yml yaml',
+    line: '#',
+    lineAfterSpace: true,
+    quotes: '\'"',
+    quoteAfter: /[\s:[{,-]/,
+    kw: kw('true false null yes no'),
+  },
   go: {
-    exts: 'go', line: '//', block: [['/*', '*/']], quotes: '"`\'',
-    kw: kw('func package import return if else for range switch case default type struct interface map chan go defer var const nil true false break continue select'),
+    exts: 'go',
+    line: '//',
+    block: [['/*', '*/']],
+    quotes: '"`\'',
+    kw: kw(
+      'func package import return if else for range switch case default type struct interface map chan go defer var const nil true false break continue select',
+    ),
   },
   rust: {
-    exts: 'rs', line: '//', block: [['/*', '*/']], quotes: '"',
-    kw: kw('fn let mut pub use mod struct enum impl trait return if else match for while loop in as self Self crate super where move ref true false const static async await'),
+    exts: 'rs',
+    line: '//',
+    block: [['/*', '*/']],
+    quotes: '"',
+    kw: kw(
+      'fn let mut pub use mod struct enum impl trait return if else match for while loop in as self Self crate super where move ref true false const static async await',
+    ),
   },
   java: {
-    exts: 'java kt kts', line: '//', block: [['/*', '*/']], quotes: '"\'',
-    kw: kw('class interface public private protected static final void return if else for while new try catch finally throw import package extends implements null true false fun val var when object'),
+    exts: 'java kt kts',
+    line: '//',
+    block: [['/*', '*/']],
+    quotes: '"\'',
+    kw: kw(
+      'class interface public private protected static final void return if else for while new try catch finally throw import package extends implements null true false fun val var when object',
+    ),
   },
   c: {
-    exts: 'c h cc cpp hpp', line: '//', block: [['/*', '*/']], quotes: '"\'',
-    kw: kw('int char void return if else for while do switch case break continue struct typedef enum static const unsigned sizeof include define class public private namespace template nullptr true false'),
+    exts: 'c h cc cpp hpp',
+    line: '//',
+    block: [['/*', '*/']],
+    quotes: '"\'',
+    kw: kw(
+      'int char void return if else for while do switch case break continue struct typedef enum static const unsigned sizeof include define class public private namespace template nullptr true false',
+    ),
   },
   html: { exts: 'html htm', block: [['<!--', '-->']], quotes: '"\'', quoteAfter: /[\s=(,[{:]/, kw: kw('') },
 };
@@ -341,25 +445,32 @@ for (const [name, def] of Object.entries(LANGS)) {
 }
 
 export function langOf(path) {
-  const base = String(path || '').split('/').pop();
+  const base = String(path || '')
+    .split('/')
+    .pop();
   const dot = base.lastIndexOf('.');
   return dot > 0 ? LANG_BY_EXT.get(base.slice(dot + 1).toLowerCase()) || null : null;
 }
 
 const NUM_RE = /\b\d[\d_]*(\.\d+)?([eE][+-]?\d+)?\b|0x[0-9a-fA-F]+/y;
 // CSS: numbers with units (12px, .5s, 100%) and #rgb/#rrggbb colours. Not inside names like --s-12 and h1.
-const CSS_NUM_RE = /(?<![\w#-])(?:\d+(?:\.\d+)?|\.\d+)(?:%|[a-zA-Z]+)?|#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})(?![\w-])/y;
+const CSS_NUM_RE =
+  /(?<![\w#-])(?:\d+(?:\.\d+)?|\.\d+)(?:%|[a-zA-Z]+)?|#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})(?![\w-])/y;
 const WORD_RE = /[\p{L}_$][\p{L}\p{N}_$]*/uy;
 const PY_STR_RE = /([rRbBuUfF]{1,2})?("""|'''|"|')/y;
 // A "/" starts a regex, not a division, after: line start, an operator, an opening bracket or a keyword.
-const REGEX_BEFORE = /(?:^|[(,=:[!&|?{};+\-*%<>~^]|\b(?:return|typeof|case|do|else|in|of|void|yield|await|delete|throw|new))\s*$/;
+const REGEX_BEFORE =
+  /(?:^|[(,=:[!&|?{};+\-*%<>~^]|\b(?:return|typeof|case|do|else|in|of|void|yield|await|delete|throw|new))\s*$/;
 const MAX_SYN_LINE = 1000;
 const MAX_SYN_FILE = 5000;
 
 // End of a string quoted with q starting at `from`, honouring backslashes. -1 if it does not end on this line.
 function closeQuote(text, from, q) {
   for (let k = from; k < text.length; k++) {
-    if (text[k] === '\\') { k++; continue; }
+    if (text[k] === '\\') {
+      k++;
+      continue;
+    }
     if (text.startsWith(q, k)) return k + q.length;
   }
   return -1;
@@ -370,7 +481,10 @@ function closeRegex(text, from) {
   let cls = false;
   for (let k = from + 1; k < text.length; k++) {
     const c = text[k];
-    if (c === '\\') { k++; continue; }
+    if (c === '\\') {
+      k++;
+      continue;
+    }
     if (c === '[') cls = true;
     else if (c === ']') cls = false;
     else if (c === '/' && !cls) {
@@ -401,14 +515,22 @@ export function highlight(text, lang, state) {
     st.cls = null;
     pos = to;
   }
-  const push = (from, to, cls) => { out.push({ from, to, cls }); pos = to; };
+  const push = (from, to, cls) => {
+    out.push({ from, to, cls });
+    pos = to;
+  };
   scan: while (pos < n) {
     const c = text[pos];
     if (L.block) {
       for (const [open, close] of L.block) {
         if (!text.startsWith(open, pos)) continue;
         const e = text.indexOf(close, pos + open.length);
-        if (e < 0) { st.end = close; st.cls = 't-com'; push(pos, n, 't-com'); break scan; }
+        if (e < 0) {
+          st.end = close;
+          st.cls = 't-com';
+          push(pos, n, 't-com');
+          break scan;
+        }
         push(pos, e + close.length, 't-com');
         continue scan;
       }
@@ -424,7 +546,12 @@ export function highlight(text, lang, state) {
       if (m) {
         const q = m[2];
         const e = closeQuote(text, pos + m[0].length, q);
-        if (e < 0 && q.length === 3) { st.end = q; st.cls = 't-str'; push(pos, n, 't-str'); break; }
+        if (e < 0 && q.length === 3) {
+          st.end = q;
+          st.cls = 't-str';
+          push(pos, n, 't-str');
+          break;
+        }
         push(pos, e < 0 ? n : e, 't-str');
         continue;
       }
@@ -435,12 +562,18 @@ export function highlight(text, lang, state) {
     }
     if (L.regex && c === '/' && REGEX_BEFORE.test(text.slice(Math.max(0, pos - 12), pos))) {
       const e = closeRegex(text, pos);
-      if (e > 0) { push(pos, e, 't-str'); continue; }
+      if (e > 0) {
+        push(pos, e, 't-str');
+        continue;
+      }
     }
     const numRe = L.css ? CSS_NUM_RE : NUM_RE;
     numRe.lastIndex = pos;
     const num = numRe.exec(text);
-    if (num && num[0]) { push(pos, pos + num[0].length, 't-num'); continue; }
+    if (num && num[0]) {
+      push(pos, pos + num[0].length, 't-num');
+      continue;
+    }
     WORD_RE.lastIndex = pos;
     const word = WORD_RE.exec(text);
     if (word) {
@@ -459,7 +592,8 @@ export function highlightHunk(lines, lang) {
   const L = typeof lang === 'string' ? LANGS[lang] : lang;
   const out = new Array(lines.length).fill(null);
   if (!L) return out;
-  const oldSt = { end: null, cls: null }, newSt = { end: null, cls: null };
+  const oldSt = { end: null, cls: null },
+    newSt = { end: null, cls: null };
   lines.forEach((l, k) => {
     if (l.t === 'del') out[k] = highlight(l.s, L, oldSt);
     else if (l.t === 'add') out[k] = highlight(l.s, L, newSt);
@@ -482,7 +616,9 @@ export function highlightFile(hunks, path) {
   const out = new Array(total).fill(null);
   for (const hk of hunks) {
     const r = highlightHunk(hk.lines, L);
-    hk.lines.forEach((l, k) => { out[l.i] = r[k]; });
+    hk.lines.forEach((l, k) => {
+      out[l.i] = r[k];
+    });
   }
   return out;
 }
@@ -491,16 +627,25 @@ export function highlightFile(hunks, path) {
 
 // wordRanges: [[from,to],...]; synTokens: [{from, to, cls}]. Result: [{text, w, cls}] without empty pieces.
 export function segments(text, wordRanges, synTokens) {
-  const words = wordRanges || [], syn = synTokens || [];
+  const words = wordRanges || [],
+    syn = synTokens || [];
   if (!words.length && !syn.length) return text ? [{ text, w: false, cls: null }] : [];
   const cuts = new Set([0, text.length]);
-  for (const [a, b] of words) { cuts.add(a); cuts.add(b); }
-  for (const t of syn) { cuts.add(t.from); cuts.add(t.to); }
+  for (const [a, b] of words) {
+    cuts.add(a);
+    cuts.add(b);
+  }
+  for (const t of syn) {
+    cuts.add(t.from);
+    cuts.add(t.to);
+  }
   const points = [...cuts].filter((x) => x >= 0 && x <= text.length).sort((x, y) => x - y);
   const out = [];
-  let wi = 0, si = 0;
+  let wi = 0,
+    si = 0;
   for (let k = 0; k < points.length - 1; k++) {
-    const from = points[k], to = points[k + 1];
+    const from = points[k],
+      to = points[k + 1];
     if (from === to) continue;
     while (wi < words.length && words[wi][1] <= from) wi++;
     while (si < syn.length && syn[si].to <= from) si++;

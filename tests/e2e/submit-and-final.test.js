@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { describe, it, before } from 'node:test';
+import { before, describe, it } from 'node:test';
 import { expectCleanSession, MOD, ROOT, sleep, useEnv } from './lib.js';
 
 // Golden feedback.md: produced by the v1 buildMarkdown on the same fixture and state.
@@ -16,7 +16,8 @@ describe('submit and final screens', () => {
     shared = await env.server('mixed');
   });
 
-  it('opens the submit dialog as :modal, keeps 15 Tab presses inside it, and Esc closes it and returns focus to the button', async () => { // was 37
+  it('opens the submit dialog as :modal, keeps 15 Tab presses inside it, and Esc closes it and returns focus to the button', async () => {
+    // was 37
     const page = await env.open(shared);
     await page.click('#submit-btn');
     const modal = await page.evaluate(() => document.querySelector('dialog#submit').matches(':modal'));
@@ -26,7 +27,10 @@ describe('submit and final screens', () => {
       inside.push(await page.evaluate(() => !!document.activeElement.closest('dialog#submit')));
     }
     await page.keyboard.press('Escape');
-    const r = await page.evaluate(() => ({ open: document.querySelector('dialog#submit').open, focus: document.activeElement.id }));
+    const r = await page.evaluate(() => ({
+      open: document.querySelector('dialog#submit').open,
+      focus: document.activeElement.id,
+    }));
     const detail = JSON.stringify({ modal, inside, r });
     assert.ok(modal, detail);
     assert.ok(inside.every(Boolean), detail);
@@ -34,14 +38,21 @@ describe('submit and final screens', () => {
     assert.equal(r.focus, 'submit-btn', detail);
   });
 
-  it('warns on "Одобрить" with 1 of 4 chapters viewed and lists the unviewed files', async (t) => { // was 38
+  it('warns on "Одобрить" with 1 of 4 chapters viewed and lists the unviewed files', async (t) => {
+    // was 38
     const fx = await env.server('mixed');
     const page = await env.open(fx);
     await page.click('#toc .toc-group[data-key=s1] .toc-status');
     await page.click('#approve-btn');
     const r = await page.evaluate(() => {
       const w = document.querySelector('dialog#submit .dlg-warn');
-      return w && { head: w.querySelector('.warn-head')?.textContent, paths: [...w.querySelectorAll('.dlg-paths li')].map((li) => li.textContent), more: w.querySelector('.dlg-more')?.textContent };
+      return (
+        w && {
+          head: w.querySelector('.warn-head')?.textContent,
+          paths: [...w.querySelectorAll('.dlg-paths li')].map((li) => li.textContent),
+          more: w.querySelector('.dlg-more')?.textContent,
+        }
+      );
     });
     assert.ok(r, 'no warning in the dialog');
     assert.equal(r.head, 'Не все файлы просмотрены', JSON.stringify(r));
@@ -51,8 +62,21 @@ describe('submit and final screens', () => {
     t.diagnostic(JSON.stringify(r));
   });
 
-  it('shows "Есть неотправленные черновики: 1" in the dialog and "Перейти" leads to the draft', async (t) => { // was 39
-    const fx = await env.server('mixed', { version: 1, drafts: { 'scripts/validate.py|new|16|16': { file: 'scripts/validate.py', side: 'new', start: 16, end: 16, text: 'черновик', suggestion: '' } } });
+  it('shows "Есть неотправленные черновики: 1" in the dialog and "Перейти" leads to the draft', async (t) => {
+    // was 39
+    const fx = await env.server('mixed', {
+      version: 1,
+      drafts: {
+        'scripts/validate.py|new|16|16': {
+          file: 'scripts/validate.py',
+          side: 'new',
+          start: 16,
+          end: 16,
+          text: 'черновик',
+          suggestion: '',
+        },
+      },
+    });
     const page = await env.open(fx);
     await page.click('#submit-btn');
     const text = await page.$eval('dialog#submit .dlg-drafts', (e) => e.textContent);
@@ -69,12 +93,25 @@ describe('submit and final screens', () => {
     t.diagnostic(text);
   });
 
-  it('closes the dialog and scrolls to the .note when a comment in the list is clicked', async (t) => { // was 40
+  it('closes the dialog and scrolls to the .note when a comment in the list is clicked', async (t) => {
+    // was 40
     const notes = [
       { id: 'n1', file: 'scripts/collect.py', side: 'new', start: 34, end: 34, text: 'первый', suggestion: '' },
-      { id: 'n2', file: 'scripts/validate.py', side: 'new', start: 16, end: 16, text: 'второй\nвторая строка', suggestion: '' },
+      {
+        id: 'n2',
+        file: 'scripts/validate.py',
+        side: 'new',
+        start: 16,
+        end: 16,
+        text: 'второй\nвторая строка',
+        suggestion: '',
+      },
     ];
-    const fx = await env.server('mixed', { version: 1, annotations: notes, fileOpen: { 'scripts/validate.py': false } });
+    const fx = await env.server('mixed', {
+      version: 1,
+      annotations: notes,
+      fileOpen: { 'scripts/validate.py': false },
+    });
     const page = await env.open(fx);
     await page.click('#submit-btn');
     const items = await page.$$eval('dialog#submit .dlg-item', (els) => els.map((e) => e.textContent));
@@ -92,18 +129,25 @@ describe('submit and final screens', () => {
     t.diagnostic(`${items.join(' | ')}; top ${Math.round(r.top)}`);
   });
 
-  it('shows "Не удалось отправить" in [role=alert] inside the dialog, without alert(), when the server is stopped', async (t) => { // was 41
+  it('shows "Не удалось отправить" in [role=alert] inside the dialog, without alert(), when the server is stopped', async (t) => {
+    // was 41
     const fx = await env.server('mixed', { version: 1, globalComment: 'общий' });
     const page = await env.open(fx);
     let alerts = 0;
-    page.on('dialog', (d) => { alerts++; d.dismiss(); });
+    page.on('dialog', (d) => {
+      alerts++;
+      d.dismiss();
+    });
     await page.click('#submit-btn');
     fx.stop();
     await sleep(300);
     const w0 = await page.$eval('dialog#submit .btn.primary', (b) => b.offsetWidth);
     await page.click('dialog#submit .btn.primary');
     await page.waitForSelector('dialog#submit [role=alert]:not([hidden])', { timeout: 5000 });
-    const r = await page.evaluate(() => ({ text: document.querySelector('dialog#submit [role=alert]').textContent, btn: document.querySelector('dialog#submit .btn.primary').textContent }));
+    const r = await page.evaluate(() => ({
+      text: document.querySelector('dialog#submit [role=alert]').textContent,
+      btn: document.querySelector('dialog#submit .btn.primary').textContent,
+    }));
     const w1 = await page.$eval('dialog#submit .btn.primary', (b) => b.offsetWidth);
     const detail = JSON.stringify({ r, alerts, w0, w1 });
     assert.ok(r.text.startsWith('Не удалось отправить'), detail);
@@ -115,12 +159,21 @@ describe('submit and final screens', () => {
     t.diagnostic(r.text);
   });
 
-  it('posts Markdown to /api/submit that is byte for byte equal to feedback.golden.md', async (t) => { // was 42
+  it('posts Markdown to /api/submit that is byte for byte equal to feedback.golden.md', async (t) => {
+    // was 42
     const state = {
       version: 1,
       annotations: [
         { id: 'a1', file: 'scripts/validate.py', side: 'new', start: 16, end: 16, text: 'Почему 12?', suggestion: '' },
-        { id: 'a2', file: 'scripts/collect.py', side: 'new', start: 54, end: 58, text: 'Слишком сложно', suggestion: 'return verify_simple(root, ref)\n```inner```' },
+        {
+          id: 'a2',
+          file: 'scripts/collect.py',
+          side: 'new',
+          start: 54,
+          end: 58,
+          text: 'Слишком сложно',
+          suggestion: 'return verify_simple(root, ref)\n```inner```',
+        },
       ],
       sectionComments: { s2: 'Глава про валидатор — ок.' },
       globalComment: 'В целом хорошо.\nНо есть вопросы.',
@@ -128,7 +181,10 @@ describe('submit and final screens', () => {
     const fx = await env.server('mixed', state);
     const page = await env.open(fx);
     let body = null;
-    await page.route('**/api/submit', async (route) => { body = JSON.parse(route.request().postData()); await route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }); });
+    await page.route('**/api/submit', async (route) => {
+      body = JSON.parse(route.request().postData());
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
+    });
     await page.click('#submit-btn');
     await page.click('dialog#submit .btn.primary');
     await page.waitForSelector('.finished');
@@ -140,19 +196,38 @@ describe('submit and final screens', () => {
     t.diagnostic(`${want.length} characters; "${sub}"`);
   });
 
-  it('shows the matching heading and "Сервер остановлен, вкладку можно закрыть." for feedback, approve and close', async (t) => { // was 43 (stage 7-10)
-    const want = { feedback: 'Фидбек отправлен в сессию Claude Code.', approve: 'Одобрение отправлено в сессию Claude Code.', close: 'Ревью закрыто.' };
+  it('shows the matching heading and "Сервер остановлен, вкладку можно закрыть." for feedback, approve and close', async (t) => {
+    // was 43 (stage 7-10)
+    const want = {
+      feedback: 'Фидбек отправлен в сессию Claude Code.',
+      approve: 'Одобрение отправлено в сессию Claude Code.',
+      close: 'Ревью закрыто.',
+    };
     const got = [];
     for (const action of ['feedback', 'approve', 'close']) {
-      const fx = await env.server('mixed', { version: 1, globalComment: 'общий', annotations: [{ id: 'x', file: 'scripts/collect.py', side: 'new', start: 34, end: 34, text: 'т', suggestion: '' }] });
+      const fx = await env.server('mixed', {
+        version: 1,
+        globalComment: 'общий',
+        annotations: [
+          { id: 'x', file: 'scripts/collect.py', side: 'new', start: 34, end: 34, text: 'т', suggestion: '' },
+        ],
+      });
       const page = await env.open(fx);
       let body = null;
-      await page.route('**/api/submit', async (route) => { body = JSON.parse(route.request().postData()); await route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }); });
-      if (action === 'close') { await page.click('#more-btn'); await page.click('.menu-item:has-text("Закрыть без ответа")'); }
-      else await page.click(action === 'approve' ? '#approve-btn' : '#submit-btn');
+      await page.route('**/api/submit', async (route) => {
+        body = JSON.parse(route.request().postData());
+        await route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
+      });
+      if (action === 'close') {
+        await page.click('#more-btn');
+        await page.click('.menu-item:has-text("Закрыть без ответа")');
+      } else await page.click(action === 'approve' ? '#approve-btn' : '#submit-btn');
       await page.keyboard.press(`${MOD}+Enter`);
       await page.waitForSelector('.finished');
-      const r = await page.evaluate(() => ({ h1: document.querySelector('.finished h1').textContent, p: [...document.querySelectorAll('.finished p')].map((p) => p.textContent) }));
+      const r = await page.evaluate(() => ({
+        h1: document.querySelector('.finished h1').textContent,
+        p: [...document.querySelectorAll('.finished p')].map((p) => p.textContent),
+      }));
       await page.screenshot({ path: path.join(os.tmpdir(), `dr-final-${action}.png`) });
       assert.equal(r.h1, want[action], JSON.stringify(r));
       assert.equal(r.p[0], 'Сервер остановлен, вкладку можно закрыть.', JSON.stringify(r));
@@ -164,13 +239,21 @@ describe('submit and final screens', () => {
     t.diagnostic(got.join('; '));
   });
 
-  it('shows "Сервер остановлен, вкладку можно закрыть." on the final screen of all three actions without intercepting the request', async (t) => { // was 43 (extras)
+  it('shows "Сервер остановлен, вкладку можно закрыть." on the final screen of all three actions without intercepting the request', async (t) => {
+    // was 43 (extras)
     const out = [];
     for (const action of ['feedback', 'approve', 'close']) {
-      const fx = await env.server('mixed', { version: 1, annotations: [{ id: 'a1', file: 'scripts/collect.py', side: 'new', start: 54, end: 55, text: 'Вопрос', suggestion: '' }] });
+      const fx = await env.server('mixed', {
+        version: 1,
+        annotations: [
+          { id: 'a1', file: 'scripts/collect.py', side: 'new', start: 54, end: 55, text: 'Вопрос', suggestion: '' },
+        ],
+      });
       const page = await env.open(fx);
-      if (action === 'close') { await page.click('#more-btn'); await page.click('.menu-item:has-text("Закрыть без ответа")'); }
-      else await page.click(action === 'approve' ? '#approve-btn' : '#submit-btn');
+      if (action === 'close') {
+        await page.click('#more-btn');
+        await page.click('.menu-item:has-text("Закрыть без ответа")');
+      } else await page.click(action === 'approve' ? '#approve-btn' : '#submit-btn');
       await page.keyboard.press(`${MOD}+Enter`);
       await page.waitForSelector('.finished');
       const text = await page.evaluate(() => document.querySelector('.finished').innerText.replace(/\n+/g, ' / '));

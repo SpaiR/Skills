@@ -1,7 +1,7 @@
 // Builds the feedback Markdown sent back to the Claude Code session.
 
-import { fileByPath, R, S, sections } from './state.js';
 import { quote } from './lines.js';
+import { fileByPath, R, S, sections } from './state.js';
 import { T } from './strings.js';
 
 function fence(text, lang) {
@@ -11,7 +11,8 @@ function fence(text, lang) {
 }
 
 export function buildMarkdown(action) {
-  const g = R.guide, m = R.meta;
+  const g = R.guide,
+    m = R.meta;
   const out = [];
   out.push(T.feedback.title(action, g.title), '');
   out.push(T.feedback.range(T.rangeLabel(m)));
@@ -25,14 +26,17 @@ export function buildMarkdown(action) {
   });
 
   const order = new Map(R.files.map((f, i) => [f.path, i]));
-  const notes = [...S.annotations].sort((a, b) =>
-    (order.get(a.file) ?? 1e9) - (order.get(b.file) ?? 1e9) || a.start - b.start);
+  const notes = [...S.annotations].sort(
+    (a, b) => (order.get(a.file) ?? 1e9) - (order.get(b.file) ?? 1e9) || a.start - b.start,
+  );
   for (const a of notes) {
     const file = fileByPath.get(a.file);
     out.push(`## \`${a.file}\`, ${T.lineRange(a.start, a.end)} (${T.side(a.side)})`, '');
     if (file) {
-      const quoted = quote(file, a.side, a.start, a.end).slice(0, 20)
-        .map((l) => (l.t === 'add' ? '+' : l.t === 'del' ? '-' : ' ') + l.s).join('\n');
+      const quoted = quote(file, a.side, a.start, a.end)
+        .slice(0, 20)
+        .map((l) => (l.t === 'add' ? '+' : l.t === 'del' ? '-' : ' ') + l.s)
+        .join('\n');
       if (quoted) out.push(fence(quoted, 'diff'), '');
     }
     if (a.text) out.push(a.text, '');

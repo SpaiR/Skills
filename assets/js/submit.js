@@ -1,21 +1,21 @@
 // Submit dialog (feedback / approve / close), jumps to comments and drafts, the finished screen.
 
 import { CLOSE_AFTER_S, isMac, narrowScreen } from './constants.js';
-import { fileByPath, finished, R, S, secByKey, sections, setFinished, ui } from './state.js';
+import { dialogEl, dialogOpener } from './dialogs.js';
 import { $main, h, icon, pad2 } from './dom.js';
-import { api, cancelSave, save } from './persist.js';
-import { lineAt } from './lines.js';
-import { commentCount, filesMode, groupFor, isViewed, secComments, sectionOpen } from './model.js';
-import { fileQ, rerenderSection, secQ, stickyOffset, withAnchor } from './rerender.js';
+import { flash, goToNote, revealFile } from './events.js';
+import { buildMarkdown } from './feedback.js';
 import { updateChrome } from './header.js';
-import { setDrawer } from './toc.js';
+import { lineAt } from './lines.js';
+import { closeMenu } from './menu.js';
+import { commentCount, filesMode, groupFor, isViewed, secComments, sectionOpen } from './model.js';
 import { setMode } from './modes.js';
 import { jumpToSection, scrollToElement } from './nav.js';
-import { flash, goToNote, revealFile } from './events.js';
-import { closeMenu } from './menu.js';
-import { dialogEl, dialogOpener } from './dialogs.js';
-import { buildMarkdown } from './feedback.js';
+import { api, cancelSave, save } from './persist.js';
+import { fileQ, rerenderSection, secQ, stickyOffset, withAnchor } from './rerender.js';
+import { fileByPath, finished, R, S, secByKey, sections, setFinished, ui } from './state.js';
 import { T } from './strings.js';
+import { setDrawer } from './toc.js';
 
 const fileOrder = () => new Map(R.files.map((f, i) => [f.path, i]));
 
@@ -33,7 +33,7 @@ function draftList() {
   const order = fileOrder();
   return Object.entries(S.drafts)
     .filter(([, d]) => draftReachable(d))
-    .sort(([, a], [, b]) => (order.get(a.file) - order.get(b.file)) || a.start - b.start);
+    .sort(([, a], [, b]) => order.get(a.file) - order.get(b.file) || a.start - b.start);
 }
 
 function submitCounts() {
@@ -59,22 +59,51 @@ function submitWarnings(action, d) {
   if (action === 'approve') {
     const left = R.files.filter((f) => !isViewed(fileByPath.get(f.path)));
     if (left.length) {
-      out.push(h('div', { class: 'callout callout-warning dlg-warn' },
-        h('p', { class: 'warn-head' }, T.submit.notAllViewed),
-        h('ul', { class: 'dlg-paths' }, left.slice(0, 5).map((f) => h('li', {}, f.path))),
-        left.length > 5 && h('p', { class: 'dlg-more' }, T.submit.andMore(left.length - 5))));
+      out.push(
+        h(
+          'div',
+          { class: 'callout callout-warning dlg-warn' },
+          h('p', { class: 'warn-head' }, T.submit.notAllViewed),
+          h(
+            'ul',
+            { class: 'dlg-paths' },
+            left.slice(0, 5).map((f) => h('li', {}, f.path)),
+          ),
+          left.length > 5 && h('p', { class: 'dlg-more' }, T.submit.andMore(left.length - 5)),
+        ),
+      );
     }
   }
   const drafts = draftList();
   if (drafts.length) {
-    out.push(h('div', { class: 'callout callout-warning dlg-warn dlg-drafts' },
-      h('p', {}, T.submit.drafts(drafts.length)),
-      h('button', { class: 'btn sm', type: 'button', onclick: () => { d.close(); goToDraft(drafts[0][0]); } }, T.submit.goTo, icon('arrow-right'))));
+    out.push(
+      h(
+        'div',
+        { class: 'callout callout-warning dlg-warn dlg-drafts' },
+        h('p', {}, T.submit.drafts(drafts.length)),
+        h(
+          'button',
+          {
+            class: 'btn sm',
+            type: 'button',
+            onclick: () => {
+              d.close();
+              goToDraft(drafts[0][0]);
+            },
+          },
+          T.submit.goTo,
+          icon('arrow-right'),
+        ),
+      ),
+    );
   }
   return out;
 }
 
-const firstLine = (s) => String(s || '').split('\n').find((l) => l.trim()) || '';
+const firstLine = (s) =>
+  String(s || '')
+    .split('\n')
+    .find((l) => l.trim()) || '';
 
 function submitList(d) {
   const order = fileOrder();
@@ -83,7 +112,9 @@ function submitList(d) {
     text: S.sectionComments[sec.key],
     go: () => goToSectionComment(sec.key),
   }));
-  const notes = [...S.annotations].sort((a, b) => ((order.get(a.file) ?? 1e9) - (order.get(b.file) ?? 1e9)) || a.start - b.start);
+  const notes = [...S.annotations].sort(
+    (a, b) => (order.get(a.file) ?? 1e9) - (order.get(b.file) ?? 1e9) || a.start - b.start,
+  );
   for (const a of notes) {
     items.push({
       loc: `${a.file}:${a.start === a.end ? a.start : `${a.start}–${a.end}`}`,
@@ -92,10 +123,30 @@ function submitList(d) {
     });
   }
   if (!items.length) return null;
-  return h('ul', { class: 'dlg-list', 'aria-label': T.submit.listAria }, items.map((it) => h('li', {},
-    h('button', { class: 'dlg-item', type: 'button', title: it.loc, onclick: () => { d.close(); it.go(); } },
-      h('span', { class: 'dlg-loc' }, it.loc),
-      h('span', { class: 'dlg-text' }, firstLine(it.text))))));
+  return h(
+    'ul',
+    { class: 'dlg-list', 'aria-label': T.submit.listAria },
+    items.map((it) =>
+      h(
+        'li',
+        {},
+        h(
+          'button',
+          {
+            class: 'dlg-item',
+            type: 'button',
+            title: it.loc,
+            onclick: () => {
+              d.close();
+              it.go();
+            },
+          },
+          h('span', { class: 'dlg-loc' }, it.loc),
+          h('span', { class: 'dlg-text' }, firstLine(it.text)),
+        ),
+      ),
+    ),
+  );
 }
 
 export function openSubmit(action) {
@@ -108,7 +159,11 @@ export function openSubmit(action) {
   d.opener = opener || document.getElementById(action === 'approve' ? 'approve-btn' : 'submit-btn');
   const title = T.submit.titles[action];
   const withComments = action !== 'close';
-  const send = h('button', { class: 'btn primary', type: 'button', 'aria-keyshortcuts': isMac ? 'Meta+Enter' : 'Control+Enter' }, title);
+  const send = h(
+    'button',
+    { class: 'btn primary', type: 'button', 'aria-keyshortcuts': isMac ? 'Meta+Enter' : 'Control+Enter' },
+    title,
+  );
   const cancel = h('button', { class: 'btn', type: 'button', onclick: () => d.close() }, T.submit.cancel);
   const summary = h('dl', { class: 'dlg-summary' });
   const preview = h('pre', { class: 'preview' });
@@ -124,9 +179,18 @@ export function openSubmit(action) {
   };
   let ta = null;
   if (withComments) {
-    ta = h('textarea', { class: 'global', rows: 4, placeholder: T.submit.globalPlaceholder, 'aria-label': T.submit.globalAria });
+    ta = h('textarea', {
+      class: 'global',
+      rows: 4,
+      placeholder: T.submit.globalPlaceholder,
+      'aria-label': T.submit.globalAria,
+    });
     ta.value = S.globalComment;
-    ta.addEventListener('input', () => { S.globalComment = ta.value; save(); refresh(); });
+    ta.addEventListener('input', () => {
+      S.globalComment = ta.value;
+      save();
+      refresh();
+    });
   }
   send.addEventListener('click', async () => {
     if (send.disabled) return;
@@ -154,18 +218,28 @@ export function openSubmit(action) {
   d.primary = send;
   d.setAttribute('aria-labelledby', 'submit-title');
   d.setAttribute('aria-describedby', 'submit-hint');
-  d.replaceChildren(...[
-    h('div', { class: 'dlg-head' },
-      h('div', {}, h('h2', { id: 'submit-title' }, title), h('p', { id: 'submit-hint', class: 'dlg-hint' }, T.submit.hints[action]))),
-    summary,
-    ...submitWarnings(action, d),
-    withComments && submitList(d),
-    ta,
-    withComments && h('details', { class: 'dlg-preview' }, h('summary', {}, T.submit.preview), preview),
-    action === 'feedback' && empty,
-    error,
-    h('div', { class: 'dlg-actions' }, cancel, send),
-  ].filter(Boolean));
+  d.replaceChildren(
+    ...[
+      h(
+        'div',
+        { class: 'dlg-head' },
+        h(
+          'div',
+          {},
+          h('h2', { id: 'submit-title' }, title),
+          h('p', { id: 'submit-hint', class: 'dlg-hint' }, T.submit.hints[action]),
+        ),
+      ),
+      summary,
+      ...submitWarnings(action, d),
+      withComments && submitList(d),
+      ta,
+      withComments && h('details', { class: 'dlg-preview' }, h('summary', {}, T.submit.preview), preview),
+      action === 'feedback' && empty,
+      error,
+      h('div', { class: 'dlg-actions' }, cancel, send),
+    ].filter(Boolean),
+  );
   refresh();
   d.showModal();
   // The button width does not change when its text switches to "Sending…".
@@ -193,7 +267,10 @@ function goToDraft(key) {
   const sec = file && groupFor(d.file);
   if (!sec) return;
   revealFile(file, sec);
-  const q = ui.form && ui.form.key === key ? `${fileQ(sec.key, file.path)} .annot-form` : `${fileQ(sec.key, file.path)} .draft-row[data-key="${CSS.escape(key)}"]`;
+  const q =
+    ui.form && ui.form.key === key
+      ? `${fileQ(sec.key, file.path)} .annot-form`
+      : `${fileQ(sec.key, file.path)} .draft-row[data-key="${CSS.escape(key)}"]`;
   const el = $main().querySelector(q);
   if (!el) return;
   scrollToElement(() => $main().querySelector(q), stickyOffset() + 16);
@@ -204,12 +281,21 @@ function showFinished(action, counts) {
   const text = T.finished.title[action];
   const sub = action === 'close' ? T.finished.savedInState : T.finished.sent(counts);
   const closing = h('p', { class: 'finished-close', role: 'status' });
-  document.body.replaceChildren(h('main', { class: 'finished' },
-    h('div', { class: `finished-icon ${action === 'close' ? 'closed' : 'sent'}` }, icon(action === 'close' ? 'x' : 'check')),
-    h('h1', {}, text),
-    h('p', {}, T.finished.serverStopped),
-    h('p', { class: 'finished-sub' }, sub),
-    closing));
+  document.body.replaceChildren(
+    h(
+      'main',
+      { class: 'finished' },
+      h(
+        'div',
+        { class: `finished-icon ${action === 'close' ? 'closed' : 'sent'}` },
+        icon(action === 'close' ? 'x' : 'check'),
+      ),
+      h('h1', {}, text),
+      h('p', {}, T.finished.serverStopped),
+      h('p', { class: 'finished-sub' }, sub),
+      closing,
+    ),
+  );
   autoClose(closing, CLOSE_AFTER_S);
 }
 
@@ -223,7 +309,9 @@ function autoClose(el, seconds) {
       return;
     }
     window.close();
-    setTimeout(() => { if (!window.closed) el.textContent = T.finished.closeManually; }, 300);
+    setTimeout(() => {
+      if (!window.closed) el.textContent = T.finished.closeManually;
+    }, 300);
   };
   tick(seconds);
 }

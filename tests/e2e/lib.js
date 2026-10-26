@@ -20,12 +20,21 @@ export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Servers that are still running; killed on process exit so an aborted run leaves nothing behind.
 const live = new Set();
-process.on('exit', () => { for (const p of live) { try { p.kill(); } catch { /* already stopped */ } } });
+process.on('exit', () => {
+  for (const p of live) {
+    try {
+      p.kill();
+    } catch {
+      /* already stopped */
+    }
+  }
+});
 
 // Copies a fixture into a temp dir (with an optional state.json), starts serve.py on it and waits for its URL.
 export async function startFixture(fx, state) {
   const run = fs.mkdtempSync('/tmp/dr-test-');
-  for (const f of ['guide.json', 'guide.patch', 'meta.json']) fs.copyFileSync(path.join(FIXTURES, fx, f), path.join(run, f));
+  for (const f of ['guide.json', 'guide.patch', 'meta.json'])
+    fs.copyFileSync(path.join(FIXTURES, fx, f), path.join(run, f));
   const full = path.join(FIXTURES, fx, 'full.patch');
   if (fs.existsSync(full)) fs.copyFileSync(full, path.join(run, 'full.patch'));
   if (state) fs.writeFileSync(path.join(run, 'state.json'), JSON.stringify(state));
@@ -40,18 +49,31 @@ export async function startFixture(fx, state) {
       proc.stdout.on('data', (d) => {
         out += d;
         const m = /DIFF_REVIEW_URL: (\S+)/.exec(out);
-        if (m) { clearTimeout(t); resolve(m[1]); }
+        if (m) {
+          clearTimeout(t);
+          resolve(m[1]);
+        }
       });
-      proc.stderr.on('data', (d) => { out += d; });
+      proc.stderr.on('data', (d) => {
+        out += d;
+      });
     });
   } catch (e) {
     proc.kill();
     throw e;
   }
   return {
-    url, run, proc,
+    url,
+    run,
+    proc,
     state: () => JSON.parse(fs.readFileSync(path.join(run, 'state.json'), 'utf8')),
-    stop: () => { try { proc.kill(); } catch { /* already stopped */ } },
+    stop: () => {
+      try {
+        proc.kill();
+      } catch {
+        /* already stopped */
+      }
+    },
   };
 }
 
@@ -72,7 +94,8 @@ export async function openPage(browser, url, opts = {}) {
   const label = opts.label || '';
   page.on('pageerror', (e) => page.errors.push(`[${label}] pageerror: ${e.message}`));
   page.on('console', (m) => {
-    if (m.type() === 'error' || m.type() === 'warning') page.errors.push(`[${label}] console.${m.type()}: ${m.text()} @ ${JSON.stringify(m.location())}`);
+    if (m.type() === 'error' || m.type() === 'warning')
+      page.errors.push(`[${label}] console.${m.type()}: ${m.text()} @ ${JSON.stringify(m.location())}`);
   });
   page.on('request', (r) => page.requests.push(r.url()));
   await page.goto(url);
@@ -106,8 +129,12 @@ export function useEnv() {
       return page;
     },
   };
-  before(async () => { env.browser = await launch(); });
-  beforeEach((t) => { env.label = t.name; });
+  before(async () => {
+    env.browser = await launch();
+  });
+  beforeEach((t) => {
+    env.label = t.name;
+  });
   afterEach(async () => {
     for (const page of env.pages.splice(0)) if (!page.isClosed()) await page.close().catch(() => {});
   });
@@ -129,7 +156,10 @@ export function expectCleanSession(env) {
   it('sends network requests only to 127.0.0.1 paths /, /assets/* and /api/*', () => {
     const bad = env.requests.flat().filter((u) => {
       const x = new URL(u);
-      return x.hostname !== '127.0.0.1' || !(x.pathname === '/' || x.pathname.startsWith('/assets/') || x.pathname.startsWith('/api/'));
+      return (
+        x.hostname !== '127.0.0.1' ||
+        !(x.pathname === '/' || x.pathname.startsWith('/assets/') || x.pathname.startsWith('/api/'))
+      );
     });
     assert.equal(bad.length, 0, bad.join(' '));
   });

@@ -1,20 +1,20 @@
 // Delegated click and change handlers of #main, and the actions they trigger.
 
-import { fileByPath, finished, S, secByKey, sections, ui } from './state.js';
 import { $main } from './dom.js';
-import { save } from './persist.js';
-import { rangeOf } from './lines.js';
 import { expandGap, isWhole, setWholeFile } from './expand.js';
-import { fileOpen, groupFor, groups, sectionOpen } from './model.js';
-import { setFileViewed, setSectionViewed } from './viewed.js';
-import { fileQ, rerenderFile, rerenderSection, secQ, stickyOffset, withAnchor } from './rerender.js';
+import { continueDraft, deleteDraft, deleteNote, lineRowBefore, openEditForm, openLineForm } from './forms.js';
 import { updateChrome } from './header.js';
-import { resetFilter } from './tree.js';
+import { rangeOf } from './lines.js';
+import { fileOpen, groupFor, groups, sectionOpen } from './model.js';
 import { setMode } from './modes.js';
 import { jumpToFile, jumpToSection, scrollToElement } from './nav.js';
+import { save } from './persist.js';
+import { fileQ, rerenderFile, rerenderSection, secQ, stickyOffset, withAnchor } from './rerender.js';
 import { closeSectionComment, deleteSectionComment, openSectionComment } from './section.js';
-import { continueDraft, deleteDraft, deleteNote, lineRowBefore, openEditForm, openLineForm } from './forms.js';
 import { numLine } from './selection.js';
+import { fileByPath, finished, S, secByKey, sections, ui } from './state.js';
+import { resetFilter } from './tree.js';
+import { setFileViewed, setSectionViewed } from './viewed.js';
 
 export function onMainClick(e) {
   if (finished) return;
@@ -113,8 +113,14 @@ export function goToNote(id, secKey) {
 export function revealFile(file, sec) {
   if (sec.headless && ui.visible && !ui.visible.has(file.path)) resetFilter();
   const changed = [];
-  if (!sectionOpen(sec)) { S.sectionOpen[sec.key] = true; changed.push('sec'); }
-  if (!fileOpen(file)) { S.fileOpen[file.path] = true; changed.push('file'); }
+  if (!sectionOpen(sec)) {
+    S.sectionOpen[sec.key] = true;
+    changed.push('sec');
+  }
+  if (!fileOpen(file)) {
+    S.fileOpen[file.path] = true;
+    changed.push('file');
+  }
   if (!changed.length) return;
   save();
   withAnchor(() => {
