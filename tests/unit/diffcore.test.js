@@ -390,3 +390,34 @@ test('highlightFile on collect.py of the mixed fixture: def in add, # comment, t
   const com = lines.find((l) => l.t === 'add' && l.s.includes('# больше коммитов'));
   assert.deepEqual(text(com).pop(), ['t-com', '# больше коммитов в сводке']);
 });
+
+test('prPosition: lines inside one hunk get GitLab-style counters, ranges across hunks or outside get null', () => {
+  const patch = [
+    'diff --git a/f.txt b/f.txt',
+    '--- a/f.txt',
+    '+++ b/f.txt',
+    '@@ -10,3 +10,4 @@',
+    ' a',
+    '-b',
+    '+B',
+    '+C',
+    ' d',
+    '@@ -20,0 +22,1 @@',
+    '+tail',
+  ].join('\n');
+  const hunks = D.parsePatch(patch);
+  assert.deepEqual(D.prPosition(hunks, 'new', 11, 12), {
+    start: { type: 'add', old: 12, new: 11 },
+    end: { type: 'add', old: 12, new: 12 },
+  });
+  assert.deepEqual(D.prPosition(hunks, 'old', 10, 11), {
+    start: { type: 'ctx', old: 10, new: 10 },
+    end: { type: 'del', old: 11, new: 11 },
+  });
+  assert.deepEqual(D.prPosition(hunks, 'new', 13, 13).end, { type: 'ctx', old: 12, new: 13 });
+  // A zero-length old side keeps the raw header counter, as GitLab does.
+  assert.deepEqual(D.prPosition(hunks, 'new', 22, 22).start, { type: 'add', old: 20, new: 22 });
+  assert.equal(D.prPosition(hunks, 'new', 13, 22), null);
+  assert.equal(D.prPosition(hunks, 'new', 5, 5), null);
+  assert.equal(D.prPosition(hunks, 'old', 13, 13), null);
+});
