@@ -5,8 +5,9 @@ paths:
 
 # Scripts (scripts/)
 
-- External commands: `git`, and `gh`/`glab` only from `remote.py` and `publish.py`. Network access goes only
-  through those two CLIs and their logins; the scripts never handle tokens.
+- External commands: `git`, and `gh`/`glab` only from `remote.py` and `publish.py`. Network access: the two CLIs
+  (metadata, cache clones, publishing) and `git fetch` / lazy blob fetches of the PR commits. Credentials stay with
+  `gh`, `glab` and git; the scripts never handle tokens.
 - Python standard library only; target Python 3.9+ (`target-version` in `pyproject.toml`). No third-party
   imports, no `requirements.txt`. Ruff is a dev tool, run through `uvx`.
 - Each script is a CLI with `--help` (argparse, module docstring as description). `serve.py` imports
@@ -47,8 +48,11 @@ paths:
 ## Publishing (publish.py)
 
 - Only on an explicit `POST /api/publish` from the page; nothing is posted on startup, timeout or close.
-- GitHub: one atomic review; GitLab: discussions, then the note, then approve, each recorded in `published.json` so
-  a retry never posts twice. The request/response contract is in `publish.py`'s docstring; the page builds the
+- GitHub: one atomic review; GitLab: discussions, then the note, then approve, each recorded in `published.json`
+  (keyed by the step's content, so an edited comment is posted, not skipped) so a retry never posts the same thing
+  twice. A complete publish deletes `published.json`.
+- Submits, publishes and the timeout share one lock in `serve.py`: whichever finishes first wins, and a publish in
+  flight is never cut off by a close or a timeout. The request/response contract is in `publish.py`'s docstring; the page builds the
   payload in `assets/js/publish.js`; change both together.
 
 ## serve.py security

@@ -35,7 +35,7 @@ Argument tokens, in any order:
 | `<A>..<B>`, `<A>...<B>` | `--mode range --ref <A>..<B>` |
 | branch name | `--mode branch --ref <branch>`: from the merge-base with the base branch to the branch |
 | PR/MR URL: `https://<host>/<owner>/<repo>/pull/<N>`, `https://<host>/<group>/<project>/-/merge_requests/<N>` | `--pr <url>` |
-| `pr <N>`, `#<N>`, `mr <N>`, `!<N>` | `--pr "<token as given>"`: number resolved against the repository's `origin` |
+| `pr <N>`, `#<N>`, `mr <N>`, `!<N>` | `--pr "<token as given>"`: `gh`/`glab` resolve the number in the repository (as on their command line, e.g. upstream of a fork) |
 | `pr`, `mr` alone | `--pr pr` / `--pr mr`: the PR/MR of the repository's current branch |
 | `--base <ref>` | pass through as is (not with `--pr`) |
 | none of the above | default mode `since-base`: from the merge-base with the base branch to the working tree, including untracked files |

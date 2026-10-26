@@ -36,7 +36,7 @@ In a Claude Code session type `/diff-review` with optional arguments in any orde
 /diff-review the worktree with the login fix
 /diff-review https://github.com/owner/repo/pull/123
 /diff-review https://gitlab.example.com/group/project/-/merge_requests/45
-/diff-review pr 123                   # also #123, mr 45, !45: resolved against the repository's origin
+/diff-review pr 123                   # also #123, mr 45, !45: resolved by gh/glab in the current repository
 /diff-review pr                       # the PR/MR of the current branch
 ```
 
