@@ -183,6 +183,27 @@ class ServerHttpTest(ServerCase):
         self.assertEqual(out.strip().splitlines()[-1], "DIFF_REVIEW_RESULT: approved")
         self.assertEqual(self.proc.returncode, 0)
 
+    def test_error_bodies_are_codes(self):
+        cases = [({"action": "feedback", "markdown": "  "}, "empty_feedback"), ({"action": "bogus"}, "action")]
+        for body, code in cases:
+            with self.subTest(body=body):
+                status, raw = self.request("POST", "/api/submit", body)
+                self.assertEqual((status, json.loads(raw)), (400, {"error": code}))
+
+    def test_too_large_request_rejected(self):
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        try:
+            # Only the header claims a huge body: the server must refuse before reading it.
+            conn.putrequest("PUT", "/api/state")
+            conn.putheader("X-Review-Token", self.token)
+            conn.putheader("Content-Length", str(serve.MAX_BODY + 1))
+            conn.endheaders()
+            resp = conn.getresponse()
+            self.assertEqual((resp.status, json.loads(resp.read())), (400, {"error": "request_too_large"}))
+        finally:
+            conn.close()
+        self.assertFalse((self.outdir / "state.json").exists())
+
     def test_submit_feedback_writes_file(self):
         self.assertEqual(self.request("POST", "/api/submit", {"action": "feedback", "markdown": ""})[0], 400)
         self.assertEqual(self.request("POST", "/api/submit", {"action": "bogus"})[0], 400)
@@ -191,6 +212,21 @@ class ServerHttpTest(ServerCase):
         self.assertEqual(out.strip().splitlines()[-1],
                          f"DIFF_REVIEW_RESULT: feedback {self.outdir.resolve() / 'feedback.md'}")
         self.assertEqual((self.outdir / "feedback.md").read_text(encoding="utf-8"), "fix\n")
+
+
+class SubmitErrorTest(unittest.TestCase):
+    def test_rejections(self):
+        self.assertEqual(serve.submit_error("bogus", "x", False), (400, "action"))
+        self.assertEqual(serve.submit_error(None, "", False), (400, "action"))
+        self.assertEqual(serve.submit_error("feedback", "", False), (400, "empty_feedback"))
+        for action in ("feedback", "approve", "close"):
+            with self.subTest(action=action):
+                self.assertEqual(serve.submit_error(action, "x", True), (409, "already_submitted"))
+
+    def test_accepted(self):
+        for action, markdown in (("feedback", "fix"), ("approve", ""), ("approve", "ok"), ("close", "")):
+            with self.subTest(action=action, markdown=markdown):
+                self.assertIsNone(serve.submit_error(action, markdown, False))
 
 
 class ServerV1OutdirTest(ServerCase):
