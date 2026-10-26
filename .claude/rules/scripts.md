@@ -30,9 +30,10 @@ paths:
   as "racily clean", would not re-read a file edited right after `add`/`commit` without a size change, and that
   file would vanish from the diff. Do not replace it with `shutil.copy` or a fresh `read-tree`.
 - No writes to the working tree, the real index, refs or config. The one exception is `collect.py --pr`: it may
-  `git fetch` the PR/MR commits into the user's matching clone, which adds objects and updates `FETCH_HEAD` and
-  remote-tracking refs, nothing else. Everything else goes to the cache clone under `$TMPDIR/diff-review/repos/`. Run git with `core.quotePath=false` and the
-  fixed `DIFF_FLAGS` (no colour, no external diff, no textconv).
+  `git fetch --refmap=` the PR/MR commits into the user's matching clone, which adds objects and updates
+  `FETCH_HEAD`, nothing else (no remote-tracking refs). Everything else goes to the cache clone under
+  `$TMPDIR/diff-review/repos/`.
+- Run git with `core.quotePath=false` and the fixed `DIFF_FLAGS` (no colour, no external diff, no textconv).
 
 ## meta.json versions
 

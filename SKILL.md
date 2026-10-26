@@ -42,7 +42,7 @@ Argument tokens, in any order:
 
 Tell a branch from a sha with `git -C <repo> rev-parse --verify`. With `--pr`, still pass `--repo` (inferred as below):
 `collect.py` fetches the PR commits into that repository if one of its remotes is the PR's repository (only objects and
-remote-tracking refs change, never the working tree or index), otherwise into a cache clone under `$TMPDIR`. GitHub and
+`FETCH_HEAD` change, never refs, the working tree or the index), otherwise into a cache clone under `$TMPDIR`. GitHub and
 GitLab are reached only through the `gh` and `glab` CLIs, inside the scripts. Match free text (e.g. "the worktree with the login
 fix", possibly in Russian) against the session context using the rules below.
 
