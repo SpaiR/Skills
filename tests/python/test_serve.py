@@ -3,6 +3,7 @@
 import http.client
 import json
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -69,6 +70,11 @@ class AssetFileTest(unittest.TestCase):
             (Path(td) / "d.js").mkdir()  # a directory with an allowed extension
             self.assertIsNone(serve.asset_file(f"/assets/{Path(td).name}/d.js"))
 
+    def test_nul_byte_rejected(self):
+        # Path.resolve() raises ValueError on an embedded NUL; the server must answer 404, not crash the request.
+        self.assertIsNone(serve.asset_file("/assets/js/main.js\x00"))
+        self.assertIsNone(serve.asset_file("/assets/a\x00.js"))
+
     def test_paths_outside_assets_rejected(self):
         for path in ("/api/review", "/viewer.html", "/etc/passwd", "", "assets/viewer.js"):
             with self.subTest(path=path):
@@ -132,6 +138,13 @@ class ServerHttpTest(ServerCase):
         status, body = self.request("GET", "/", token=False)
         self.assertEqual(status, 200)
         self.assertIn(b"<html", body.lower())
+
+    def test_nul_byte_in_asset_path_answers_404(self):
+        # http.client refuses such a path, so the request goes over a raw socket.
+        with socket.create_connection(("127.0.0.1", self.port), timeout=10) as sock:
+            sock.sendall(b"GET /assets/a\x00.js HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n")
+            reply = sock.makefile("rb").read()
+        self.assertTrue(reply.startswith(b"HTTP/1.0 404"), reply[:80])
 
     def test_api_review_requires_token(self):
         self.assertEqual(self.request("GET", "/api/review", token=False)[0], 403)
