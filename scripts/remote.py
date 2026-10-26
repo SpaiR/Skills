@@ -6,7 +6,8 @@ local git repository that holds the PR commits, so that collect.py can run its u
 
 A reference is a PR/MR URL (`https://<host>/<owner>/<repo>/pull/N`, `https://<host>/<group>/<proj>/-/merge_requests/N`,
 trailing `/files`, `/diffs`, a query or a fragment are fine) or a shorthand: `#N`, `!N`, `pr N`, `mr N`, and a bare `pr`
-or `mr` for the PR/MR of the current branch. Shorthands are resolved against the `origin` remote of the repository.
+or `mr` for the PR/MR of the current branch. Shorthands are resolved by gh / glab inside the repository; the
+host of its `origin` remote picks the CLI.
 
 `gh` and `glab` are used only for metadata, the viewer login, the cache clone and publishing; commits arrive through
 plain `git fetch` of `refs/pull/N/head` (GitHub) or `refs/merge-requests/N/head` (GitLab). The user's working tree,
@@ -213,31 +214,29 @@ def choose_provider(host, hint):
     return GITLAB if glab_knows_host(host) else GITHUB
 
 
-def current_branch_number(provider, host, repo_dir):
-    """Number of the PR/MR of the checked-out branch, via gh / glab run inside the repository."""
+def url_in_repo(provider, host, repo_dir, number):
+    """URL of PR/MR `number` (None: the one of the checked-out branch), looked up by gh / glab inside the repository.
+
+    The CLI picks the base repository itself (e.g. `upstream` of a fork, or `gh repo set-default`), so a number
+    means what it means on the command line, not necessarily a PR of `origin`.
+    """
     env = {**os.environ, "GH_HOST": host} if provider == GITHUB and host != "github.com" else None
+    what = f"looking up {'the PR/MR of the current branch' if number is None else f'PR/MR {number}'}"
+    num = [] if number is None else [str(number)]
     if provider == GITHUB:
-        data = call_json(
-            "gh",
-            host,
-            "looking up the PR of the current branch",
-            ["pr", "view", "--json", "number"],
-            cwd=repo_dir,
-            env=env,
-        )
-        number = data.get("number")
+        data = call_json("gh", host, what, ["pr", "view", *num, "--json", "url"], cwd=repo_dir, env=env)
+        url = data.get("url")
     else:
-        data = call_json(
-            "glab", host, "looking up the MR of the current branch", ["mr", "view", "-F", "json"], cwd=repo_dir, env=env
-        )
-        number = data.get("iid")
-    if not isinstance(number, int):
+        data = call_json("glab", host, what, ["mr", "view", *num, "-F", "json"], cwd=repo_dir, env=env)
+        url = data.get("web_url")
+    if not isinstance(url, str) or not url:
         raise RemoteError("the current branch has no PR/MR. Pass a number or a URL instead.")
-    return number
+    return url
 
 
 def resolve(text, repo_dir):
-    """Target for a reference. Shorthands use the origin remote (else the first remote) of repo_dir."""
+    """Target for a reference. For a shorthand, the host of origin (else the first remote) of repo_dir picks the
+    provider and gh / glab resolve the number there."""
     ref = parse_ref(text)
     if ref.host:
         return Target(ref.provider, ref.host, ref.repo, ref.number)
@@ -248,10 +247,10 @@ def resolve(text, repo_dir):
             f"`{text.strip()}` needs a git repository with a remote to tell which repository it belongs to. "
             "Run from inside the clone (or pass --repo), or pass the full PR/MR URL."
         )
-    host, repo = remote[1]
+    host, _ = remote[1]
     provider = choose_provider(host, ref.provider)
-    number = ref.number or current_branch_number(provider, host, repo_dir)
-    return Target(provider, host, repo, number)
+    found = parse_url(url_in_repo(provider, host, repo_dir, ref.number))
+    return Target(found.provider, found.host, found.repo, found.number)
 
 
 # --- metadata ---------------------------------------------------------------------------------------------------
@@ -408,7 +407,8 @@ def ensure_commits(pr, repo_dir):
             wanted.append(head_ref(pr))
         base_variants = []
         if pr["provider"] == GITHUB and not base_ok:
-            base_variants = [[pr["baseSha"]], [pr["baseRef"]] if pr["baseRef"] else []]
+            # refs/heads/ also keeps a branch name that starts with "-" from being read as an option.
+            base_variants = [[pr["baseSha"]], [f"refs/heads/{pr['baseRef']}"] if pr["baseRef"] else []]
         for base in base_variants or [[]]:
             rc, _, stderr = git_fetch(root, remote, [*base, *wanted])
             if rc == 0:

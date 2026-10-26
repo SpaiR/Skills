@@ -14,7 +14,7 @@ from pathlib import Path
 from unittest import mock
 
 import test_collect
-from fakecli_support import FakeCliMixin
+from fakecli_support import FAKECLI, FakeCliMixin
 from test_collect import ENV, commit, git, lines, write
 
 SCRIPTS = Path(__file__).resolve().parents[2] / "scripts"
@@ -307,45 +307,79 @@ class ResolveTest(FakeCliMixin, unittest.TestCase):
         t = remote.resolve(text, self.repo)
         return t.provider, t.host, t.repo, t.number
 
+    def gh_view(self, n, url):
+        """gh answering `pr view [n] --json url` with url."""
+        return rule("gh", [f"pr view {n} --json url" if n else "pr view --json url"], {"url": url})
+
+    def glab_view(self, n, url):
+        return rule("glab", [f"mr view {n} -F json" if n else "mr view -F json"], {"iid": n or 8, "web_url": url})
+
     def test_github_com_is_github_without_asking_glab(self):
         self.origin("git@github.com:o/r.git")
+        self.set_rules([self.gh_view(7, "https://github.com/o/r/pull/7")])
         self.assertEqual(self.target("#7"), ("github", "github.com", "o/r", 7))
         self.assertEqual(self.target("pr 7"), ("github", "github.com", "o/r", 7))
-        self.assertEqual(self.calls(), [])
+        self.assertEqual({c["cli"] for c in self.calls()}, {"gh"})
+
+    def test_fork_number_resolves_to_the_repository_gh_picks(self):
+        # origin is a fork; gh resolves #7 against upstream (its default base repository), and so do we.
+        self.origin("git@github.com:me/r.git")
+        self.set_rules([self.gh_view(7, "https://github.com/upstream/r/pull/7")])
+        self.assertEqual(self.target("#7"), ("github", "github.com", "upstream/r", 7))
 
     def test_known_glab_host_is_gitlab(self):
         self.origin("https://git.corp.example/a/b/p.git")
-        self.set_rules([rule("glab", ["auth status --hostname git.corp.example"])])
+        self.set_rules(
+            [
+                rule("glab", ["auth status --hostname git.corp.example"]),
+                self.glab_view(7, "https://git.corp.example/a/b/p/-/merge_requests/7"),
+            ]
+        )
         self.assertEqual(self.target("#7"), ("gitlab", "git.corp.example", "a/b/p", 7))
 
     def test_unknown_host_is_github_enterprise(self):
         self.origin("https://ghe.corp.example/team/svc")
-        self.set_rules([rule("glab", ["auth status"], exit=1, stderr="x not authenticated")])
+        self.set_rules(
+            [
+                rule("glab", ["auth status"], exit=1, stderr="x not authenticated"),
+                self.gh_view(7, "https://ghe.corp.example/team/svc/pull/7"),
+            ]
+        )
         self.assertEqual(self.target("#7"), ("github", "ghe.corp.example", "team/svc", 7))
+        view = self.calls("gh", "pr view")[0]
+        self.assertEqual(view["env"]["GH_HOST"], "ghe.corp.example")
 
     def test_unknown_host_without_glab_is_github_enterprise(self):
         self.origin("https://ghe.corp.example/team/svc")
+        self.set_rules([self.gh_view(7, "https://ghe.corp.example/team/svc/pull/7")])
         bin_dir = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, bin_dir)
-        (bin_dir / "git").symlink_to(shutil.which("git"))  # a PATH with git but neither gh nor glab
+        (bin_dir / "git").symlink_to(shutil.which("git"))  # a PATH with git and gh but no glab
+        (bin_dir / "gh").symlink_to(FAKECLI / "gh")
+        (bin_dir / "python3").symlink_to(sys.executable)  # the fake gh runs on python3 from PATH
         with mock.patch.dict(os.environ, {"PATH": str(bin_dir)}):
             self.assertEqual(self.target("#7"), ("github", "ghe.corp.example", "team/svc", 7))
 
     def test_bang_and_mr_imply_gitlab_without_asking(self):
         self.origin("https://git.corp.example/a/p.git")
+        self.set_rules([self.glab_view(9, "https://git.corp.example/a/p/-/merge_requests/9")])
         self.assertEqual(self.target("!9"), ("gitlab", "git.corp.example", "a/p", 9))
         self.assertEqual(self.target("mr 9"), ("gitlab", "git.corp.example", "a/p", 9))
-        self.assertEqual(self.calls(), [])
+        self.assertEqual(self.calls("glab", "auth status"), [])
 
     def test_first_remote_when_there_is_no_origin(self):
-        self.origin("https://github.com/o/zeta.git", "zeta")
-        self.origin("https://github.com/o/alpha.git", "alpha")
-        self.assertEqual(self.target("#1")[2], "o/alpha")  # git lists remotes alphabetically
+        self.origin("https://git.corp.example/o/zeta.git", "zeta")
+        self.origin("https://git.corp.example/o/alpha.git", "alpha")
+        self.set_rules([self.glab_view(1, "https://git.corp.example/o/alpha/-/merge_requests/1")])
+        self.assertEqual(self.target("!1")[2], "o/alpha")  # git lists remotes alphabetically
+        self.assertEqual(self.calls("glab", "mr view")[0]["argv"][:2], ["mr", "view"])
 
-    def test_origin_wins_over_other_remotes(self):
-        self.origin("https://github.com/o/fork.git", "aaa")
+    def test_origin_host_picks_the_cli(self):
+        self.origin("https://git.corp.example/o/fork.git", "aaa")
         self.origin("https://github.com/o/main-repo.git", "origin")
-        self.assertEqual(self.target("#1")[2], "o/main-repo")
+        self.set_rules([self.gh_view(1, "https://github.com/o/main-repo/pull/1")])
+        self.assertEqual(self.target("#1"), ("github", "github.com", "o/main-repo", 1))
+        self.assertEqual(self.calls("glab"), [])
 
     def test_url_ignores_the_repository(self):
         t = remote.resolve("https://github.com/x/y/pull/4", self.repo / "does-not-exist")
@@ -359,12 +393,12 @@ class ResolveTest(FakeCliMixin, unittest.TestCase):
 
     def test_current_branch_github(self):
         self.origin("https://github.com/o/r.git")
-        self.set_rules([rule("gh", ["pr view --json number"], {"number": 31})])
+        self.set_rules([self.gh_view(None, "https://github.com/o/r/pull/31")])
         self.assertEqual(self.target("pr"), ("github", "github.com", "o/r", 31))
 
     def test_current_branch_gitlab(self):
         self.origin("https://git.corp.example/a/p.git")
-        self.set_rules([rule("glab", ["mr view -F json"], {"iid": 8, "title": "t"})])
+        self.set_rules([self.glab_view(None, "https://git.corp.example/a/p/-/merge_requests/8")])
         self.assertEqual(self.target("mr"), ("gitlab", "git.corp.example", "a/p", 8))
 
     def test_current_branch_without_a_pr(self):
@@ -408,6 +442,7 @@ def github_rules(origin, **over):
     pr = gh_json(**{"baseRefOid": origin["base"], "headRefOid": origin["head"], **over})
     return [
         rule("gh", ["pr view 1 -R github.com/o/r"], pr),
+        rule("gh", ["pr view", "--json url"], {"url": "https://github.com/o/r/pull/1"}),
         rule("gh", ["api --hostname github.com user"], "me\n"),
         rule("gh", ["repo clone github.com/o/r"], clone_from=str(origin["bare"])),
     ]
@@ -421,6 +456,11 @@ def gitlab_rules(origin, **over):
         rule("glab", ["api --hostname gitlab.example.com user"], {"username": "me"}),
         rule("glab", ["repo clone g/sub/proj"], clone_from=str(origin["bare"])),
         rule("glab", ["auth status --hostname gitlab.example.com"]),
+        rule(
+            "glab",
+            ["mr view", "-F json"],
+            {"iid": 1, "web_url": "https://gitlab.example.com/g/sub/proj/-/merge_requests/1"},
+        ),
     ]
 
 
@@ -509,6 +549,17 @@ class CollectPrTest(FakeCliMixin, test_collect.Base):
         summary = json.loads(r.stdout)
         self.assertEqual(summary["pr"], {"url": "https://github.com/o/r/pull/1", "title": "Add things"})
         self.assertEqual((summary["mode"], summary["label"], summary["branch"]), ("pr", "GitHub PR o/r#1", "feature"))
+
+    def test_user_diff_config_does_not_change_the_pr_hunks(self):
+        empty = self.tmp / "not-a-repo"
+        empty.mkdir()
+        _, plain, _ = self.collect_pr("https://github.com/o/r/pull/1", repo=empty)
+        self.user_repo("https://github.com/o/r.git")
+        git(self.repo, "config", "diff.interHunkContext", "50")  # would merge the two hunks of a.txt
+        git(self.repo, "config", "diff.algorithm", "histogram")
+        _, configured, _ = self.collect_pr("https://github.com/o/r/pull/1", name="out2")
+        self.assertEqual((configured / "guide.patch").read_bytes(), (plain / "guide.patch").read_bytes())
+        self.assertEqual((plain / "guide.patch").read_text().count("\n@@ -"), 4)  # a.txt x2, b.txt, new.txt
 
     def test_shorthand_uses_origin_and_needs_no_fetch_when_commits_are_local(self):
         self.user_repo("git@github.com:o/r.git")
@@ -604,7 +655,7 @@ class CollectPrTest(FakeCliMixin, test_collect.Base):
         self.assertFalse(self.calls("glab", "repo clone"))
 
     def test_current_branch_shorthand(self):
-        self.set_rules([*github_rules(self.origin), rule("gh", ["pr view --json number"], {"number": 1})])
+        self.set_rules(github_rules(self.origin))
         self.user_repo("https://github.com/o/r.git")
         _, out, meta = self.collect_pr("pr")
         self.check_github_meta(meta, out)
@@ -710,7 +761,7 @@ class EnsureCommitsTest(FakeCliMixin, test_collect.Base):
             mock.patch.object(remote, "git_fetch", fetch),
         ):
             remote.ensure_commits(pr, self.repo)
-        self.assertEqual(calls, [[origin["base"], "refs/pull/1/head"], ["main", "refs/pull/1/head"]])
+        self.assertEqual(calls, [[origin["base"], "refs/pull/1/head"], ["refs/heads/main", "refs/pull/1/head"]])
         self.assertEqual(git(self.repo, "for-each-ref").decode(), "")  # fetching `main` made no tracking branch
         self.assertEqual(pr["mergeBaseSha"], origin["fork"])
 

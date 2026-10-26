@@ -354,7 +354,10 @@ def collect(args):
 
     if mode == "pr":
         base, merge_base = pr["baseRef"], pr["mergeBaseSha"]
-        diff_args, log_args, new_rev = [merge_base, head], [f"{merge_base}..{head}"], head
+        # Git's defaults, whatever the user's diff config says: hunks must match the ones GitHub/GitLab show,
+        # or inline comments land on lines the server does not consider part of the diff.
+        defaults = ["--diff-algorithm=myers", "--inter-hunk-context=0"]
+        diff_args, log_args, new_rev = [*defaults, merge_base, head], [f"{merge_base}..{head}"], head
         label = pr_label(pr)
         rng = {key: pr[key] for key in ("provider", "host", "repo", "number", "url")}
         rng = {"mode": "pr", **rng}
