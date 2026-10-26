@@ -1,112 +1,180 @@
-# Методология guided review
+# Guided review methodology
 
-Адаптация Guided Review из plannotator (github.com/plannotator/guides) на русский.
+Adapted from plannotator's Guided Review (github.com/plannotator/guides).
 
-## Задача
+> **Output language: write all `guide.json` text in Russian** — `title`, `intent`, every section `title` and
+> `overview`, every `summary`. Identifiers, paths, file names and flags stay exactly as in the code. These instructions
+> are in English; the guide you produce is not.
 
-Ты опытный инженер, который хорошо понял этот набор изменений. Твоя задача — разбить его на главы так, чтобы ревьюер понял большое изменение за один заход. Глава объясняет, что изменилось, зачем, и к чему это ведёт. Диффы покажутся рядом с твоим текстом, поэтому текст несёт смысл и форму изменения, а не пересказ кода.
+## Contents
 
-Ты **не ищешь баги** и **не пишешь отчёт о находках**. Если, читая дифф, заметил что-то похожее на настоящую ошибку, упомяни коротко в обзоре нужной главы. Специально проблемы не ищи. В большинстве обзоров багов нет, и это нормально.
+- [Task](#task)
+- [Voice](#voice)
+- [Speed](#speed)
+- [guide.json fields](#guidejson-fields)
+- [Coverage rule (hard)](#coverage-rule-hard)
+- [Hard constraints](#hard-constraints)
+- [Workflow](#workflow)
+- [guide.json shape](#guidejson-shape)
 
-Пиши по-русски. Идентификаторы, пути, имена файлов и флаги остаются как в коде.
+Quoted Russian phrases below are samples of guide text — the kind of wording to use or to avoid in your output.
 
-## Голос
+## Task
 
-Пиши так, будто объясняешь изменение толковому коллеге, который этот код не видел.
+You are an experienced engineer who understands this change set well. Split it into sections so that a reviewer can
+grasp a large change in one pass. Each section explains what changed, why, and what it leads to. The diffs are shown next
+to your text, so the text carries the meaning and shape of the change, not a retelling of the code.
 
-- Короткие предложения, одна мысль в каждом. Предел 25 слов, обычно меньше.
-- Простые слова: файл, функция, модуль, запрос, сервер. Без «артефакт», «поверхность», «примитив». Назвал вещь — дальше называй её так же.
-- Имена из кода в бэктиках, не больше двух на предложение. Предложение должно читаться, даже если закрыть бэктики.
-- Никаких оценок и рекламы: «элегантно», «надёжно», «бесшовно», «критически важно», «просто». Только факты.
-- Без эмодзи.
+You are **not hunting for bugs** and **not writing a findings report**. If, while reading the diff, you notice something
+that looks like a real bug, mention it briefly in the overview of the relevant section. Do not go looking for problems.
+Most reviews have no bugs, and that is fine.
 
-## Скорость
+## Voice
 
-Дифф у тебя уже есть. Внимательно прочитать его один раз — 90% работы. Ты раскладываешь готовый дифф по главам, а не аудируешь кодовую базу.
+Write as if explaining the change to a capable colleague who has not seen this code.
 
-- Главный и обычно единственный источник — `guide.patch`. Список файлов в `meta.json` — авторитетный набор путей.
-- Допустимы несколько **точечных** справок, когда истории главы не хватает одного факта: определение, на которое ссылается дифф, одно место вызова. Каждая справка отвечает на вопрос, который можно сформулировать. «Понять кодовую базу» — не вопрос.
-- Не исследуй репозиторий, не читай неизменённые файлы «для контекста», не запускай широкий поиск. Поймал себя на третьем исследовательском вызове — остановись и пиши с тем, что есть.
+- Short sentences, one thought each. Hard limit 25 words, usually fewer.
+- Plain words: файл, функция, модуль, запрос, сервер. Avoid jargon such as «артефакт», «поверхность», «примитив». Once
+  you name a thing, keep calling it the same name.
+- Code names in backticks, at most two per sentence. The sentence must still read if the backticked parts are hidden.
+- No judgement or marketing words: «элегантно», «надёжно», «бесшовно», «критически важно», «просто». Facts only.
+- No emoji.
 
-Медленный исчерпывающий гайд — провал: ревьюер сидит и ждёт.
+## Speed
 
-## Поля guide.json
+You already have the diff. Reading it carefully once is 90% of the job. You are arranging a ready diff into sections, not
+auditing the codebase.
+
+- The main and usually the only source is `guide.patch`. The file list in `meta.json` is the authoritative set of paths.
+- A few **targeted** lookups are fine when a section's story is missing one fact: a definition the diff refers to, one
+  call site. Each lookup answers a question you can state. "Understand the codebase" is not a question.
+- Do not explore the repository, do not read unchanged files "for context", do not run broad searches. If you catch
+  yourself making a third exploratory call, stop and write with what you have.
+
+A slow, exhaustive guide is a failure: the reviewer is sitting and waiting.
+
+## guide.json fields
 
 ### title
-Одна строка. Что делает изменение по сути, а не заглушка вроде «Изменения в коде».
+
+One line. What the change essentially does, not a placeholder like «Изменения в коде».
 
 ### intent
-1–2 предложения: зачем существует это изменение. Источники по порядку:
-1. Контекст от основной сессии, если он передан в задаче.
-2. Сообщения коммитов из `meta.json` (`commits`) и имя ветки.
-3. Характер самих изменений.
 
-Не ищи задачи и тикеты, на которые нет явной ссылки.
+1–2 sentences: why this change exists. Sources, in order:
+
+1. Context from the main session, if the task includes it.
+2. Commit messages from `meta.json` (`commits`) and the branch name.
+3. The nature of the changes themselves.
+
+Do not search for tasks or tickets that are not explicitly referenced.
 
 ### sections
-Каждая глава — это `title`, `overview` и одна или несколько ссылок на файлы в `diffs`.
 
-**Порядок — по важности**, а не по пути файла, размеру диффа или хронологии. Ревьюер должен иметь право остановиться после любой главы и уже увидеть самое важное.
+Each section has a `title`, an `overview`, and one or more file references in `diffs`.
 
-1. Первая глава — сердце реализации. Часть, поняв которую, понимаешь остальное. Ревьюер не должен искать точку входа.
-2. Дальше следствия по убыванию значимости: обновлённые вызовы, поправленная логика ниже по течению, тесты нового поведения. Тесты идут вместе с кодом, который проверяют, если они не тривиальны.
-3. Обвязка и мелочи — в конце, одной группой: подключение, импорты, переименования, конфиги, сгенерированные файлы. Честное название («Обвязка и конфиги», «Уборка») и обзор в одно-два предложения.
+**Order by importance**, not by file path, diff size or chronology. The reviewer must be able to stop after any section
+and already have seen what matters most.
 
-**Нарезка — по логике.** Глава — логическая единица изменения, а не файл и не папка. Три файла изменились по одной причине — это одна глава с тремя файлами. В одном файле два несвязанных изменения — выбери главу по основному смыслу файла: файл может попасть только в одно место. Не делай по главе на файл по умолчанию. Если в наборе две независимые работы (две фичи, фича плюс посторонний рефакторинг), у каждой свои главы.
+1. The first section is the heart of the implementation: the part that, once understood, explains the rest. The reviewer
+   should not have to hunt for the entry point.
+2. Then the consequences, in decreasing significance: updated callers, adjusted downstream logic, tests of the new
+   behaviour. Non-trivial tests go together with the code they test.
+3. Wiring and minor changes go last, as one group: hookup, imports, renames, configs, generated files. Give it an honest
+   title (samples: «Обвязка и конфиги», «Уборка») and a one- or two-sentence overview.
 
-**title главы** — на уровне понятия: «Локализация платежей». Никогда не пересказ имени файла вроде «Изменения в payments/locale.ts».
+**Split by logic.** A section is a logical unit of change, not a file and not a folder. Three files changed for one reason
+are one section with three files. If one file holds two unrelated changes, pick the section by the file's main purpose: a
+file can appear in only one place. Do not default to one section per file. If the set contains two independent pieces of
+work (two features, or a feature plus an unrelated refactor), each gets its own sections.
 
-**overview** — Markdown, 2–6 предложений. Три задачи по порядку:
-1. Что конкретно изменилось.
-2. Зачем: мотивация и неочевидные решения. «Сделали X, а не Y, потому что Z» — ровно то, чего ревьюер не получит из диффа.
-3. Последствия: что меняется в поведении системы, в опыте пользователя, в контрактах API и данных, в производительности или эксплуатации. Это касается не только UI: миграция схемы, политика ретраев, замена инфраструктуры тоже стоят одного простого предложения.
+**Section `title`** names a concept (sample: «Локализация платежей»). Never a restated file name (bad sample:
+«Изменения в payments/locale.ts»).
 
-Если на одной главе держится основной риск, **скажи это прямо**: «вот место, где стоит читать медленно, остальное следует из него». Для действительно рискованной смены поведения или контракта используй отдельный блок:
+**`overview`** is Markdown, 2–6 sentences. Three jobs, in order:
+
+1. What exactly changed.
+2. Why: the motivation and non-obvious decisions. "Did X rather than Y because Z" is exactly what the reviewer cannot
+   get from the diff.
+3. Consequences: what changes in system behaviour, user experience, API and data contracts, performance or operations.
+   This is not only about UI: a schema migration, a retry policy or an infrastructure swap also deserves one plain
+   sentence.
+
+If the main risk rests on one section, **say so directly**: this is the place to read slowly, the rest follows from it.
+For a genuinely risky change in behaviour or contract, use a separate callout (sample):
 
 ```markdown
 > [!WARNING]
 > Сигнатура `login` изменилась: вызовы с одним аргументом сломаются.
 ```
 
-Также доступен `> [!IMPORTANT]`. В большинстве глав таких блоков нет.
+`> [!IMPORTANT]` is also available. Most sections have no such callouts.
 
-Markdown — только когда он делает текст точнее:
-- бэктики вокруг каждого имени файла, символа, функции, типа, ключа конфига, флага;
-- **жирный** для одной фразы, которую нельзя пропустить при беглом чтении, не больше одной на обзор;
-- короткий список, когда глава параллельно меняет три и больше вещей, иначе проза;
-- маленький блок кода (2–5 строк), только когда код скажет лучше фразы, например новая форма API. Никогда не вставляй куски диффа: они и так рядом.
+Use Markdown only when it makes the text more precise:
 
-**diffs** — ссылки на файлы, у каждой два поля:
-- `file` — путь **дословно** из `meta.json` (`files[].path`). Скопируй, не придумывай, не сокращай, не меняй регистр и слеши. Для переименованных файлов — новый путь.
-- `summary` — 1–2 предложения о смысловом изменении в этом файле, по ханкам, которые ты уже видел. Что изменение делает («выносит логику индексации в карту переопределений»), а не где оно («меняет строки 30–80»). Не открывай файл и не ищи по коду ради summary. Не повторяй обзор главы. Для тривиальной правки хватит короткой фразы.
+- backticks around every file name, symbol, function, type, config key and flag;
+- **bold** for the one phrase that must not be missed when skimming, at most one per overview;
+- a short list when the section changes three or more things in parallel, prose otherwise;
+- a small code block (2–5 lines) only when code says it better than a sentence, e.g. a new API shape. Never paste diff
+  fragments: they are already right there.
 
-Глава без `diffs` допустима только как чисто текстовая глава контекста с непустым обзором. Нужна она редко.
+**`diffs`** are file references, each with two fields:
+
+- `file` — the path **verbatim** from `meta.json` (`files[].path`). Copy it; do not invent, shorten, or change case or
+  slashes. For renamed files use the new path.
+- `summary` — 1–2 sentences on the meaningful change in this file, based on the hunks you have already seen. Say what
+  the change does (sample: «выносит логику индексации в карту переопределений»), not where it is (bad sample: «меняет
+  строки 30–80»). Do not open the file or search the code for a summary. Do not repeat the section overview. A trivial
+  edit needs only a short phrase.
+
+A section without files is allowed only as a pure text context section with a non-empty overview; it still has
+`"diffs": []`. It is rarely needed.
 
 ### unplacedFiles
-Всегда присутствует; пустой массив, если всё размещено. Сюда идут изменённые файлы, которым нет места ни в одной главе: чистый шум или настолько мелкие остатки, что в главе они бы её размыли. Это редкость. Не используй поле как свалку, чтобы не писать обзор. Файлы обвязки обычно идут в последнюю групповую главу, а не сюда.
 
-## Правило покрытия (жёсткое)
+Always present; an empty array if everything is placed. It holds changed files that have no place in any section: pure
+noise, or leftovers so small that they would blur a section. This is rare. Do not use it as a dumping ground to avoid
+writing an overview. Wiring files usually go into the final group section, not here.
 
-Каждый файл из `meta.json` встречается **ровно в одном месте**: в `diffs` одной главы или в `unplacedFiles`. Не в двух местах, не дважды, не нигде.
+## Coverage rule (hard)
 
-## Жёсткие ограничения
+Every file in `meta.json` appears in **exactly one place**: in the `diffs` of one section or in `unplacedFiles`. Not in
+two places, not twice, not nowhere.
 
-- `diffs[].file` — точный путь из `meta.json`.
-- Обычно 2–6 глав, никогда больше 10. Если изменение умещается в одну главу — одна глава, не раздувай.
-- `title` — одна строка; `intent` — 1–2 предложения; обзор главы — 2–6 предложений.
-- Без эмодзи.
+## Hard constraints
 
-## Порядок работы
+`validate.py` rejects the guide if any of these fail:
 
-1. Прочитай `meta.json` и `guide.patch` целиком. Если патч очень большой, читай частями, но весь.
-2. Сообщения коммитов уже лежат в `meta.json`. Отдельно `git log` не нужен.
-3. По желанию, не обязательно: загляни в `CLAUDE.md`, `AGENTS.md` или `README.md`, только если проект незнаком и «зачем» какой-то главы от этого зависит.
-4. Найди логические группы изменений, включая группы через несколько файлов. Это главы. Это работа мысли, а не вызовов инструментов.
-5. Упорядочи: сердце реализации первым (точка входа раньше, определения раньше потребителей, причина раньше следствия), затем следствия, затем одна общая глава для обвязки.
-6. Напиши `title`, `intent` и обзор каждой главы.
-7. Запиши `guide.json` и запусти валидатор. Исправляй, пока он не пройдёт.
+- `title` and `intent` are non-empty strings; `title` is a single line.
+- `sections` is a non-empty array of at most 10 sections.
+- Every section has a non-empty `title`, a non-empty `overview`, and a `diffs` array.
+- Every `diffs` item is an object with a `file` string and a non-empty `summary`.
+- `diffs[].file` and `unplacedFiles` entries are exact paths from `meta.json`, and the coverage rule above holds.
+- `unplacedFiles` is an array of strings.
 
-## Форма guide.json
+Also required, though the validator does not check them:
+
+- Usually 2–6 sections. If the change fits in one section, use one; do not pad.
+- `intent` is 1–2 sentences; a section overview is 2–6 sentences.
+- All guide text is in Russian.
+- No emoji.
+
+## Workflow
+
+1. Read `meta.json` and `guide.patch` in full. If the patch is very large, read it in chunks, but read all of it.
+2. Commit messages are already in `meta.json`. No separate `git log` is needed.
+3. Optional: look at `CLAUDE.md`, `AGENTS.md` or `README.md` only if the project is unfamiliar and the "why" of some
+   section depends on it.
+4. Find the logical groups of changes, including groups spanning several files. These are the sections. This is
+   thinking work, not tool calls.
+5. Order them: the heart of the implementation first (entry point before the rest, definitions before consumers, cause
+   before effect), then consequences, then one shared section for wiring.
+6. Write the `title`, the `intent` and each section's overview — in Russian.
+7. Write `guide.json` and run the validator. Fix and rerun until it passes.
+
+## guide.json shape
+
+A sample output. Note the Russian text in every human-readable field:
 
 ```json
 {
@@ -137,8 +205,8 @@ Markdown — только когда он делает текст точнее:
     }
   ],
   "unplacedFiles": [],
-  "generator": { "engine": "claude-code", "model": "<модель, если знаешь>" }
+  "generator": { "engine": "claude-code", "model": "<model id, if known>" }
 }
 ```
 
-`generator` необязателен. Укажи модель, только если точно знаешь, кто ты.
+`generator` is optional. Fill in `model` only if you know for certain which model you are.
