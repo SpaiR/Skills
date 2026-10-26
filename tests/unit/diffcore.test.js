@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const ROOT = path.resolve(__dirname, '../..');
-const D = require(path.join(ROOT, 'assets/diffcore.js'));
+const D = require(path.join(ROOT, 'assets/js/diffcore.js'));
 
 let passed = 0;
 function test(name, fn) {
