@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Локальный сервер просмотра diff-review.
+"""Local review server for diff-review.
 
-Отдаёт вьюер и данные ревью из каталога --dir (guide.json, guide.patch, meta.json;
-full.patch с полным текстом изменённых файлов — если есть, его отдаёт /api/full?i=N),
-хранит прогресс в state.json и ждёт решения пользователя. После «Отправить»,
-«Одобрить» или «Закрыть» пишет feedback.md (если есть что писать), печатает
-последней строкой маркер и завершается:
+Serves the viewer and the review data from the --dir directory (guide.json, guide.patch, meta.json;
+full.patch with the full text of changed files, if present, is served by /api/full?i=N),
+keeps progress in state.json and waits for the user's decision. After "Submit", "Approve"
+or "Close" it writes feedback.md (if there is anything to write), prints a marker as the
+last line and exits:
 
-  DIFF_REVIEW_RESULT: feedback|approved|closed|timeout [<путь к feedback.md>]
+  DIFF_REVIEW_RESULT: feedback|approved|closed|timeout [<path to feedback.md>]
 
-Слушает только 127.0.0.1. API требует токен из URL (заголовок X-Review-Token),
-чтобы сторонние страницы в браузере не могли подсунуть фидбек.
+Listens on 127.0.0.1 only. The API requires the token from the URL (X-Review-Token header),
+so that third-party pages in the browser cannot inject feedback.
 
-Использование: serve.py --dir <outdir> [--open] [--port N] [--timeout-min N]
+Usage: serve.py --dir <outdir> [--open] [--port N] [--timeout-min N]
 """
 
 import argparse
@@ -41,7 +41,7 @@ MIME = {
 
 
 def asset_file(path):
-    """Файл из assets/ для пути запроса или None: только известные расширения, без выхода за assets/."""
+    """File under assets/ for a request path, or None: known extensions only, no escaping assets/."""
     if path == "/":
         path = "/assets/viewer.html"
     if not path.startswith("/assets/"):
@@ -50,6 +50,8 @@ def asset_file(path):
     if not target.is_relative_to(ASSETS.resolve()) or target.suffix not in MIME or not target.is_file():
         return None
     return target
+
+
 MAX_BODY = 20 * 1024 * 1024
 
 
@@ -58,12 +60,12 @@ def load_review(outdir):
     guide = json.loads((outdir / "guide.json").read_text(encoding="utf-8"))
     errors = validate(guide, meta)
     if errors:
-        raise SystemExit("guide.json не прошёл проверку:\n" + "\n".join(f"- {e}" for e in errors))
+        raise SystemExit("guide.json failed validation:\n" + "\n".join(f"- {e}" for e in errors))
     chunks = split_patch((outdir / "guide.patch").read_text(encoding="utf-8"))
     if len(chunks) != len(meta["files"]):
-        raise SystemExit(f"guide.patch ({len(chunks)} файлов) не совпадает с meta.json ({len(meta['files'])})")
+        raise SystemExit(f"guide.patch ({len(chunks)} files) does not match meta.json ({len(meta['files'])})")
     files = [{**f, "patch": c} for f, c in zip(meta["files"], chunks)]
-    # full.patch: куски по порядку у файлов с content.available. Нет файла или не сошлось — раскрытия нет.
+    # full.patch: chunks in order for files with content.available. If the file is missing or does not match, there is no expansion.
     full = {}
     want = [i for i, f in enumerate(meta["files"]) if (f.get("content") or {}).get("available")]
     full_path = outdir / "full.patch"
@@ -78,10 +80,10 @@ def load_review(outdir):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--dir", required=True, help="каталог с guide.json, guide.patch, meta.json")
-    p.add_argument("--port", type=int, default=0, help="порт (0 — выбрать свободный)")
-    p.add_argument("--open", action="store_true", help="открыть страницу в браузере")
-    p.add_argument("--timeout-min", type=float, default=180, help="завершиться через N минут без решения")
+    p.add_argument("--dir", required=True, help="directory with guide.json, guide.patch, meta.json")
+    p.add_argument("--port", type=int, default=0, help="port (0 picks a free one)")
+    p.add_argument("--open", action="store_true", help="open the page in the browser")
+    p.add_argument("--timeout-min", type=float, default=180, help="exit after N minutes without a decision")
     args = p.parse_args()
 
     outdir = Path(args.dir).expanduser().resolve()
@@ -96,7 +98,7 @@ def main():
     class Handler(BaseHTTPRequestHandler):
         server_version = "diff-review"
 
-        def log_message(self, *a):  # stdout читает сессия, не шумим
+        def log_message(self, *a):  # the session reads stdout, stay quiet
             pass
 
         def _host_ok(self):

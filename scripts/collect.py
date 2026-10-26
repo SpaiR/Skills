@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Собирает дифф для diff-review: guide.patch + meta.json в выходной каталог.
+"""Collect a git diff for diff-review: guide.patch, full.patch and meta.json in an output directory.
 
-Режимы:
-  since-base   merge-base(base, HEAD) против рабочего дерева, плюс untracked (по умолчанию)
-  uncommitted  HEAD против рабочего дерева, плюс untracked
-  staged       индекс против HEAD
-  commit       один коммит (--ref <sha>)
-  range        диапазон (--ref A..B или A...B)
-  branch       merge-base(base, ветка)..ветка (--ref <ветка>)
+Modes:
+  since-base   merge-base(base, HEAD) against the working tree, plus untracked files (default)
+  uncommitted  HEAD against the working tree, plus untracked files
+  staged       index against HEAD
+  commit       a single commit (--ref <sha>)
+  range        a revision range (--ref A..B or A...B)
+  branch       merge-base(base, branch)..branch (--ref <branch>)
 
-Индекс пользователя не меняется: untracked-файлы добавляются через `git add -N`
-во временную копию индекса (GIT_INDEX_FILE).
+The user's index is never modified: untracked files are added with `git add -N`
+to a temporary copy of the index (GIT_INDEX_FILE).
 
-Код выхода: 0 — успех, 2 — ошибка аргументов/git, 3 — изменений нет.
+Exit codes: 0 - success, 2 - argument or git error, 3 - no changes.
 """
 
 import argparse
@@ -32,10 +32,10 @@ DIFF_FLAGS = [
     "--src-prefix=a/", "--dst-prefix=b/",
 ]
 LOG_LIMIT = 50
-# Полный текст (full.patch) для раскрытия контекста во вьюере: только у изменённых и переименованных файлов.
+# Full text (full.patch) for context expansion in the viewer: only for modified and renamed files.
 FULL_CONTEXT = "-U100000000"
-FULL_FILE_MAX = 1024 * 1024        # новая сторона файла больше этого — без полного текста
-FULL_TOTAL_MAX = 64 * 1024 * 1024  # общий лимит full.patch
+FULL_FILE_MAX = 1024 * 1024        # new side of a file larger than this gets no full text
+FULL_TOTAL_MAX = 64 * 1024 * 1024  # total size limit for full.patch
 
 
 class CollectError(Exception):
@@ -62,7 +62,7 @@ def verify(root, ref):
 def resolve_base(root, explicit):
     if explicit:
         if not verify(root, explicit):
-            raise CollectError(f"база `{explicit}` не найдена")
+            raise CollectError(f"base `{explicit}` not found")
         return explicit
     res = git(root, "symbolic-ref", "-q", "refs/remotes/origin/HEAD", check=False)
     if res.returncode == 0:
@@ -77,7 +77,7 @@ def resolve_base(root, explicit):
 
 
 def untracked_index_env(root):
-    """Временный индекс с untracked-файлами в режиме intent-to-add."""
+    """Temporary index with untracked files added in intent-to-add mode."""
     files = [f for f in git(root, "ls-files", "--others", "--exclude-standard", "-z")
              .stdout.decode(errors="surrogateescape").split("\0") if f]
     if not files:
@@ -86,11 +86,12 @@ def untracked_index_env(root):
     tmpdir = tempfile.mkdtemp(prefix="diff-review-index-")
     tmp_index = Path(tmpdir) / "index"
     if index.exists():
-        # copy2 сохраняет mtime индекса. С новым mtime git счёл бы записи не «racily clean» и не перечитал бы
-        # файл, правленный сразу после add/commit без смены размера: такой файл пропал бы из диффа.
+        # copy2 preserves the index mtime. With a fresh mtime git would not treat entries as "racily clean"
+        # and would not re-read a file edited right after add/commit without a size change, so that file
+        # would vanish from the diff.
         shutil.copy2(index, tmp_index)
     env = {**os.environ, "GIT_INDEX_FILE": str(tmp_index)}
-    # Через stdin, чтобы не упереться в лимит длины командной строки.
+    # Pass paths via stdin to stay clear of the command-line length limit.
     subprocess.run(
         ["git", "-C", str(root), "add", "-N", "--pathspec-from-file=-", "--pathspec-file-nul"],
         input="\0".join(files).encode(errors="surrogateescape"), env=env, check=True,
@@ -119,7 +120,7 @@ def parse_numstat(raw):
     stats, i = [], 0
     while i < len(parts) and parts[i]:
         adds, dels, path = parts[i].split("\t", 2)
-        if path == "":  # переименование: дальше идут старый и новый путь
+        if path == "":  # rename: the old and new paths follow
             path = parts[i + 2]
             i += 3
         else:
@@ -131,8 +132,8 @@ def parse_numstat(raw):
 
 
 def split_patch(patch):
-    """Режет патч на куски по файлам. Строки контента всегда начинаются с ' ', '+', '-',
-    поэтому 'diff --git ' в начале строки — только заголовок файла."""
+    """Split a patch into per-file chunks. Content lines always start with ' ', '+' or '-',
+    so 'diff --git ' at the start of a line is always a file header."""
     chunks = re.split(r"(?m)^(?=diff --git )", patch)
     return [c for c in chunks if c.startswith("diff --git ")]
 
@@ -145,7 +146,7 @@ def log_lines(root, log_args):
 
 
 def new_side_sizes(root, new_rev, paths):
-    """Размер новой стороны каждого файла в байтах; None — не удалось узнать."""
+    """Size in bytes of the new side of each file; None if it could not be determined."""
     if new_rev == "worktree":
         sizes = []
         for p in paths:
@@ -168,12 +169,12 @@ def new_side_sizes(root, new_rev, paths):
 
 
 def collect_full(root, diff_args, env, new_rev, name_status, numstat, notes):
-    """Полный дифф (один ханк на файл) для изменённых и переименованных файлов.
+    """Full diff (one hunk per file) for modified and renamed files.
 
-    Возвращает {"chunks": {индекс файла: кусок патча}, "lines": {индекс: строк в новой версии},
-    "reasons": {индекс: почему нет}}.
-    Тот же git diff, что и для guide.patch, только с огромным контекстом: строки проходят те же
-    фильтры (eol, LFS), а набор правок от длины контекста не зависит.
+    Returns {"chunks": {file index: patch chunk}, "lines": {index: line count of the new version},
+    "reasons": {index: why there is no full text}}.
+    It is the same git diff as for guide.patch, only with a huge context: lines go through the same
+    filters (eol, LFS), and the set of changes does not depend on the context length.
     """
     chunks, lines, reasons = {}, {}, {}
     mr = [i for i, ns in enumerate(name_status) if ns["status"] in "MR"]
@@ -222,7 +223,7 @@ def collect_full(root, diff_args, env, new_rev, name_status, numstat, notes):
     for i, chunk in zip(expected, got):
         if i not in keep_set:
             continue
-        # Путь со спецсимволами git пишет в кавычках — такой файл просто остаётся без полного текста.
+        # Git quotes paths with special characters; such a file simply stays without full text.
         same = chunk.split("\n", 1)[0].endswith(f" b/{name_status[i]['path']}")
         if not same or len(re.findall(r"(?m)^@@ ", chunk)) != 1:
             reasons[i] = "не собран"
@@ -236,12 +237,12 @@ def collect_full(root, diff_args, env, new_rev, name_status, numstat, notes):
 def collect(args):
     repo = Path(args.repo).expanduser().resolve()
     if not repo.exists():
-        raise CollectError(f"каталог `{repo}` не существует")
+        raise CollectError(f"directory `{repo}` does not exist")
     res = git(repo, "rev-parse", "--show-toplevel", check=False)
     if res.returncode != 0:
-        raise CollectError(f"`{repo}` не внутри git-репозитория")
+        raise CollectError(f"`{repo}` is not inside a git repository")
     root = Path(res.stdout.decode().strip())
-    # Для worktree имя репозитория берём у общего .git, а не у каталога worktree.
+    # For a worktree, take the repository name from the common .git, not from the worktree directory.
     common = Path(out(root, "rev-parse", "--path-format=absolute", "--git-common-dir"))
     repo_name = common.parent.name if common.name == ".git" else root.name
 
@@ -276,21 +277,21 @@ def collect(args):
         label = "индекс (staged)"
     elif mode == "commit":
         if not args.ref:
-            raise CollectError("для режима commit нужен --ref <sha>")
+            raise CollectError("commit mode requires --ref <sha>")
         sha = verify(root, args.ref)
         if not sha:
-            raise CollectError(f"коммит `{args.ref}` не найден")
+            raise CollectError(f"commit `{args.ref}` not found")
         parent = verify(root, f"{sha}^") or EMPTY_TREE
         diff_args, log_args, new_rev = [parent, sha], ["-1", sha], sha
         label = f"{sha[:10]} {out(root, 'log', '-1', '--format=%s', sha)}"
     elif mode == "range":
         m = re.fullmatch(r"(.*?)(\.\.\.?)(.*)", args.ref or "")
         if not m:
-            raise CollectError("для режима range нужен --ref A..B или A...B")
+            raise CollectError("range mode requires --ref A..B or A...B")
         a, dots, b = m.group(1) or "HEAD", m.group(2), m.group(3) or "HEAD"
         for r in (a, b):
             if not verify(root, r):
-                raise CollectError(f"ревизия `{r}` не найдена")
+                raise CollectError(f"revision `{r}` not found")
         if dots == "...":
             merge_base = out(root, "merge-base", a, b)
             diff_args, log_args = [merge_base, b], [f"{merge_base}..{b}"]
@@ -300,10 +301,10 @@ def collect(args):
         label = f"{a}{dots}{b}"
     elif mode == "branch":
         if not args.ref or not verify(root, args.ref):
-            raise CollectError(f"ветка `{args.ref}` не найдена")
+            raise CollectError(f"branch `{args.ref}` not found")
         base = resolve_base(root, args.base)
         if not base:
-            raise CollectError("базовая ветка не найдена, укажите --base")
+            raise CollectError("base branch not found, pass --base")
         merge_base = out(root, "merge-base", base, args.ref)
         diff_args, log_args, new_rev = [merge_base, args.ref], [f"{merge_base}..{args.ref}"], args.ref
         label = f"{base}...{args.ref}"
@@ -329,15 +330,15 @@ def collect(args):
         return None, {"root": str(root), "label": label, "notes": notes}, None
     if not (len(chunks) == len(name_status) == len(numstat)):
         raise CollectError(
-            f"рассинхрон: {len(chunks)} кусков патча, {len(name_status)} в name-status, "
-            f"{len(numstat)} в numstat")
+            f"out of sync: {len(chunks)} patch chunks, {len(name_status)} in name-status, "
+            f"{len(numstat)} in numstat")
 
     status_names = {"A": "added", "M": "modified", "D": "deleted", "R": "renamed",
                     "C": "copied", "T": "typechange"}
     files = []
     for i, (ns, st, chunk) in enumerate(zip(name_status, numstat, chunks)):
         if ns["path"] != st["path"]:
-            raise CollectError(f"рассинхрон путей: `{ns['path']}` и `{st['path']}`")
+            raise CollectError(f"paths out of sync: `{ns['path']}` and `{st['path']}`")
         files.append({
             "path": ns["path"],
             "oldPath": ns["oldPath"],
@@ -383,23 +384,23 @@ def default_outdir(meta):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--repo", default=".", help="каталог репозитория или worktree")
+    p.add_argument("--repo", default=".", help="repository or worktree directory")
     p.add_argument("--mode", default="since-base",
                    choices=["since-base", "uncommitted", "staged", "commit", "range", "branch"])
-    p.add_argument("--ref", help="sha, A..B / A...B или имя ветки — в зависимости от режима")
-    p.add_argument("--base", help="база для since-base и branch")
-    p.add_argument("--out", help="выходной каталог (по умолчанию $TMPDIR/diff-review/...)")
+    p.add_argument("--ref", help="sha, A..B / A...B or a branch name, depending on the mode")
+    p.add_argument("--base", help="base for since-base and branch")
+    p.add_argument("--out", help="output directory (default: $TMPDIR/diff-review/...)")
     args = p.parse_args()
 
     try:
         patch, meta, full_patch = collect(args)
     except CollectError as e:
-        print(f"Ошибка: {e}", file=sys.stderr)
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(2)
 
     if patch is None:
         print(json.dumps({"ok": False, "reason": "no-changes", **meta}, ensure_ascii=False))
-        print(f"Изменений нет: `{meta['root']}`, {meta['label']}.", file=sys.stderr)
+        print(f"No changes: `{meta['root']}`, {meta['label']}.", file=sys.stderr)
         sys.exit(3)
 
     outdir = Path(args.out).expanduser() if args.out else default_outdir(meta)
