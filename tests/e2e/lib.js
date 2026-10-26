@@ -1,75 +1,136 @@
-// Общие помощники сценариев: запуск фикстуры (с подложенным state.json), браузер, проверки.
-const { chromium } = require('playwright-core');
-const fs = require('node:fs');
-const os = require('node:os');
-const path = require('node:path');
-const { spawn } = require('node:child_process');
+// Shared helpers for the browser tests: fixture server, browser launch, pages that capture
+// console errors and requests, and the per-file environment used with node:test.
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { after, afterEach, before, beforeEach, it } from 'node:test';
+import { chromium } from 'playwright-core';
 
-const ROOT = path.resolve(__dirname, '../..');
-const FIXTURES = path.join(ROOT, 'tests/fixtures');
+export const ROOT = path.resolve(import.meta.dirname, '../..');
+export const FIXTURES = path.join(ROOT, 'tests/fixtures');
 const SERVE = path.join(ROOT, 'scripts/serve.py');
 
-async function startFixture(fx, state) {
+// Selectors: a file block by path, and a line-number cell of a side ('old' or 'new') in a file.
+export const fileSel = (p) => `.file[data-path="${p}"]`;
+export const numSel = (file, side, no) => `${file} td.num[data-side=${side}][data-no="${no}"]`;
+
+export const MOD = process.platform === 'darwin' ? 'Meta' : 'Control';
+export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Servers that are still running; killed on process exit so an aborted run leaves nothing behind.
+const live = new Set();
+process.on('exit', () => { for (const p of live) { try { p.kill(); } catch { /* already stopped */ } } });
+
+// Copies a fixture into a temp dir (with an optional state.json), starts serve.py on it and waits for its URL.
+export async function startFixture(fx, state) {
   const run = fs.mkdtempSync('/tmp/dr-test-');
   for (const f of ['guide.json', 'guide.patch', 'meta.json']) fs.copyFileSync(path.join(FIXTURES, fx, f), path.join(run, f));
   const full = path.join(FIXTURES, fx, 'full.patch');
   if (fs.existsSync(full)) fs.copyFileSync(full, path.join(run, 'full.patch'));
   if (state) fs.writeFileSync(path.join(run, 'state.json'), JSON.stringify(state));
   const proc = spawn('python3', [SERVE, '--dir', run, '--timeout-min', '10'], { stdio: ['ignore', 'pipe', 'pipe'] });
+  live.add(proc);
+  proc.on('exit', () => live.delete(proc));
   let out = '';
-  const url = await new Promise((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error('serve.py не стартовал: ' + out)), 8000);
-    proc.stdout.on('data', (d) => {
-      out += d;
-      const m = /DIFF_REVIEW_URL: (\S+)/.exec(out);
-      if (m) { clearTimeout(t); resolve(m[1]); }
+  let url;
+  try {
+    url = await new Promise((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error(`serve.py did not start: ${out}`)), 8000);
+      proc.stdout.on('data', (d) => {
+        out += d;
+        const m = /DIFF_REVIEW_URL: (\S+)/.exec(out);
+        if (m) { clearTimeout(t); resolve(m[1]); }
+      });
+      proc.stderr.on('data', (d) => { out += d; });
     });
-    proc.stderr.on('data', (d) => { out += d; });
-  });
+  } catch (e) {
+    proc.kill();
+    throw e;
+  }
   return {
     url, run, proc,
     state: () => JSON.parse(fs.readFileSync(path.join(run, 'state.json'), 'utf8')),
-    stop: () => { try { proc.kill(); } catch (e) { /* уже остановлен */ } },
+    stop: () => { try { proc.kill(); } catch { /* already stopped */ } },
   };
 }
 
-async function launch() {
+export function launch() {
   return chromium.launch({ channel: 'chrome', headless: true });
 }
 
-// Страница с учётом ошибок консоли и сетевых запросов.
-async function openPage(browser, url, opts = {}) {
-  const page = await browser.newPage({ viewport: opts.viewport || { width: 1440, height: 900 }, colorScheme: opts.colorScheme || 'light', reducedMotion: opts.reducedMotion || 'reduce' });
+// Opens the review page and waits until the viewer reports it is ready. The page collects
+// console errors and warnings in page.errors and every request URL in page.requests.
+export async function openPage(browser, url, opts = {}) {
+  const page = await browser.newPage({
+    viewport: opts.viewport || { width: 1440, height: 900 },
+    colorScheme: opts.colorScheme || 'light',
+    reducedMotion: opts.reducedMotion || 'reduce',
+  });
   page.errors = [];
   page.requests = [];
-  const label = current;
+  const label = opts.label || '';
   page.on('pageerror', (e) => page.errors.push(`[${label}] pageerror: ${e.message}`));
-  page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') page.errors.push(`[${label}] console.${m.type()}: ${m.text()} @ ${JSON.stringify(m.location())}`); });
+  page.on('console', (m) => {
+    if (m.type() === 'error' || m.type() === 'warning') page.errors.push(`[${label}] console.${m.type()}: ${m.text()} @ ${JSON.stringify(m.location())}`);
+  });
   page.on('request', (r) => page.requests.push(r.url()));
   await page.goto(url);
   await page.waitForFunction(() => performance.getEntriesByName('dr-ready').length > 0);
   return page;
 }
 
-const results = [];
-let current = '';
-async function check(name, fn) {
-  current = name.split(' ')[0];
-  try {
-    const detail = await fn();
-    results.push([true, name]);
-    console.log('ok  ', name, detail === undefined ? '' : `— ${detail}`);
-  } catch (e) {
-    results.push([false, name]);
-    console.log('FAIL', name, '—', e.message.split('\n').slice(0, 6).join(' | '));
-  }
+// Per-file environment. Call inside a describe() body: it registers hooks that launch one browser
+// for the whole file, close leftover pages after every test, and always stop every server and the
+// browser at the end, also when tests fail.
+export function useEnv() {
+  const env = {
+    browser: null,
+    label: '',
+    servers: [],
+    pages: [],
+    errors: [],
+    requests: [],
+    // Starts a fixture server that is stopped automatically when the file ends.
+    async server(fx, state) {
+      const s = await startFixture(fx, state);
+      env.servers.push(s);
+      return s;
+    },
+    // Opens a page on a running fixture, labelled with the current test name for error messages.
+    async open(fx, opts) {
+      const page = await openPage(env.browser, fx.url, { ...opts, label: env.label });
+      env.errors.push(page.errors);
+      env.requests.push(page.requests);
+      env.pages.push(page);
+      return page;
+    },
+  };
+  before(async () => { env.browser = await launch(); });
+  beforeEach((t) => { env.label = t.name; });
+  afterEach(async () => {
+    for (const page of env.pages.splice(0)) if (!page.isClosed()) await page.close().catch(() => {});
+  });
+  after(async () => {
+    for (const s of env.servers) s.stop();
+    if (env.browser) await env.browser.close();
+    for (const s of env.servers) fs.rmSync(s.run, { recursive: true, force: true });
+  });
+  return env;
 }
-function summary() {
-  const failed = results.filter(([ok]) => !ok);
-  console.log(`\n${results.length - failed.length}/${results.length} ok`);
-  if (failed.length) process.exitCode = 1;
-}
-function assert(cond, msg) { if (!cond) throw new Error(msg); }
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-module.exports = { startFixture, launch, openPage, check, summary, assert, sleep, ROOT, FIXTURES };
+// Registers the two closing tests of a file: no console errors or exceptions in any scenario of the
+// file, and no network request leaves 127.0.0.1 (only /, /assets/* and /api/*). Call it last in the describe().
+export function expectCleanSession(env) {
+  it('raises no console errors or page exceptions in any scenario', () => {
+    const errs = env.errors.flat();
+    assert.equal(errs.length, 0, errs.join(' | '));
+  });
+  it('sends network requests only to 127.0.0.1 paths /, /assets/* and /api/*', () => {
+    const bad = env.requests.flat().filter((u) => {
+      const x = new URL(u);
+      return x.hostname !== '127.0.0.1' || !(x.pathname === '/' || x.pathname.startsWith('/assets/') || x.pathname.startsWith('/api/'));
+    });
+    assert.equal(bad.length, 0, bad.join(' '));
+  });
+}

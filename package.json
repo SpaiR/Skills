@@ -2,13 +2,14 @@
   "name": "diff-review",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "description": "Claude Code skill: guided review of local git changes in a local web viewer",
   "scripts": {
     "setup": "npm install && git config core.hooksPath .githooks",
     "test": "npm run test:unit && npm run test:py && npm run test:e2e",
-    "test:unit": "node tests/unit/diffcore.test.js && node tests/unit/expand.test.js && node tests/tools/contrast.js",
+    "test:unit": "node --test 'tests/unit/**/*.test.js'",
     "test:py": "python3 -m unittest discover -s tests/python",
-    "test:e2e": "node tests/e2e/stage1-6.test.js && node tests/e2e/stage7-10.test.js && node tests/e2e/stage11-13.test.js && node tests/e2e/extras.test.js && node tests/e2e/autoclose.test.js"
+    "test:e2e": "node --test --test-concurrency=1 'tests/e2e/**/*.test.js'"
   },
   "devDependencies": {
     "playwright-core": "1.56.0"

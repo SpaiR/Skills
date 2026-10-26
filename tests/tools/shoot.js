@@ -1,7 +1,8 @@
-// Использование: node shoot.js <url> <shots-dir> [prefix]
-// Снимает базовый набор скриншотов и печатает ошибки консоли. Для своих сценариев
-// пиши отдельный скрипт с require('playwright-core').
-const { chromium } = require('playwright-core');
+// Manual screenshot tool, not part of the test run.
+// Usage: node tests/tools/shoot.js <url> <shots-dir> [prefix]
+// Takes a fixed set of screenshots (light and dark, three widths) and prints console errors.
+// For other scenarios write a separate script that imports playwright-core.
+import { chromium } from 'playwright-core';
 const [url, dir, prefix = ''] = process.argv.slice(2);
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });

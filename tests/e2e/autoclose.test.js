@@ -1,16 +1,18 @@
-// Автозакрытие вкладки после отправки: node harness/tests/autoclose.test.js
-// Вкладка создаётся сразу с адресом (CDP Target.createTarget) — как при `open <url>` из serve.py --open:
-// одна запись в истории. Обычный page.goto даёт две (about:blank + адрес), такую вкладку скрипт закрыть не может.
-const { chromium } = require('playwright-core');
-const fs = require('node:fs');
-const os = require('node:os');
-const path = require('node:path');
-const { startFixture, check, summary, assert, sleep } = require('./lib');
+// Auto-closing the tab after the review is sent.
+// The tab is created with its URL right away (CDP Target.createTarget), like `open <url>` from serve.py --open:
+// a single history entry. A plain page.goto gives two (about:blank and the URL), and a script cannot close such a tab.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { after, before, describe, it } from 'node:test';
+import { chromium } from 'playwright-core';
+import { sleep, startFixture } from './lib.js';
 
-(async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dr-ac-'));
-  const ctx = await chromium.launchPersistentContext(dir, { channel: 'chrome', headless: true, viewport: { width: 1280, height: 800 } });
-  const cdp = await ctx.newCDPSession(ctx.pages()[0] || await ctx.newPage());
+describe('tab auto-close after submit', () => {
+  let dir, ctx, cdp;
+  const servers = [];
+  const fresh = async (fx) => { const s = await startFixture(fx); servers.push(s); return s; };
   const ready = (p) => p.waitForFunction(() => performance.getEntriesByName('dr-ready').length > 0);
   const openTab = async (url) => {
     const ev = ctx.waitForEvent('page');
@@ -22,41 +24,52 @@ const { startFixture, check, summary, assert, sleep } = require('./lib');
     await p.click('.menu-item:has-text("Закрыть без ответа")');
     await p.click('dialog#submit .btn.primary');
   };
-  try {
-    await check('AC1 вкладка с одной записью в истории: отсчёт 3 → 2 и закрытие примерно через 3 с', async () => {
-      const fx = await startFixture('mixed2');
-      const p = await openTab(fx.url);
-      await ready(p);
-      const hist = await p.evaluate(() => history.length);
-      const closed = new Promise((r) => p.once('close', () => r(Date.now())));
-      await closeReview(p);
-      const t0 = Date.now();
-      await p.waitForSelector('.finished-close');
-      const texts = [await p.textContent('.finished-close')];
-      await sleep(1100);
-      texts.push(await p.textContent('.finished-close').catch(() => 'закрыта'));
-      const at = await Promise.race([closed, sleep(6000).then(() => null)]);
-      fx.stop();
-      assert(at, `вкладка не закрылась (history.length=${hist}); тексты: ${texts}`);
-      const dt = (at - t0) / 1000;
-      assert(texts[0] === 'Вкладка закроется через 3 с' && /через 2 с/.test(texts[1]) && dt > 2.5 && dt < 4.5, `${texts} / ${dt}`);
-      return `history.length=${hist}; ${texts.join(' → ')} → закрыта через ${dt.toFixed(1)} с`;
-    });
-    await check('AC2 вкладка с историей из двух записей: браузер не закрывает — просьба закрыть вручную', async () => {
-      const fx = await startFixture('mixed2');
-      const p = await openTab('about:blank');
-      await p.goto(fx.url);
-      await ready(p);
-      await closeReview(p);
-      await sleep(3800);
-      const t = await p.textContent('.finished-close');
-      fx.stop();
-      assert(!p.isClosed() && /закройте её вручную/.test(t), t);
-      return t;
-    });
-  } finally {
-    await ctx.close();
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
-  summary();
-})();
+
+  before(async () => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dr-ac-'));
+    ctx = await chromium.launchPersistentContext(dir, { channel: 'chrome', headless: true, viewport: { width: 1280, height: 800 } });
+    cdp = await ctx.newCDPSession(ctx.pages()[0] || await ctx.newPage());
+  });
+  after(async () => {
+    for (const s of servers) s.stop();
+    if (ctx) await ctx.close();
+    for (const s of servers) fs.rmSync(s.run, { recursive: true, force: true });
+    if (dir) fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('closes a tab with a single history entry about 3 s after submit, counting down 3 -> 2', async (t) => { // was AC1
+    const fx = await fresh('mixed2');
+    const p = await openTab(fx.url);
+    await ready(p);
+    const hist = await p.evaluate(() => history.length);
+    const closed = new Promise((r) => p.once('close', () => r(Date.now())));
+    await closeReview(p);
+    const t0 = Date.now();
+    await p.waitForSelector('.finished-close');
+    const texts = [await p.textContent('.finished-close')];
+    await sleep(1100);
+    texts.push(await p.textContent('.finished-close').catch(() => 'closed'));
+    const at = await Promise.race([closed, sleep(6000).then(() => null)]);
+    fx.stop();
+    assert.ok(at, `the tab did not close (history.length=${hist}); texts: ${texts}`);
+    const dt = (at - t0) / 1000;
+    assert.equal(texts[0], 'Вкладка закроется через 3 с', `${texts} / ${dt}`);
+    assert.match(texts[1], /через 2 с/, `${texts} / ${dt}`);
+    assert.ok(dt > 2.5 && dt < 4.5, `${texts} / ${dt}`);
+    t.diagnostic(`history.length=${hist}; ${texts.join(' -> ')} -> closed after ${dt.toFixed(1)} s`);
+  });
+
+  it('does not close a tab with two history entries and asks the user to close it manually', async (t) => { // was AC2
+    const fx = await fresh('mixed2');
+    const p = await openTab('about:blank');
+    await p.goto(fx.url);
+    await ready(p);
+    await closeReview(p);
+    await sleep(3800);
+    const text = await p.textContent('.finished-close');
+    fx.stop();
+    assert.ok(!p.isClosed(), text);
+    assert.match(text, /закройте её вручную/, text);
+    t.diagnostic(text);
+  });
+});
