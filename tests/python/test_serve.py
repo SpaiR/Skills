@@ -21,7 +21,7 @@ class AssetFileTest(unittest.TestCase):
         self.assertEqual(serve.asset_file("/"), (serve.ASSETS / "viewer.html").resolve())
 
     def test_known_files(self):
-        for name in ("viewer.html", "viewer.js", "viewer.css", "diffcore.js"):
+        for name in ("viewer.html", "js/main.js", "js/diffcore.js", "css/index.css"):
             with self.subTest(name=name):
                 self.assertEqual(serve.asset_file(f"/assets/{name}"), (serve.ASSETS / name).resolve())
 
