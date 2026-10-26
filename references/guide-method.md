@@ -64,8 +64,11 @@ One line. What the change essentially does, not a placeholder like «Измен�
 1–2 sentences: why this change exists. Sources, in order:
 
 1. Context from the main session, if the task includes it.
-2. Commit messages from `meta.json` (`commits`) and the branch name.
-3. The nature of the changes themselves.
+2. For a pull/merge request (`meta.json` has `pr`): its title and description (`pr.title`, `pr.body`). They state what
+   the author claims; check the claim against the diff, and if the diff does more, less or something else, say so in a
+   section overview instead of repeating the description.
+3. Commit messages from `meta.json` (`commits`) and the branch name.
+4. The nature of the changes themselves.
 
 Do not search for tasks or tickets that are not explicitly referenced.
 

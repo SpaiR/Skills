@@ -1,7 +1,7 @@
 ---
 name: diff-review
-description: Runs a guided review of local git changes in a local browser page. A subagent writes a guide in Russian that splits the changes into sections explaining what changed, why, and what it leads to, with the diffs alongside. Line comments made in the browser come back into the session as feedback. With no argument, reviews the change discussed in the current session, including one made in a worktree. Free-text targets (for example "the worktree with the login fix") may be written in any language.
-argument-hint: "[path] [uncommitted | staged | <sha> | <A>..<B> | <branch>] [--base <ref>] [free text]"
+description: Runs a guided review of local git changes, a GitHub pull request or a GitLab merge request in a local browser page. A subagent writes a guide in Russian that splits the changes into sections explaining what changed, why, and what it leads to, with the diffs alongside. Line comments made in the browser come back into the session as feedback, or are published to the PR/MR. With no argument, reviews the change discussed in the current session, including one made in a worktree. Free-text targets (for example "the worktree with the login fix") may be written in any language.
+argument-hint: "[path] [uncommitted | staged | <sha> | <A>..<B> | <branch> | <PR/MR URL> | pr [N] | mr [N]] [--base <ref>] [free text]"
 disable-model-invocation: true
 allowed-tools: Bash(python3 ${CLAUDE_SKILL_DIR}/scripts/*), Bash(git -C * rev-parse *), Bash(git -C * status *), Bash(git -C * worktree list*), Bash(git -C * log *), Bash(git -C * branch *)
 ---
@@ -22,7 +22,7 @@ conversation.
 
 ## 1. Determine the target
 
-The target is a **repository** (a directory, often a worktree) plus a **mode** for `collect.py`.
+The target is a **repository** (a directory, often a worktree) plus a **mode** for `collect.py`, or a **PR/MR**.
 
 Argument tokens, in any order:
 
@@ -34,10 +34,16 @@ Argument tokens, in any order:
 | `<sha>` | `--mode commit --ref <sha>` |
 | `<A>..<B>`, `<A>...<B>` | `--mode range --ref <A>..<B>` |
 | branch name | `--mode branch --ref <branch>`: from the merge-base with the base branch to the branch |
-| `--base <ref>` | pass through as is |
+| PR/MR URL: `https://<host>/<owner>/<repo>/pull/<N>`, `https://<host>/<group>/<project>/-/merge_requests/<N>` | `--pr <url>` |
+| `pr <N>`, `#<N>`, `mr <N>`, `!<N>` | `--pr "<token as given>"`: number resolved against the repository's `origin` |
+| `pr`, `mr` alone | `--pr pr` / `--pr mr`: the PR/MR of the repository's current branch |
+| `--base <ref>` | pass through as is (not with `--pr`) |
 | none of the above | default mode `since-base`: from the merge-base with the base branch to the working tree, including untracked files |
 
-Tell a branch from a sha with `git -C <repo> rev-parse --verify`. Match free text (e.g. "the worktree with the login
+Tell a branch from a sha with `git -C <repo> rev-parse --verify`. With `--pr`, still pass `--repo` (inferred as below):
+`collect.py` fetches the PR commits into that repository if one of its remotes is the PR's repository (only objects and
+remote-tracking refs change, never the working tree or index), otherwise into a cache clone under `$TMPDIR`. GitHub and
+GitLab are reached only through the `gh` and `glab` CLIs, inside the scripts. Match free text (e.g. "the worktree with the login
 fix", possibly in Russian) against the session context using the rules below.
 
 **If no repository is given**, infer it from this session, in priority order:
@@ -62,9 +68,13 @@ prints a JSON summary that includes `outdir`. It does not touch the user's index
 - Exit code 3: no changes. Say so in one line and stop.
 - Exit code 2: error, message on stderr. Show it to the user.
 - If the summary has `notes` (e.g. the base branch was not found), pass them on to the user.
+- With `--pr`, exit code 2 also covers a missing `gh`/`glab`, a missing login (the message names the `gh auth login` /
+  `glab auth login` command to run; suggest the user runs it with the `!` prefix) and an inaccessible PR. Do not retry
+  with other arguments on your own.
 
-Before launching the subagent, tell the user in one line, in their language: the repository root, the label, the number
-of files and the line totals (+additions −deletions), and that a subagent is writing the guide.
+Before launching the subagent, tell the user in one line, in their language: the repository root (for a PR/MR: its URL
+and title from the summary's `pr`), the label, the number of files and the line totals (+additions −deletions), and that a
+subagent is writing the guide.
 
 ## 3. Launch the subagent
 
@@ -78,9 +88,10 @@ Methodology and format (read this first): ${CLAUDE_SKILL_DIR}/references/guide-m
 Diff: <outdir>/guide.patch
 Metadata and the authoritative file list: <outdir>/meta.json
 Repository (for targeted lookups only): <root>
+<only if meta.json newRev is a commit sha, not "worktree" or "index":> The reviewed version is commit <newRev>; the working tree may be on another branch, so read files of that version with git -C <root> show <newRev>:<path>.
 Write the result to: <outdir>/guide.json
 
-Context from the author of the change: <1–3 sentences from this session on why the change was made; "none" if it was not discussed>
+Context from the author of the change: <1–3 sentences from this session on why the change was made; for a PR/MR: "see pr.title and pr.body in meta.json"; "none" if it was not discussed>
 
 Rules:
 - Change nothing in the repository: do not edit files, do not commit, do not touch the index. You may write only inside <outdir>.
@@ -112,7 +123,9 @@ python3 ${CLAUDE_SKILL_DIR}/scripts/serve.py --dir <outdir> --open
 The first output line is `DIFF_REVIEW_URL: <url>`. Give the user the URL and tell them the session is free while they
 read. The server waits up to 3 hours.
 
-The page has two modes: «Гайд» (the guide, opened first) and «Файлы» (files, with a file tree). Both let the user expand
+The page has two modes: «Гайд» (the guide, opened first) and «Файлы» (files, with a file tree). For an open PR/MR the page
+also has «Опубликовать»: the user publishes the review to GitHub/GitLab from the page, after a confirmation dialog;
+`serve.py` posts it through `gh`/`glab`. You never publish anything yourself. Both let the user expand
 context between hunks and open a whole file: `collect.py` puts the full text of changed files into `full.patch`.
 
 ## 6. Handle the decision
@@ -120,13 +133,16 @@ context between hunks and open a whole file: `collect.py` puts the full text of 
 When the background command finishes, its last output line is:
 
 ```
-DIFF_REVIEW_RESULT: feedback|approved|closed|timeout [<path to feedback.md>]
+DIFF_REVIEW_RESULT: feedback|approved|published|closed|timeout [<path to feedback.md>]
 ```
 
 - `feedback`: read `feedback.md` and treat it as a message from the user. It is their review of your or someone else's
   changes in the repository `<root>`. Answer questions. Make requested edits in `<root>`, i.e. in the worktree that was
   reviewed, not in the session's directory. Clarify anything ambiguous. Then offer to rerun `/diff-review` to check the
-  result.
+  result. For a PR/MR, edit only if its head branch is checked out in a local worktree (`git -C <repo> worktree list`);
+  otherwise answer and ask where to make the changes.
 - `approved`: confirm in one line. If `feedback.md` is attached, read it and take the comments into account. Do not
   commit anything unless asked separately.
+- `published`: the review is already on GitHub/GitLab. Say so in one line with the PR/MR URL. Do not act on the comments
+  unless asked separately.
 - `closed` or `timeout`: say in one line that the review was closed without a response.
