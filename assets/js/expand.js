@@ -13,7 +13,10 @@ import { toast } from './toast.js';
 
 // Expansion is possible if collect.py captured the full file text and it matched the patch.
 export const canExpand = (file) => file.fullAvail && !file.fullBad && file.newLines != null;
-const expandedOf = (file) => S.expanded[file.path] || (S.expanded[file.path] = { ranges: [], full: false });
+const expandedOf = (file) => {
+  if (!S.expanded[file.path]) S.expanded[file.path] = { ranges: [], full: false };
+  return S.expanded[file.path];
+};
 export const isWhole = (file) => !!(S.expanded[file.path] && S.expanded[file.path].full);
 
 export function expandReason(file) {

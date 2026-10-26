@@ -59,7 +59,9 @@ test('buildView without expansions reproduces the original hunks', () => {
     v.hunks.map((h) => h.header.replace(/ @@.*/, ' @@')),
     base.map((h) => h.header.replace(/ @@.*/, ' @@')),
   );
-  visible(v).forEach((l, k) => assert.equal(l.i, k, 'running index'));
+  visible(v).forEach((l, k) => {
+    assert.equal(l.i, k, 'running index');
+  });
 });
 
 test('gaps: start, middle and tail, with new line numbers and the at position', () => {

@@ -175,7 +175,7 @@ def log_lines(root, log_args):
     if not log_args:
         return []
     res = git(root, "log", "--oneline", "--no-decorate", f"-{LOG_LIMIT}", *log_args, check=False)
-    return [l for l in res.stdout.decode(errors="replace").splitlines() if l]
+    return [ln for ln in res.stdout.decode(errors="replace").splitlines() if ln]
 
 
 def new_side_sizes(root, new_rev, paths):
@@ -267,7 +267,7 @@ def collect_full(root, diff_args, env, new_rev, name_status, numstat, notes):
             continue
         chunks[i] = chunk
         body = chunk.split("\n@@ ", 1)[1].split("\n")[1:]
-        lines[i] = sum(1 for l in body if l[:1] in (" ", "+"))
+        lines[i] = sum(1 for ln in body if ln[:1] in (" ", "+"))
     return {"chunks": chunks, "lines": lines, "reasons": reasons}
 
 
@@ -396,7 +396,7 @@ def collect(args):
 
     status_names = {"A": "added", "M": "modified", "D": "deleted", "R": "renamed", "C": "copied", "T": "typechange"}
     files = []
-    for i, (ns, st, chunk) in enumerate(zip(name_status, numstat, chunks)):
+    for i, (ns, st, _chunk) in enumerate(zip(name_status, numstat, chunks)):
         if ns["path"] != st["path"]:
             raise CollectError(f"paths out of sync: `{ns['path']}` and `{st['path']}`")
         files.append(

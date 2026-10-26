@@ -81,7 +81,8 @@ def load_review(outdir):
     if len(chunks) != len(meta["files"]):
         raise SystemExit(f"guide.patch ({len(chunks)} files) does not match meta.json ({len(meta['files'])})")
     files = [{**f, "patch": c} for f, c in zip(meta["files"], chunks)]
-    # full.patch: chunks in order for files with content.available. If the file is missing or does not match, there is no expansion.
+    # full.patch: chunks in order for files with content.available.
+    # If the file is missing or does not match, there is no expansion.
     full = {}
     want = [i for i, f in enumerate(meta["files"]) if (f.get("content") or {}).get("available")]
     full_path = outdir / "full.patch"

@@ -100,15 +100,15 @@ class Base(unittest.TestCase):
                 continue
             c = full[f["path"]]
             self.assertEqual(c.count("\n@@ ") + (1 if c.startswith("@@ ") else 0), 1, f["path"])
-            gl = [l for l in g.split("\n@@ ", 1)[1].split("\n")[1:] if l[:1] in "+-" and l]
+            gl = [ln for ln in g.split("\n@@ ", 1)[1].split("\n")[1:] if ln[:1] in "+-" and ln]
             fl = c.split("\n@@ ", 1)[1].split("\n")[1:]
             it = iter(fl)
-            for l in gl:  # in-order subsequence with identical text
-                self.assertTrue(any(l == x for x in it), f"{f['path']}: {l!r} missing in full")
+            for ln in gl:  # in-order subsequence with identical text
+                self.assertTrue(any(ln == x for x in it), f"{f['path']}: {ln!r} missing in full")
             if count:
                 body = reader(f["path"])
                 n = body.count(b"\n") + (1 if body and not body.endswith(b"\n") else 0)
-                ca = sum(1 for l in fl if l and l[:1] in " +")
+                ca = sum(1 for ln in fl if ln and ln[:1] in " +")
                 # trailing empty string after final newline is not a line
                 if fl and fl[-1] == "":
                     ca -= 0
@@ -231,7 +231,7 @@ class Modes(Base):
                     self.assertNotIn("m.txt", paths)
                 else:
                     self.assertIn("m.txt", paths)  # two-dot compares tips
-                self.check_invariants(out, meta, lambda p: git(self.repo, "show", f"{tip}:{p}"))
+                self.check_invariants(out, meta, lambda p, tip=tip: git(self.repo, "show", f"{tip}:{p}"))
                 self.check_serve(out, meta)
 
     def test_branch(self):

@@ -92,7 +92,9 @@ export function changeBlocks(lines) {
 export function buildView(fullLines, baseHunks, ranges, all) {
   const key = (l) => (l.t === 'del' ? `o${l.o}` : `n${l.n}`);
   const at = new Map();
-  fullLines.forEach((l, k) => at.set(key(l), k));
+  fullLines.forEach((l, k) => {
+    at.set(key(l), k);
+  });
   const show = new Uint8Array(fullLines.length);
   const fnAt = new Map(); // index in fullLines where an original hunk starts -> fn
   for (const hk of baseHunks) {
