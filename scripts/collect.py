@@ -9,6 +9,10 @@ Modes:
   range        a revision range (--ref A..B or A...B)
   branch       merge-base(base, branch)..branch (--ref <branch>)
 
+--pr <ref> collects a GitHub pull request or GitLab merge request instead (URL, #N, !N, `pr N`, `mr N`, or a bare
+`pr` / `mr` for the PR of the current branch; see remote.py). The PR commits are fetched into the local clone of the
+repository (or a cache clone) and diffed as merge-base..head; --mode, --ref and --base cannot be combined with it.
+
 The user's index is never modified: untracked files are added with `git add -N`
 to a temporary copy of the index (GIT_INDEX_FILE).
 
@@ -29,6 +33,8 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+import remote
 
 EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 DIFF_FLAGS = [
@@ -283,8 +289,9 @@ def file_content(i, full):
     return content
 
 
-def collect(args):
-    repo = Path(args.repo).expanduser().resolve()
+def open_repo(path):
+    """(root, repo name) of the repository or worktree that contains `path`."""
+    repo = Path(path).expanduser().resolve()
     if not repo.exists():
         raise CollectError(f"directory `{repo}` does not exist")
     res = git(repo, "rev-parse", "--show-toplevel", check=False)
@@ -293,15 +300,38 @@ def collect(args):
     root = Path(res.stdout.decode().strip())
     # For a worktree, take the repository name from the common .git, not from the worktree directory.
     common = Path(out(root, "rev-parse", "--path-format=absolute", "--git-common-dir"))
-    repo_name = common.parent.name if common.name == ".git" else root.name
+    return root, common.parent.name if common.name == ".git" else root.name
 
-    head = verify(root, "HEAD")
-    branch = (
-        out(root, "rev-parse", "--abbrev-ref", "HEAD")
-        if head
-        else out(root, "symbolic-ref", "--short", "-q", "HEAD", check=False)
-    )
-    mode = args.mode
+
+def prepare_pr(args):
+    """Fetch the PR metadata and commits (remote.py); returns (root, pr)."""
+    try:
+        return remote.prepare(args.pr, Path(args.repo).expanduser())
+    except remote.RemoteError as e:
+        raise CollectError(str(e)) from e
+
+
+def pr_label(pr):
+    if pr["provider"] == "github":
+        return f"GitHub PR {pr['repo']}#{pr['number']}"
+    return f"GitLab MR {pr['repo']}!{pr['number']}"
+
+
+def collect(args):
+    pr = None
+    if getattr(args, "pr", None):
+        root, pr = prepare_pr(args)
+        repo_name = pr["repo"].rsplit("/", 1)[-1]
+        head, branch, mode = pr["headSha"], pr["headRef"], "pr"
+    else:
+        root, repo_name = open_repo(args.repo)
+        head = verify(root, "HEAD")
+        branch = (
+            out(root, "rev-parse", "--abbrev-ref", "HEAD")
+            if head
+            else out(root, "symbolic-ref", "--short", "-q", "HEAD", check=False)
+        )
+        mode = args.mode or "since-base"
     notes = []
     base = merge_base = None
     use_untracked = False
@@ -322,7 +352,16 @@ def collect(args):
             label = f"{base}...HEAD + uncommitted"
             rng = {"mode": "since-base", "base": base}
 
-    if mode == "uncommitted":
+    if mode == "pr":
+        base, merge_base = pr["baseRef"], pr["mergeBaseSha"]
+        # Git's defaults, whatever the user's diff config says: hunks must match the ones GitHub/GitLab show,
+        # or inline comments land on lines the server does not consider part of the diff.
+        defaults = ["--diff-algorithm=myers", "--inter-hunk-context=0"]
+        diff_args, log_args, new_rev = [*defaults, merge_base, head], [f"{merge_base}..{head}"], head
+        label = pr_label(pr)
+        rng = {key: pr[key] for key in ("provider", "host", "repo", "number", "url")}
+        rng = {"mode": "pr", **rng}
+    elif mode == "uncommitted":
         diff_args, use_untracked, new_rev = ["HEAD" if head else EMPTY_TREE], True, "worktree"
         label = "HEAD + uncommitted" if head else "working tree (no commits)"
         rng = {"mode": "uncommitted", "hasCommits": bool(head)}
@@ -415,7 +454,7 @@ def collect(args):
         "version": META_VERSION,
         "root": str(root),
         "repoName": repo_name,
-        "worktree": root.name if repo_name != root.name else None,
+        "worktree": root.name if repo_name != root.name and not pr else None,
         "branch": branch or None,
         "head": head,
         "mode": mode,
@@ -435,12 +474,18 @@ def collect(args):
             "deletions": sum(f["deletions"] for f in files),
         },
     }
+    if pr:
+        meta["pr"] = pr
     return patch, meta, "".join(full["chunks"][i] for i in sorted(full["chunks"]))
 
 
 def default_outdir(meta):
     stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    branch = re.sub(r"[^A-Za-z0-9._-]+", "-", meta.get("branch") or "detached")
+    pr = meta.get("pr")
+    if pr:
+        branch = ("mr" if pr["provider"] == "gitlab" else "pr") + str(pr["number"])
+    else:
+        branch = re.sub(r"[^A-Za-z0-9._-]+", "-", meta.get("branch") or "detached")
     return Path(tempfile.gettempdir()) / "diff-review" / f"{meta['repoName']}-{branch}-{stamp}"
 
 
@@ -453,12 +498,17 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--repo", default=".", help="repository or worktree directory")
     p.add_argument(
-        "--mode", default="since-base", choices=["since-base", "uncommitted", "staged", "commit", "range", "branch"]
+        "--mode",
+        choices=["since-base", "uncommitted", "staged", "commit", "range", "branch"],
+        help="what to diff (default: since-base)",
     )
     p.add_argument("--ref", help="sha, A..B / A...B or a branch name, depending on the mode")
     p.add_argument("--base", help="base for since-base and branch")
+    p.add_argument("--pr", help="GitHub PR / GitLab MR: URL, #N, !N, `pr N`, `mr N`, or bare `pr` / `mr`")
     p.add_argument("--out", help="output directory (default: $TMPDIR/diff-review/...)")
     args = p.parse_args()
+    if args.pr and (args.mode or args.ref or args.base):
+        p.error("--pr cannot be combined with --mode, --ref or --base")
 
     try:
         patch, meta, full_patch = collect(args)
@@ -478,26 +528,23 @@ def main():
     (outdir / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
     t = meta["totals"]
-    print(
-        json.dumps(
-            {
-                "ok": True,
-                "outdir": str(outdir),
-                "root": meta["root"],
-                "branch": meta["branch"],
-                "mode": meta["mode"],
-                "label": meta["label"],
-                "files": t["files"],
-                "additions": t["additions"],
-                "deletions": t["deletions"],
-                "untrackedIncluded": meta["untrackedIncluded"],
-                "commits": len(meta["commits"]),
-                "notes": note_texts(meta),
-            },
-            ensure_ascii=False,
-            indent=2,
-        )
-    )
+    summary = {
+        "ok": True,
+        "outdir": str(outdir),
+        "root": meta["root"],
+        "branch": meta["branch"],
+        "mode": meta["mode"],
+        "label": meta["label"],
+        "files": t["files"],
+        "additions": t["additions"],
+        "deletions": t["deletions"],
+        "untrackedIncluded": meta["untrackedIncluded"],
+        "commits": len(meta["commits"]),
+        "notes": note_texts(meta),
+    }
+    if "pr" in meta:
+        summary["pr"] = {"url": meta["pr"]["url"], "title": meta["pr"]["title"]}
+    print(json.dumps(summary, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

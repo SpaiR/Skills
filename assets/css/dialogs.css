@@ -236,3 +236,44 @@
   background: var(--raised);
   border-top: 1px solid var(--hair);
 }
+
+/* Publish dialog: the action choice (comment / approve / request changes). */
+.pub-events {
+  display: grid;
+  gap: 6px;
+}
+.pub-event {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 8px;
+  align-items: baseline;
+  padding: 8px 10px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.pub-event:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.pub-event.is-off {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.pub-event input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+.pub-event-label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+.pub-event-hint {
+  grid-column: 2;
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+}
+.pub-fold {
+  margin: 0;
+}

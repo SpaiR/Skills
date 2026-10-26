@@ -46,7 +46,18 @@ const SERVER_ERRORS = {
   request_too_large: 'слишком большой запрос',
   empty_feedback: 'пустой фидбек',
   already_submitted: 'уже отправлено',
+  not_a_pr: 'это ревью не PR и не MR',
+  event: 'недопустимое действие',
+  comments: 'некорректные комментарии к строкам',
+  body: 'некорректный запрос',
+  publish_failed: 'GitHub или GitLab вернул ошибку',
+  head_moved: 'в PR появились новые коммиты',
 };
+
+// PR/MR state from meta.pr.
+const PR_STATES = { open: 'открыт', draft: 'черновик', merged: 'смержен', closed: 'закрыт' };
+const prWord = (provider) => (provider === 'gitlab' ? 'MR' : 'PR');
+const prRef = (provider, number) => (provider === 'gitlab' ? `MR !${number}` : `PR #${number}`);
 
 export const T = Object.freeze({
   // Review data from meta.json. Older outdirs (meta v1, v2) carry ready Russian text: it is shown verbatim.
@@ -65,6 +76,8 @@ export const T = Object.freeze({
         return `${r.from}${r.dots}${r.to}`;
       case 'branch':
         return `${r.base}...${r.ref}`;
+      case 'pr':
+        return `${prRef(r.provider, r.number)} · ${r.repo}`;
       default:
         return meta.label;
     }
@@ -111,6 +124,17 @@ export const T = Object.freeze({
   chapterChip: (num, title) => `Глава ${num} · ${title}`,
   chapterNo: (num) => `Глава ${num}`,
 
+  // PR/MR data (meta.pr).
+  pr: {
+    word: prWord,
+    ref: prRef,
+    state: (pr) => (pr.state === 'open' && pr.draft ? PR_STATES.draft : byCode(PR_STATES, pr.state) || pr.state),
+    author: (login) => `автор @${login}`,
+    branches: (head, base) => `${head} → ${base}`,
+    description: (provider) => `Описание ${prWord(provider)}`,
+    open: (provider) => `Открыть ${prWord(provider)} в ${provider === 'gitlab' ? 'GitLab' : 'GitHub'}`,
+  },
+
   // Boot and page title.
   page: {
     title: (title) => `Ревью: ${title}`,
@@ -138,6 +162,8 @@ export const T = Object.freeze({
     approve: 'Одобрить',
     submit: 'Отправить фидбек',
     submitTitle: (modEnter) => `Отправить фидбек (${modEnter})`,
+    publish: (provider) => `Опубликовать в ${prWord(provider)}`,
+    publishShort: 'Опубликовать',
     saveError:
       'Не удалось сохранить прогресс: сервер недоступен. Комментарии на странице пока целы, но отправить их не получится.',
     progressTitle: (viewed, total, secDone, secTotal) =>
@@ -337,13 +363,50 @@ export const T = Object.freeze({
     preview: 'Что уйдёт в сессию',
   },
 
+  // Publish dialog: the review goes to the PR/MR on GitHub or GitLab.
+  publish: {
+    title: (provider) => `Опубликовать ревью в ${prWord(provider)}`,
+    hint: (provider, viewer) =>
+      `Ревью появится в ${prWord(provider)}${viewer ? ` от имени @${viewer}` : ''}. Отменить публикацию отсюда нельзя.`,
+    events: { comment: 'Комментарий', approve: 'Одобрить', request_changes: 'Запросить изменения' },
+    eventHints: {
+      comment: 'Комментарии без вердикта.',
+      approve: 'Комментарии и одобрение.',
+      request_changes: 'Комментарии и запрос изменений: PR нельзя будет смержить без нового ревью.',
+    },
+    eventAria: 'Действие',
+    ownPr: 'Свой PR нельзя одобрить или отклонить: GitHub это запрещает.',
+    inline: 'К строкам',
+    toBody: 'В общий текст',
+    toBodyHint: 'Комментарии на раскрытом контексте не привязать к строке PR: они уйдут в общий текст ревью с цитатой.',
+    needBody: 'Для запроса изменений нужен общий комментарий.',
+    nothing: 'Публиковать нечего: добавь комментарии или выбери «Одобрить».',
+    send: 'Опубликовать',
+    sending: 'Публикую…',
+    preview: 'Общий текст ревью',
+    headMoved: (provider, sha) =>
+      `В ${prWord(provider)} появились новые коммиты (head ${sha.slice(0, 10)}). Комментарии привязаны к версии, которую ты смотрел.`,
+    anyway: 'Опубликовать всё равно',
+    failed: (msg) => `Не удалось опубликовать: ${msg}`,
+    partial: (n) => `Уже опубликовано шагов: ${n}. Повтор отправит только остальное.`,
+    // Text that goes to the PR/MR itself.
+    chapter: (num, title) => `### Глава ${num ? `${num}. ` : ''}${title}`,
+    lineHead: (path, range, side) => `**\`${path}\`, ${range}${side === 'old' ? ' (старая версия)' : ''}**`,
+    suggestion: 'Предложенная замена:',
+  },
+
   // Screen after submitting.
   finished: {
     title: {
       feedback: 'Фидбек отправлен в сессию Claude Code.',
       approve: 'Одобрение отправлено в сессию Claude Code.',
       close: 'Ревью закрыто.',
+      publish: 'Ревью опубликовано.',
     },
+    published: (provider, inline, folded) =>
+      folded
+        ? `${prWord(provider)} не принял привязку к строкам, поэтому все комментарии ушли в общий текст ревью.`
+        : `Комментариев к строкам: ${inline}.`,
     savedInState: 'Комментарии сохранены в state.json.',
     // Zero parts are omitted: "0 on chapters" is noise. The word "comment" is inflected by the first number.
     sent(counts) {
@@ -360,7 +423,10 @@ export const T = Object.freeze({
 
   // feedback.md sent to the Claude Code session.
   feedback: {
-    title: (action, title) => `# ${action === 'approve' ? 'Ревью одобрено' : 'Фидбек по ревью'}: ${title}`,
+    title: (action, title) =>
+      `# ${action === 'approve' ? 'Ревью одобрено' : action === 'publish' ? 'Ревью опубликовано' : 'Фидбек по ревью'}: ${title}`,
+    pr: (pr) => `- ${prRef(pr.provider, pr.number)}: ${pr.url}, ветки \`${pr.headRef}\` → \`${pr.baseRef}\``,
+    event: (label) => `- Действие: ${label}`,
     range: (label) => `- Диапазон: ${label}`,
     repo: (root, branch) => `- Репозиторий: \`${root}\`${branch ? `, ветка \`${branch}\`` : ''}`,
     global: '## Общий комментарий',

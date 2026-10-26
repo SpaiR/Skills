@@ -7,7 +7,11 @@ keeps progress in state.json and waits for the user's decision. After "Submit", 
 or "Close" it writes feedback.md (if there is anything to write), prints a marker as the
 last line and exits:
 
-  DIFF_REVIEW_RESULT: feedback|approved|closed|timeout [<path to feedback.md>]
+  DIFF_REVIEW_RESULT: feedback|approved|closed|published|timeout [<path to feedback.md>]
+
+For a GitHub PR / GitLab MR review (meta.json has `pr`) the page can also post the review to the PR:
+`POST /api/publish` (see publish.py) sends it through `gh` / `glab`, writes feedback.md and ends with
+`published`. A failed publish answers 502 `publish_failed`, the server keeps running and the page can retry.
 
 Listens on 127.0.0.1 only. The API requires the token from the URL (X-Review-Token header),
 so that third-party pages in the browser cannot inject feedback.
@@ -28,6 +32,7 @@ from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS))
+import publish  # noqa: E402
 from collect import split_patch  # noqa: E402
 from validate import validate  # noqa: E402
 
@@ -59,6 +64,8 @@ MAX_BODY = 20 * 1024 * 1024
 ERR_TOO_LARGE = "request_too_large"
 ERR_EMPTY_FEEDBACK = "empty_feedback"
 ERR_ALREADY_SUBMITTED = "already_submitted"
+ERR_HEAD_MOVED = "head_moved"
+ERR_PUBLISH_FAILED = "publish_failed"
 SUBMIT_ACTIONS = ("feedback", "approve", "close")
 
 
@@ -113,6 +120,7 @@ def main():
     done = threading.Event()
     result = {}
     state_lock = threading.Lock()
+    finish_lock = threading.Lock()
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "diff-review"
@@ -179,24 +187,54 @@ def main():
                 os.replace(tmp, state_path)
             return self._send(HTTPStatus.OK, {"ok": True})
 
+        def _publish(self, body):
+            """Post the review to the PR/MR. Finishes the server on success; 502 keeps it running for a retry."""
+            if not isinstance(body, dict):
+                return self._send(HTTPStatus.BAD_REQUEST, {"error": "body"})
+            markdown = body.get("markdown")
+            markdown = markdown.strip() if isinstance(markdown, str) else ""
+            # One finishing action at a time: a submit, another publish or the timeout waits for a publish in flight
+            # and then sees its outcome.
+            with finish_lock:
+                if done.is_set():
+                    return self._send(HTTPStatus.CONFLICT, {"error": ERR_ALREADY_SUBMITTED})
+                try:
+                    res = publish.publish(outdir, review["meta"].get("pr"), body)
+                except publish.BadRequest as e:
+                    return self._send(HTTPStatus.BAD_REQUEST, {"error": e.code})
+                except publish.HeadMoved as e:
+                    return self._send(HTTPStatus.CONFLICT, {"error": ERR_HEAD_MOVED, "head": e.head})
+                except publish.PublishFailed as e:
+                    err = {"error": ERR_PUBLISH_FAILED, "detail": e.detail, "done": e.done}
+                    return self._send(HTTPStatus.BAD_GATEWAY, err)
+                if markdown:
+                    feedback_path.write_text(markdown + "\n", encoding="utf-8")
+                result["status"] = "published"
+                result["file"] = str(feedback_path) if markdown else ""
+                self._send(HTTPStatus.OK, {"ok": True, **res})
+                done.set()
+
         def do_POST(self):
-            if self.path != "/api/submit" or not self._api_ok():
+            if self.path not in ("/api/submit", "/api/publish") or not self._api_ok():
                 return self._send(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
             try:
                 body = self._body()
             except ValueError as e:
                 return self._send(HTTPStatus.BAD_REQUEST, {"error": str(e)})
+            if self.path == "/api/publish":
+                return self._publish(body)
             action = body.get("action")
             markdown = (body.get("markdown") or "").strip()
-            rejected = submit_error(action, markdown, done.is_set())
-            if rejected:
-                return self._send(rejected[0], {"error": rejected[1]})
-            if markdown and action != "close":
-                feedback_path.write_text(markdown + "\n", encoding="utf-8")
-            result["status"] = {"feedback": "feedback", "approve": "approved", "close": "closed"}[action]
-            result["file"] = str(feedback_path) if markdown and action != "close" else ""
-            self._send(HTTPStatus.OK, {"ok": True})
-            done.set()
+            with finish_lock:
+                rejected = submit_error(action, markdown, done.is_set())
+                if rejected:
+                    return self._send(rejected[0], {"error": rejected[1]})
+                if markdown and action != "close":
+                    feedback_path.write_text(markdown + "\n", encoding="utf-8")
+                result["status"] = {"feedback": "feedback", "approve": "approved", "close": "closed"}[action]
+                result["file"] = str(feedback_path) if markdown and action != "close" else ""
+                self._send(HTTPStatus.OK, {"ok": True})
+                done.set()
 
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
     url = f"http://127.0.0.1:{server.server_address[1]}/?t={token}"
@@ -207,7 +245,10 @@ def main():
         subprocess.run([opener, url], check=False, capture_output=True)
 
     if not done.wait(timeout=args.timeout_min * 60):
-        result["status"], result["file"] = "timeout", ""
+        with finish_lock:  # a publish in flight wins over the timeout
+            if not done.is_set():
+                result["status"], result["file"] = "timeout", ""
+                done.set()
     server.shutdown()
     print(f"DIFF_REVIEW_RESULT: {result['status']} {result['file']}".rstrip(), flush=True)
 

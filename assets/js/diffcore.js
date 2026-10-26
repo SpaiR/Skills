@@ -216,6 +216,30 @@ export function quoteLines(lines, side, a, b) {
   return lines.filter((l) => l[key] != null && l[key] >= a && l[key] <= b);
 }
 
+// Where a line comment can be anchored in a PR/MR: lines a..b of side `side` must lie in one hunk of the
+// original patch, otherwise null (the comment is on expanded context and goes into the review body).
+// Each end is {type, old, new}: diff position counters as GitLab counts them (an added line gets the
+// old-side counter at that point, a deleted line the new-side one), starting from the raw hunk header values.
+export function prPosition(hunks, side, a, b) {
+  const key = side === 'new' ? 'n' : 'o';
+  for (const hk of hunks) {
+    let o = hk.oldStart,
+      n = hk.newStart,
+      start = null,
+      end = null;
+    for (const l of hk.lines) {
+      const pos = { type: l.t, old: o, new: n };
+      if (l.t !== 'add') o++;
+      if (l.t !== 'del') n++;
+      if (l[key] === a) start = pos;
+      if (l[key] === b) end = pos;
+    }
+    if (start && end) return { start, end };
+    if (start || end) return null;
+  }
+  return null;
+}
+
 // ---------- intraline diff ----------
 
 export const TOKEN_RE = /[\p{L}\p{N}_]+|\s+|[^\p{L}\p{N}_\s]/gu;

@@ -91,6 +91,7 @@ class ServerCase(unittest.TestCase):
         self.addCleanup(td.cleanup)
         self.outdir = Path(td.name) / "out"
         shutil.copytree(FIXTURES / self.fixture, self.outdir)
+        self.prepare_outdir()
         self.proc = subprocess.Popen(
             [sys.executable, str(SCRIPTS / "serve.py"), "--dir", str(self.outdir), "--timeout-min", "5"],
             stdout=subprocess.PIPE,
@@ -105,6 +106,9 @@ class ServerCase(unittest.TestCase):
         url = urlparse(line.split(": ", 1)[1].strip())
         self.port = url.port
         self.token = parse_qs(url.query)["t"][0]
+
+    def prepare_outdir(self):
+        """Hook for subclasses: adjust the copied outdir before the server starts."""
 
     def _stop(self):
         if self.proc.poll() is None:

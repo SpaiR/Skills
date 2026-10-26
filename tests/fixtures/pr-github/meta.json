@@ -1,0 +1,137 @@
+{
+  "version": 3,
+  "root": "/private/var/folders/fp/m6vmxbdx6bv9bz1w82wbt7m00000gp/T/tmp.lL2xfNTRvG/harness/mixed-repo",
+  "repoName": "mixed-repo",
+  "worktree": null,
+  "branch": "feature/review-polish",
+  "head": "d9562d415efea76e29feceff9b4dd4e21e006cf0",
+  "mode": "pr",
+  "label": "GitHub PR acme/mixed-repo#42",
+  "range": {
+    "mode": "pr",
+    "provider": "github",
+    "host": "github.com",
+    "repo": "acme/mixed-repo",
+    "number": 42,
+    "url": "https://github.com/acme/mixed-repo/pull/42"
+  },
+  "base": "main",
+  "mergeBase": "2f4b30099c1979635abc8900fb23cbf01f4439bc",
+  "newRev": "d9562d415efea76e29feceff9b4dd4e21e006cf0",
+  "untrackedIncluded": 0,
+  "commits": [
+    "d9562d4 verify: kind + quiet; лимиты"
+  ],
+  "notes": [],
+  "createdAt": "2026-10-26T08:17:07+02:00",
+  "files": [
+    {
+      "path": "assets/logo.png",
+      "oldPath": null,
+      "status": "added",
+      "additions": 0,
+      "deletions": 0,
+      "binary": true,
+      "content": {
+        "available": false,
+        "reason": "in_diff"
+      }
+    },
+    {
+      "path": "assets/viewer.html",
+      "oldPath": null,
+      "status": "deleted",
+      "additions": 0,
+      "deletions": 20,
+      "binary": false,
+      "content": {
+        "available": false,
+        "reason": "in_diff"
+      }
+    },
+    {
+      "path": "package-lock.json",
+      "oldPath": null,
+      "status": "added",
+      "additions": 1,
+      "deletions": 0,
+      "binary": false,
+      "content": {
+        "available": false,
+        "reason": "in_diff"
+      }
+    },
+    {
+      "path": "references/method.md",
+      "oldPath": "references/guide-method.md",
+      "status": "renamed",
+      "additions": 1,
+      "deletions": 0,
+      "binary": false,
+      "content": {
+        "available": true,
+        "lines": 145
+      }
+    },
+    {
+      "path": "scripts/collect.py",
+      "oldPath": null,
+      "status": "modified",
+      "additions": 8,
+      "deletions": 5,
+      "binary": false,
+      "content": {
+        "available": true,
+        "lines": 331
+      }
+    },
+    {
+      "path": "scripts/test_collect.py",
+      "oldPath": null,
+      "status": "added",
+      "additions": 1,
+      "deletions": 0,
+      "binary": false,
+      "content": {
+        "available": false,
+        "reason": "in_diff"
+      }
+    },
+    {
+      "path": "scripts/validate.py",
+      "oldPath": null,
+      "status": "modified",
+      "additions": 2,
+      "deletions": 2,
+      "binary": false,
+      "content": {
+        "available": true,
+        "lines": 124
+      }
+    }
+  ],
+  "totals": {
+    "files": 7,
+    "additions": 13,
+    "deletions": 27
+  },
+  "pr": {
+    "provider": "github",
+    "host": "github.com",
+    "repo": "acme/mixed-repo",
+    "number": 42,
+    "url": "https://github.com/acme/mixed-repo/pull/42",
+    "title": "verify: kind + quiet, лимиты",
+    "author": "alice",
+    "state": "open",
+    "draft": false,
+    "baseRef": "main",
+    "headRef": "feature/review-polish",
+    "baseSha": "2f4b30099c1979635abc8900fb23cbf01f4439bc",
+    "headSha": "d9562d415efea76e29feceff9b4dd4e21e006cf0",
+    "startSha": null,
+    "mergeBaseSha": "2f4b30099c1979635abc8900fb23cbf01f4439bc",
+    "body": "Исправляет verify и лимиты.\n\n<!-- шаблон PR: удалите этот комментарий -->\n## Что сделано\n- `verify` различает kind\n- [документация](https://example.com/docs)\n\n<img src=x onerror=\"window.__xss=1\"><script>window.__xss=2</script> [плохая](javascript:window.__xss=3)",
+    "viewer": "bob"
+  }
+}

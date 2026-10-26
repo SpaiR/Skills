@@ -1,0 +1,625 @@
+diff --git a/references/guide-method.md b/references/method.md
+similarity index 99%
+rename from references/guide-method.md
+rename to references/method.md
+index 0077001..b671d8d 100644
+--- a/references/guide-method.md
++++ b/references/method.md
+@@ -1,144 +1,145 @@
+ # Методология guided review
+ 
+ Адаптация Guided Review из plannotator (github.com/plannotator/guides) на русский.
+ 
+ ## Задача
+ 
+ Ты опытный инженер, который хорошо понял этот набор изменений. Твоя задача — разбить его на главы так, чтобы ревьюер понял большое изменение за один заход. Глава объясняет, что изменилось, зачем, и к чему это ведёт. Диффы покажутся рядом с твоим текстом, поэтому текст несёт смысл и форму изменения, а не пересказ кода.
+ 
+ Ты **не ищешь баги** и **не пишешь отчёт о находках**. Если, читая дифф, заметил что-то похожее на настоящую ошибку, упомяни коротко в обзоре нужной главы. Специально проблемы не ищи. В большинстве обзоров багов нет, и это нормально.
+ 
+ Пиши по-русски. Идентификаторы, пути, имена файлов и флаги остаются как в коде.
+ 
+ ## Голос
+ 
+ Пиши так, будто объясняешь изменение толковому коллеге, который этот код не видел.
+ 
+ - Короткие предложения, одна мысль в каждом. Предел 25 слов, обычно меньше.
+ - Простые слова: файл, функция, модуль, запрос, сервер. Без «артефакт», «поверхность», «примитив». Назвал вещь — дальше называй её так же.
+ - Имена из кода в бэктиках, не больше двух на предложение. Предложение должно читаться, даже если закрыть бэктики.
+ - Никаких оценок и рекламы: «элегантно», «надёжно», «бесшовно», «критически важно», «просто». Только факты.
+ - Без эмодзи.
+ 
+ ## Скорость
+ 
+ Дифф у тебя уже есть. Внимательно прочитать его один раз — 90% работы. Ты раскладываешь готовый дифф по главам, а не аудируешь кодовую базу.
+ 
+ - Главный и обычно единственный источник — `guide.patch`. Список файлов в `meta.json` — авторитетный набор путей.
+ - Допустимы несколько **точечных** справок, когда истории главы не хватает одного факта: определение, на которое ссылается дифф, одно место вызова. Каждая справка отвечает на вопрос, который можно сформулировать. «Понять кодовую базу» — не вопрос.
+ - Не исследуй репозиторий, не читай неизменённые файлы «для контекста», не запускай широкий поиск. Поймал себя на третьем исследовательском вызове — остановись и пиши с тем, что есть.
+ 
+ Медленный исчерпывающий гайд — провал: ревьюер сидит и ждёт.
+ 
+ ## Поля guide.json
+ 
+ ### title
+ Одна строка. Что делает изменение по сути, а не заглушка вроде «Изменения в коде».
+ 
+ ### intent
+ 1–2 предложения: зачем существует это изменение. Источники по порядку:
+ 1. Контекст от основной сессии, если он передан в задаче.
+ 2. Сообщения коммитов из `meta.json` (`commits`) и имя ветки.
+ 3. Характер самих изменений.
+ 
+ Не ищи задачи и тикеты, на которые нет явной ссылки.
+ 
+ ### sections
+ Каждая глава — это `title`, `overview` и одна или несколько ссылок на файлы в `diffs`.
+ 
+ **Порядок — по важности**, а не по пути файла, размеру диффа или хронологии. Ревьюер должен иметь право остановиться после любой главы и уже увидеть самое важное.
+ 
+ 1. Первая глава — сердце реализации. Часть, поняв которую, понимаешь остальное. Ревьюер не должен искать точку входа.
+ 2. Дальше следствия по убыванию значимости: обновлённые вызовы, поправленная логика ниже по течению, тесты нового поведения. Тесты идут вместе с кодом, который проверяют, если они не тривиальны.
+ 3. Обвязка и мелочи — в конце, одной группой: подключение, импорты, переименования, конфиги, сгенерированные файлы. Честное название («Обвязка и конфиги», «Уборка») и обзор в одно-два предложения.
+ 
+ **Нарезка — по логике.** Глава — логическая единица изменения, а не файл и не папка. Три файла изменились по одной причине — это одна глава с тремя файлами. В одном файле два несвязанных изменения — выбери главу по основному смыслу файла: файл может попасть только в одно место. Не делай по главе на файл по умолчанию. Если в наборе две независимые работы (две фичи, фича плюс посторонний рефакторинг), у каждой свои главы.
+ 
+ **title главы** — на уровне понятия: «Локализация платежей». Никогда не пересказ имени файла вроде «Изменения в payments/locale.ts».
+ 
+ **overview** — Markdown, 2–6 предложений. Три задачи по порядку:
+ 1. Что конкретно изменилось.
+ 2. Зачем: мотивация и неочевидные решения. «Сделали X, а не Y, потому что Z» — ровно то, чего ревьюер не получит из диффа.
+ 3. Последствия: что меняется в поведении системы, в опыте пользователя, в контрактах API и данных, в производительности или эксплуатации. Это касается не только UI: миграция схемы, политика ретраев, замена инфраструктуры тоже стоят одного простого предложения.
+ 
+ Если на одной главе держится основной риск, **скажи это прямо**: «вот место, где стоит читать медленно, остальное следует из него». Для действительно рискованной смены поведения или контракта используй отдельный блок:
+ 
+ ```markdown
+ > [!WARNING]
+ > Сигнатура `login` изменилась: вызовы с одним аргументом сломаются.
+ ```
+ 
+ Также доступен `> [!IMPORTANT]`. В большинстве глав таких блоков нет.
+ 
+ Markdown — только когда он делает текст точнее:
+ - бэктики вокруг каждого имени файла, символа, функции, типа, ключа конфига, флага;
+ - **жирный** для одной фразы, которую нельзя пропустить при беглом чтении, не больше одной на обзор;
+ - короткий список, когда глава параллельно меняет три и больше вещей, иначе проза;
+ - маленький блок кода (2–5 строк), только когда код скажет лучше фразы, например новая форма API. Никогда не вставляй куски диффа: они и так рядом.
+ 
+ **diffs** — ссылки на файлы, у каждой два поля:
+ - `file` — путь **дословно** из `meta.json` (`files[].path`). Скопируй, не придумывай, не сокращай, не меняй регистр и слеши. Для переименованных файлов — новый путь.
+ - `summary` — 1–2 предложения о смысловом изменении в этом файле, по ханкам, которые ты уже видел. Что изменение делает («выносит логику индексации в карту переопределений»), а не где оно («меняет строки 30–80»). Не открывай файл и не ищи по коду ради summary. Не повторяй обзор главы. Для тривиальной правки хватит короткой фразы.
+ 
+ Глава без `diffs` допустима только как чисто текстовая глава контекста с непустым обзором. Нужна она редко.
+ 
+ ### unplacedFiles
+ Всегда присутствует; пустой массив, если всё размещено. Сюда идут изменённые файлы, которым нет места ни в одной главе: чистый шум или настолько мелкие остатки, что в главе они бы её размыли. Это редкость. Не используй поле как свалку, чтобы не писать обзор. Файлы обвязки обычно идут в последнюю групповую главу, а не сюда.
+ 
+ ## Правило покрытия (жёсткое)
+ 
+ Каждый файл из `meta.json` встречается **ровно в одном месте**: в `diffs` одной главы или в `unplacedFiles`. Не в двух местах, не дважды, не нигде.
+ 
+ ## Жёсткие ограничения
+ 
+ - `diffs[].file` — точный путь из `meta.json`.
+ - Обычно 2–6 глав, никогда больше 10. Если изменение умещается в одну главу — одна глава, не раздувай.
+ - `title` — одна строка; `intent` — 1–2 предложения; обзор главы — 2–6 предложений.
+ - Без эмодзи.
+ 
+ ## Порядок работы
+ 
+ 1. Прочитай `meta.json` и `guide.patch` целиком. Если патч очень большой, читай частями, но весь.
+ 2. Сообщения коммитов уже лежат в `meta.json`. Отдельно `git log` не нужен.
+ 3. По желанию, не обязательно: загляни в `CLAUDE.md`, `AGENTS.md` или `README.md`, только если проект незнаком и «зачем» какой-то главы от этого зависит.
+ 4. Найди логические группы изменений, включая группы через несколько файлов. Это главы. Это работа мысли, а не вызовов инструментов.
+ 5. Упорядочи: сердце реализации первым (точка входа раньше, определения раньше потребителей, причина раньше следствия), затем следствия, затем одна общая глава для обвязки.
+ 6. Напиши `title`, `intent` и обзор каждой главы.
+ 7. Запиши `guide.json` и запусти валидатор. Исправляй, пока он не пройдёт.
+ 
+ ## Форма guide.json
+ 
+ ```json
+ {
+   "title": "Токены обновляются до истечения срока",
+   "intent": "Пользователей выкидывало из сессии посреди работы. Теперь токен обновляется в фоне, а каждый запрос к API ждёт свежий.",
+   "sections": [
+     {
+       "title": "Цикл обновления",
+       "overview": "Всё остальное держится на `refresh.ts`. Он планирует обновление за минуту до истечения и даёт `waitForToken()`, чтобы вызывающий код не гонялся с обновлением.\n\nЭто место стоит читать медленно: ошибка здесь снова начнёт разлогинивать пользователей.",
+       "diffs": [
+         { "file": "src/auth/refresh.ts", "summary": "Новый планировщик и `waitForToken()`." },
+         { "file": "src/auth/session.ts", "summary": "Хранит время истечения рядом с токеном." }
+       ]
+     },
+     {
+       "title": "Запросы ждут свежий токен",
+       "overview": "Клиент API перед каждым запросом ждёт `waitForToken()`, а не читает токен синхронно. Правка маленькая, но защита работает именно из-за неё.",
+       "diffs": [
+         { "file": "src/api/client.ts", "summary": "Ждёт токен перед отправкой." }
+       ]
+     },
+     {
+       "title": "Тесты",
+       "overview": "Тесты на поддельных часах. Проверяют, что обновление срабатывает до истечения, а запрос из очереди получает новый токен.",
+       "diffs": [
+         { "file": "src/auth/refresh.test.ts", "summary": "Покрывают таймер и гонку." }
+       ]
+     }
+   ],
+   "unplacedFiles": [],
+   "generator": { "engine": "claude-code", "model": "<модель, если знаешь>" }
+ }
+ ```
+ 
+ `generator` необязателен. Укажи модель, только если точно знаешь, кто ты.
++- новый пункт в методологии
+diff --git a/scripts/collect.py b/scripts/collect.py
+index bdf57c0..054f13f 100644
+--- a/scripts/collect.py
++++ b/scripts/collect.py
+@@ -1,328 +1,331 @@
+ #!/usr/bin/env python3
+ """Собирает дифф для diff-review: guide.patch + meta.json в выходной каталог.
+ 
+ Режимы:
+   since-base   merge-base(base, HEAD) против рабочего дерева, плюс untracked (по умолчанию)
+   uncommitted  HEAD против рабочего дерева, плюс untracked
+   staged       индекс против HEAD
+   commit       один коммит (--ref <sha>)
+   range        диапазон (--ref A..B или A...B)
+   branch       merge-base(base, ветка)..ветка (--ref <ветка>)
+ 
+ Индекс пользователя не меняется: untracked-файлы добавляются через `git add -N`
+ во временную копию индекса (GIT_INDEX_FILE).
+ 
+ Код выхода: 0 — успех, 2 — ошибка аргументов/git, 3 — изменений нет.
+ """
+ 
+ import argparse
+ import datetime
+ import json
+ import os
+ import re
+ import shutil
+ import subprocess
+ import sys
+ import tempfile
+ from pathlib import Path
+ 
+ EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+ DIFF_FLAGS = [
+     "--no-color", "--no-ext-diff", "--no-textconv", "--find-renames",
+     "--src-prefix=a/", "--dst-prefix=b/", "-U3",
+ ]
+-LOG_LIMIT = 50
++LOG_LIMIT = 100  # больше коммитов в сводке
+ 
+ 
+ class CollectError(Exception):
+     pass
+ 
+ 
+ def git(root, *args, env=None, check=True):
+     cmd = ["git", "-c", "core.quotePath=false", "-C", str(root), *args]
+     res = subprocess.run(cmd, capture_output=True, env=env)
+     if check and res.returncode != 0:
+         raise CollectError(f"git {' '.join(args)}: {res.stderr.decode(errors='replace').strip()}")
+     return res
+ 
+ 
+ def out(root, *args, **kw):
+     return git(root, *args, **kw).stdout.decode(errors="replace").strip()
+ 
+ 
+-def verify(root, ref):
+-    res = git(root, "rev-parse", "--verify", "-q", f"{ref}^{{commit}}", check=False)
+-    return res.stdout.decode().strip() if res.returncode == 0 else None
++def verify(root, ref, kind="commit"):
++    """Возвращает полный sha или None, если ревизия не найдена."""
++    res = git(root, "rev-parse", "--verify", "--quiet", f"{ref}^{{{kind}}}", check=False)
++    if res.returncode != 0:
++        return None
++    return res.stdout.decode().strip() or None
+ 
+ 
+ def resolve_base(root, explicit):
+     if explicit:
+         if not verify(root, explicit):
+             raise CollectError(f"база `{explicit}` не найдена")
+         return explicit
+     res = git(root, "symbolic-ref", "-q", "refs/remotes/origin/HEAD", check=False)
+     if res.returncode == 0:
+         ref = res.stdout.decode().strip().removeprefix("refs/remotes/")
+         if verify(root, ref):
+             return ref
+-    for name in ("main", "master", "develop"):
++    for name in ("main", "master", "develop", "trunk"):
+         for ref in (f"origin/{name}", name):
+             if verify(root, ref):
+                 return ref
+     return None
+ 
+ 
+ def untracked_index_env(root):
+     """Временный индекс с untracked-файлами в режиме intent-to-add."""
+     files = [f for f in git(root, "ls-files", "--others", "--exclude-standard", "-z")
+              .stdout.decode(errors="surrogateescape").split("\0") if f]
+     if not files:
+         return None, None, 0
+     index = Path(out(root, "rev-parse", "--path-format=absolute", "--git-path", "index"))
+     tmpdir = tempfile.mkdtemp(prefix="diff-review-index-")
+     tmp_index = Path(tmpdir) / "index"
+     if index.exists():
+         shutil.copyfile(index, tmp_index)
+     env = {**os.environ, "GIT_INDEX_FILE": str(tmp_index)}
+     # Через stdin, чтобы не упереться в лимит длины командной строки.
+     subprocess.run(
+         ["git", "-C", str(root), "add", "-N", "--pathspec-from-file=-", "--pathspec-file-nul"],
+         input="\0".join(files).encode(errors="surrogateescape"), env=env, check=True,
+         capture_output=True,
+     )
+     return env, tmpdir, len(files)
+ 
+ 
+ def parse_name_status(raw):
+     parts = raw.split("\0")
+     entries, i = [], 0
+     while i < len(parts) and parts[i]:
+         code = parts[i]
+         kind = code[0]
+         if kind in "RC":
+             entries.append({"status": kind, "oldPath": parts[i + 1], "path": parts[i + 2]})
+             i += 3
+         else:
+             entries.append({"status": kind, "oldPath": None, "path": parts[i + 1]})
+             i += 2
+     return entries
+ 
+ 
+ def parse_numstat(raw):
+     parts = raw.split("\0")
+     stats, i = [], 0
+     while i < len(parts) and parts[i]:
+         adds, dels, path = parts[i].split("\t", 2)
+         if path == "":  # переименование: дальше идут старый и новый путь
+             path = parts[i + 2]
+             i += 3
+         else:
+             i += 1
+         binary = adds == "-"
+         stats.append({"path": path, "additions": 0 if binary else int(adds),
+                       "deletions": 0 if binary else int(dels), "binary": binary})
+     return stats
+ 
+ 
+ def split_patch(patch):
+     """Режет патч на куски по файлам. Строки контента всегда начинаются с ' ', '+', '-',
+     поэтому 'diff --git ' в начале строки — только заголовок файла."""
+     chunks = re.split(r"(?m)^(?=diff --git )", patch)
+     return [c for c in chunks if c.startswith("diff --git ")]
+ 
+ 
+ def log_lines(root, log_args):
+     if not log_args:
+         return []
+     res = git(root, "log", "--oneline", "--no-decorate", f"-{LOG_LIMIT}", *log_args, check=False)
+     return [l for l in res.stdout.decode(errors="replace").splitlines() if l]
+ 
+ 
+ def collect(args):
+     repo = Path(args.repo).expanduser().resolve()
+     if not repo.exists():
+         raise CollectError(f"каталог `{repo}` не существует")
+     res = git(repo, "rev-parse", "--show-toplevel", check=False)
+     if res.returncode != 0:
+         raise CollectError(f"`{repo}` не внутри git-репозитория")
+     root = Path(res.stdout.decode().strip())
+     # Для worktree имя репозитория берём у общего .git, а не у каталога worktree.
+     common = Path(out(root, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+     repo_name = common.parent.name if common.name == ".git" else root.name
+ 
+     head = verify(root, "HEAD")
+     branch = out(root, "rev-parse", "--abbrev-ref", "HEAD") if head else out(
+         root, "symbolic-ref", "--short", "-q", "HEAD", check=False)
+     mode = args.mode
+     notes = []
+     base = merge_base = None
+     use_untracked = False
+     log_args = []
+ 
+     if mode == "since-base":
+         base = resolve_base(root, args.base)
+         if not head:
+             notes.append("в репозитории нет коммитов, взяты все файлы рабочего дерева")
+             mode = "uncommitted"
+         elif not base:
+             notes.append("базовая ветка не найдена, взяты только незакоммиченные изменения")
+             mode = "uncommitted"
+         else:
+             merge_base = out(root, "merge-base", base, "HEAD")
+             diff_args, use_untracked = [merge_base], True
+             log_args = [f"{merge_base}..HEAD"]
+             label = f"{base}...HEAD + незакоммиченное"
+ 
+     if mode == "uncommitted":
+         diff_args, use_untracked = ["HEAD" if head else EMPTY_TREE], True
+         label = "HEAD + незакоммиченное" if head else "рабочее дерево (коммитов нет)"
+     elif mode == "staged":
+         diff_args = ["--cached", "HEAD" if head else EMPTY_TREE]
+         label = "индекс (staged)"
+     elif mode == "commit":
+         if not args.ref:
+             raise CollectError("для режима commit нужен --ref <sha>")
+         sha = verify(root, args.ref)
+         if not sha:
+             raise CollectError(f"коммит `{args.ref}` не найден")
+         parent = verify(root, f"{sha}^") or EMPTY_TREE
+         diff_args, log_args = [parent, sha], ["-1", sha]
+         label = f"{sha[:10]} {out(root, 'log', '-1', '--format=%s', sha)}"
+     elif mode == "range":
+         m = re.fullmatch(r"(.*?)(\.\.\.?)(.*)", args.ref or "")
+         if not m:
+             raise CollectError("для режима range нужен --ref A..B или A...B")
+         a, dots, b = m.group(1) or "HEAD", m.group(2), m.group(3) or "HEAD"
+         for r in (a, b):
+             if not verify(root, r):
+                 raise CollectError(f"ревизия `{r}` не найдена")
+         if dots == "...":
+             merge_base = out(root, "merge-base", a, b)
+             diff_args, log_args = [merge_base, b], [f"{merge_base}..{b}"]
+         else:
+             diff_args, log_args = [a, b], [f"{a}..{b}"]
+         label = f"{a}{dots}{b}"
+     elif mode == "branch":
+         if not args.ref or not verify(root, args.ref):
+             raise CollectError(f"ветка `{args.ref}` не найдена")
+         base = resolve_base(root, args.base)
+         if not base:
+             raise CollectError("базовая ветка не найдена, укажите --base")
+         merge_base = out(root, "merge-base", base, args.ref)
+         diff_args, log_args = [merge_base, args.ref], [f"{merge_base}..{args.ref}"]
+         label = f"{base}...{args.ref}"
+ 
+     env, tmpdir, untracked = (None, None, 0)
+     try:
+         if use_untracked:
+             env, tmpdir, untracked = untracked_index_env(root)
+         patch = git(root, "diff", *DIFF_FLAGS, *diff_args, env=env).stdout.decode(errors="replace")
+         name_status = parse_name_status(
+             git(root, "diff", "--name-status", "-z", "--find-renames", *diff_args, env=env)
+             .stdout.decode(errors="replace"))
+         numstat = parse_numstat(
+             git(root, "diff", "--numstat", "-z", "--find-renames", *diff_args, env=env)
+             .stdout.decode(errors="replace"))
+     finally:
+         if tmpdir:
+             shutil.rmtree(tmpdir, ignore_errors=True)
+ 
+     chunks = split_patch(patch)
+     if not chunks:
+         return None, {"root": str(root), "label": label, "notes": notes}
+     if not (len(chunks) == len(name_status) == len(numstat)):
+         raise CollectError(
+             f"рассинхрон: {len(chunks)} кусков патча, {len(name_status)} в name-status, "
+             f"{len(numstat)} в numstat")
+ 
+     status_names = {"A": "added", "M": "modified", "D": "deleted", "R": "renamed",
+                     "C": "copied", "T": "typechange"}
+     files = []
+     for ns, st, chunk in zip(name_status, numstat, chunks):
+         if ns["path"] != st["path"]:
+             raise CollectError(f"рассинхрон путей: `{ns['path']}` и `{st['path']}`")
+         files.append({
+             "path": ns["path"],
+             "oldPath": ns["oldPath"],
+             "status": status_names.get(ns["status"], "modified"),
+             "additions": st["additions"],
+             "deletions": st["deletions"],
+             "binary": st["binary"],
+         })
+ 
+     meta = {
+         "version": 1,
+         "root": str(root),
+         "repoName": repo_name,
+         "worktree": root.name if repo_name != root.name else None,
+         "branch": branch or None,
+         "head": head,
+         "mode": mode,
+         "label": label,
+         "base": base,
+         "mergeBase": merge_base,
+         "untrackedIncluded": untracked,
+         "commits": log_lines(root, log_args),
+         "notes": notes,
+         "createdAt": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+         "files": files,
+         "totals": {
+             "files": len(files),
+             "additions": sum(f["additions"] for f in files),
+             "deletions": sum(f["deletions"] for f in files),
+         },
+     }
+     return patch, meta
+ 
+ 
+ def default_outdir(meta):
+     stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+     branch = re.sub(r"[^A-Za-z0-9._-]+", "-", meta.get("branch") or "detached")
+     return Path(tempfile.gettempdir()) / "diff-review" / f"{meta['repoName']}-{branch}-{stamp}"
+ 
+ 
+ def main():
+     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+     p.add_argument("--repo", default=".", help="каталог репозитория или worktree")
+     p.add_argument("--mode", default="since-base",
+                    choices=["since-base", "uncommitted", "staged", "commit", "range", "branch"])
+     p.add_argument("--ref", help="sha, A..B / A...B или имя ветки — в зависимости от режима")
+     p.add_argument("--base", help="база для since-base и branch")
+     p.add_argument("--out", help="выходной каталог (по умолчанию $TMPDIR/diff-review/...)")
+     args = p.parse_args()
+ 
+     try:
+         patch, meta = collect(args)
+     except CollectError as e:
+         print(f"Ошибка: {e}", file=sys.stderr)
+         sys.exit(2)
+ 
+     if patch is None:
+         print(json.dumps({"ok": False, "reason": "no-changes", **meta}, ensure_ascii=False))
+         print(f"Изменений нет: `{meta['root']}`, {meta['label']}.", file=sys.stderr)
+         sys.exit(3)
+ 
+     outdir = Path(args.out).expanduser() if args.out else default_outdir(meta)
+     outdir.mkdir(parents=True, exist_ok=True)
+     (outdir / "guide.patch").write_text(patch, encoding="utf-8")
+     (outdir / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+ 
+     t = meta["totals"]
+     print(json.dumps({
+         "ok": True,
+         "outdir": str(outdir),
+         "root": meta["root"],
+         "branch": meta["branch"],
+         "mode": meta["mode"],
+         "label": meta["label"],
+         "files": t["files"],
+         "additions": t["additions"],
+         "deletions": t["deletions"],
+         "untrackedIncluded": meta["untrackedIncluded"],
+         "commits": len(meta["commits"]),
+         "notes": meta["notes"],
+     }, ensure_ascii=False, indent=2))
+ 
+ 
+ if __name__ == "__main__":
+     main()
+diff --git a/scripts/validate.py b/scripts/validate.py
+index ac4fe6c..684f8d7 100644
+--- a/scripts/validate.py
++++ b/scripts/validate.py
+@@ -1,124 +1,124 @@
+ #!/usr/bin/env python3
+ """Проверяет guide.json против meta.json (правило покрытия guided review).
+ 
+ Каждый изменённый файл из meta.json должен встретиться ровно один раз:
+ в diffs одной главы или в unplacedFiles. Ничего не чинит молча — печатает
+ все ошибки и выходит с кодом 1. При успехе печатает краткую сводку, код 0.
+ 
+ Использование: validate.py --guide guide.json --meta meta.json
+ """
+ 
+ import argparse
+ import json
+ import sys
+ from pathlib import Path
+ 
+-MAX_SECTIONS = 10
++MAX_SECTIONS = 12
+ 
+ 
+ def validate(guide, meta):
+     """Возвращает список ошибок (пустой — гайд корректен)."""
+     errors = []
+     changed = [f["path"] for f in meta["files"]]
+     changed_set = set(changed)
+ 
+     if not isinstance(guide, dict):
+         return ["guide.json должен быть JSON-объектом"]
+ 
+     for key in ("title", "intent"):
+         if not isinstance(guide.get(key), str) or not guide[key].strip():
+             errors.append(f"поле `{key}` должно быть непустой строкой")
+     if isinstance(guide.get("title"), str) and "\n" in guide["title"].strip():
+         errors.append("`title` должен быть одной строкой")
+ 
+     sections = guide.get("sections")
+     if not isinstance(sections, list) or not sections:
+         errors.append("`sections` должен быть непустым массивом")
+         sections = []
+     elif len(sections) > MAX_SECTIONS:
+         errors.append(f"глав {len(sections)}, максимум {MAX_SECTIONS}: объедините близкие")
+ 
+     unplaced = guide.get("unplacedFiles")
+     if not isinstance(unplaced, list) or not all(isinstance(f, str) for f in unplaced):
+         errors.append("`unplacedFiles` должен быть массивом строк (пустым, если всё размещено)")
+         unplaced = []
+ 
+     placements = {}  # путь -> список мест
+     unknown = []
+ 
+     for i, s in enumerate(sections, 1):
+         where = f"глава {i}"
+         if not isinstance(s, dict):
+             errors.append(f"{where}: должна быть объектом")
+             continue
+         if not isinstance(s.get("title"), str) or not s["title"].strip():
+             errors.append(f"{where}: пустой `title`")
+         else:
+             where = f"глава {i} «{s['title'].strip()}»"
+         if not isinstance(s.get("overview"), str) or not s["overview"].strip():
+-            errors.append(f"{where}: пустой `overview`")
++            errors.append(f"{where}: пустой `overview`, напишите 2–6 предложений о том, что изменилось, зачем и к чему это ведёт; без обзора ревьюер не поймёт смысл главы и будет вынужден читать дифф целиком")
+         diffs = s.get("diffs")
+         if not isinstance(diffs, list):
+             errors.append(f"{where}: `diffs` должен быть массивом")
+             continue
+         for d in diffs:
+             if not isinstance(d, dict) or not isinstance(d.get("file"), str):
+                 errors.append(f"{where}: каждый элемент `diffs` — объект с полем `file`")
+                 continue
+             if not isinstance(d.get("summary"), str) or not d["summary"].strip():
+                 errors.append(f"{where}: у `{d['file']}` пустой `summary`")
+             if d["file"] not in changed_set:
+                 unknown.append((where, d["file"]))
+             else:
+                 placements.setdefault(d["file"], []).append(where)
+ 
+     for f in unplaced:
+         if f not in changed_set:
+             unknown.append(("unplacedFiles", f))
+         else:
+             placements.setdefault(f, []).append("unplacedFiles")
+ 
+     for where, f in unknown:
+         errors.append(f"{where}: `{f}` нет среди изменённых файлов")
+     for f, places in placements.items():
+         if len(places) > 1:
+             errors.append(f"`{f}` размещён несколько раз ({', '.join(places)}), нужно ровно одно место")
+     missing = [f for f in changed if f not in placements]
+     for f in missing:
+         errors.append(f"`{f}` не размещён: добавьте в главу или в `unplacedFiles`")
+ 
+     if unknown:
+         errors.append("Допустимые пути (копируйте дословно):\n" + "\n".join(f"  {p}" for p in changed))
+     return errors
+ 
+ 
+ def main():
+     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+     p.add_argument("--guide", required=True)
+     p.add_argument("--meta", required=True)
+     args = p.parse_args()
+ 
+     meta = json.loads(Path(args.meta).read_text(encoding="utf-8"))
+     try:
+         guide = json.loads(Path(args.guide).read_text(encoding="utf-8"))
+     except FileNotFoundError:
+         print(f"Ошибка: файла {args.guide} нет", file=sys.stderr)
+         sys.exit(1)
+     except json.JSONDecodeError as e:
+         print(f"Ошибка: guide.json не парсится как JSON: {e}", file=sys.stderr)
+         sys.exit(1)
+ 
+     errors = validate(guide, meta)
+     if errors:
+         print(f"guide.json не прошёл проверку ({len(errors)}):", file=sys.stderr)
+         for e in errors:
+             print(f"- {e}", file=sys.stderr)
+         sys.exit(1)
+ 
+     n_placed = sum(len(s["diffs"]) for s in guide["sections"])
+     print(f"OK: {len(guide['sections'])} глав, {n_placed} файлов в главах, "
+           f"{len(guide['unplacedFiles'])} в unplacedFiles")
+ 
+ 
+ if __name__ == "__main__":
+     main()

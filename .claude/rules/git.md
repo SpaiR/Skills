@@ -14,8 +14,8 @@ Conventional Commits 1.0.0, enforced by `.githooks/commit-msg` (enabled by `npm 
 ```
 
 - Types: `feat` `fix` `refactor` `test` `docs` `style` `build` `chore` `perf`.
-- Scopes: `viewer` (assets/), `collect`, `serve`, `validate` (scripts/), `skill` (SKILL.md, references/),
-  `tests` (tests/), `repo` (configs, docs, tooling).
+- Scopes: `viewer` (assets/), `collect`, `remote`, `publish`, `serve`, `validate` (scripts/), `skill` (SKILL.md,
+  references/), `tests` (tests/), `repo` (configs, docs, tooling).
 - Subject in English, imperative, lower case after the colon, no trailing period, at most ~100 characters.
 - Body: what and why, wrapped at ~100 columns. One logical change per commit.
 - The hook lets `Merge`, `Revert`, `fixup!`, `squash!` and `amend!` subjects through unchanged.

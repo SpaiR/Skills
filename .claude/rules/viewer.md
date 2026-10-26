@@ -37,6 +37,7 @@ needs transpiling.
 - `header.js` top bar; `menu.js` "More" menu; `toc.js` Guide sidebar and drawer; `tree.js` Files tree
 - `viewed.js` viewed marks for files and chapters; `view.js` diff view, wrap, theme
 - `dialogs.js` modal scaffold; `help.js` shortcuts dialog; `submit.js` submit dialog and finished screen
+- `publish.js` PR/MR publish dialog and the `/api/publish` payload (inline vs. body via `D.prPosition`)
 - `toast.js` toasts with undo; `feedback.js` builds the feedback Markdown
 
 ## State
@@ -69,3 +70,11 @@ needs transpiling.
   `focusTreeRow()` in `tree.js`).
 - Dialogs are built with `dialogEl()`: focus trap on Tab, focus returns to `d.opener` on close; record the opener
   with `dialogOpener()` before opening.
+
+## Untrusted text
+
+- Diff lines, file paths, guide text and, for a PR/MR, `meta.pr` fields (title, author, body) come from other
+  people. Insert them as text nodes via `h()`; the only HTML path is `md()`/`inline()` (`markdown.js`), which
+  escapes first and links only `http(s)` URLs. Never pass such text to `html:` any other way.
+- The page makes no requests outside 127.0.0.1 (tests check it): no images or other remote resources from
+  descriptions. Links to the PR open in a new tab with `rel="noopener noreferrer"`.

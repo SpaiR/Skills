@@ -4,19 +4,21 @@ import { quote } from './lines.js';
 import { fileByPath, R, S, sections } from './state.js';
 import { T } from './strings.js';
 
-function fence(text, lang) {
+export function fence(text, lang) {
   const longest = Math.max(2, ...(text.match(/`+/g) || []).map((s) => s.length));
   const f = '`'.repeat(longest + 1);
   return `${f}${lang || ''}\n${text}\n${f}`;
 }
 
-export function buildMarkdown(action) {
+// head: extra list lines after the range (the publish dialog adds the chosen action).
+export function buildMarkdown(action, head = []) {
   const g = R.guide,
     m = R.meta;
   const out = [];
   out.push(T.feedback.title(action, g.title), '');
   out.push(T.feedback.range(T.rangeLabel(m)));
-  out.push(T.feedback.repo(m.root, m.branch));
+  out.push(...head);
+  out.push(m.pr ? T.feedback.pr(m.pr) : T.feedback.repo(m.root, m.branch));
   out.push('');
   if (S.globalComment.trim()) out.push(T.feedback.global, '', S.globalComment.trim(), '');
 
