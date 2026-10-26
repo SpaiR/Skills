@@ -24,6 +24,8 @@ needs transpiling.
 - `rerender.js` targeted re-rendering with `withAnchor` and focus keeping
 - `section.js` main column: hero, chapter cards, Files group, chapter comments
 - `file.js` file card: header, summary, collapsed note, diff body
+- `markdown.js` mini-Markdown for guide intent, overviews and summaries: inline code, bold, links, lists, headings,
+  code blocks, quotes, GitHub callouts; applies `typography()`
 - `diff.js` diff tables (unified, side-by-side), hunk and gap rows, selection painting
 - `comments.js` note cards, suggestions, draft rows, comment editor
 - `forms.js` line comment form lifecycle, drafts, delete with undo

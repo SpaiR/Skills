@@ -1,4 +1,5 @@
-// Mini Markdown renderer for the guide intent/overview texts, with the page language typography fixes.
+// Mini Markdown renderer for the guide intent/overview texts (and inline() for file summaries), with the page
+// language typography fixes.
 
 import { esc } from './dom.js';
 import { T, typography } from './strings.js';
