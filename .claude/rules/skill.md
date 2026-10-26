@@ -30,7 +30,8 @@ paths:
 ## The guide.json contract changes as one unit
 
 `references/guide-method.md` (fields, rules, sample), `scripts/validate.py` (enforcement) and the viewer code that
-reads the guide (`main.js`, `section.js`, `header.js`, `feedback.js`) describe the same format. When one changes:
+reads the guide (`main.js`, `section.js`, `file.js` for summaries, `header.js`, `feedback.js`, and `markdown.js` for
+the Markdown subset and callouts the methodology allows) describe the same format. When one changes:
 
 1. Change the methodology, the validator and the viewer together.
 2. Update `tests/python/test_validate.py`, the fixtures' `guide.json` files if the shape changed, and the e2e tests

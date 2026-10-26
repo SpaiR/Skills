@@ -72,7 +72,8 @@ The format is defined in three places that must change together:
 
 1. `references/guide-method.md`: the fields, rules and the sample the subagent follows.
 2. `scripts/validate.py`: what is enforced (`serve.py` refuses to start on an invalid guide).
-3. The viewer code that reads it: `assets/js/main.js`, `section.js`, `header.js`, `feedback.js`.
+3. The viewer code that reads it: `assets/js/main.js`, `section.js`, `file.js` (summaries), `header.js`,
+   `feedback.js`, and `markdown.js` (the Markdown subset and callouts the methodology allows).
 
 Then update `tests/python/test_validate.py`, the `guide.json` files of the fixtures if the shape changed, and the
 affected e2e tests. See [.claude/rules/skill.md](.claude/rules/skill.md).
