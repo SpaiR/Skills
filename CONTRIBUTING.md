@@ -25,7 +25,8 @@ everyone.
 
 Code, comments, docs, test names and commits are English. Russian is the product language: it appears only in
 `assets/js/strings.js`, the static placeholders of `assets/viewer.html`, the guide content, page-text expectations
-in tests, fixtures and labelled samples in `references/guide-method.md`. Details: [.claude/rules/language.md](.claude/rules/language.md).
+and Russian input data in tests, fixtures, labelled samples in `references/guide-method.md`, and UI labels quoted
+verbatim in `README.md` and `SKILL.md`. Details: [.claude/rules/language.md](.claude/rules/language.md).
 
 ## Branches and commits
 

@@ -14,7 +14,10 @@ for the session (`collect.py` summary and notes text, `validate.py` errors, `ser
 - `assets/viewer.html`: the static placeholders shown before the scripts run (`Оглавление`, `Загружаю ревью…`).
 - `guide.json` content written by the subagent (always Russian, whatever the user's language).
 - `references/guide-method.md`: only the labelled Russian output samples; the instructions around them are English.
-- Tests: expectations of UI text (assertions on what the page shows), and recorded fixtures in `tests/fixtures/`.
+- Tests: expectations of UI text (assertions on what the page shows), recorded fixtures in `tests/fixtures/`, and
+  Russian input data (typed comment text, state payloads, tokenizer and highlighter cases).
+- Docs (`README.md`, `SKILL.md`): UI labels quoted verbatim so the reader can find them on the page (`«Гайд»`,
+  `«Файлы»`).
 
 Messages the main session prints to the user follow the user's language (see `SKILL.md`), not this policy.
 
