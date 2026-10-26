@@ -1,5 +1,5 @@
 /* diff-review: pure functions without DOM: patch parsing, side-by-side pairs, intraline diff,
-   syntax highlighting, segment merging. An ES module: the viewer imports it, Node tests load it with require(). */
+   syntax highlighting, segment merging. An ES module: the viewer and the node:test suites import it. */
 
 const HUNK_RE = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@ ?(.*)$/;
 

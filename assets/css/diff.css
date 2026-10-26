@@ -5,7 +5,7 @@
   content-visibility: auto;
   contain-intrinsic-size: auto 400px;
 }
-/* A freshly re-rendered diff: fully rendered for a couple of frames so its height is exact (viewer.js, markFresh). */
+/* A freshly re-rendered diff: fully rendered for a couple of frames so its height is exact (diff.js, markFresh). */
 .diff-wrap.cv-fresh {
   content-visibility: visible;
 }
