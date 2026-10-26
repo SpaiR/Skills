@@ -526,7 +526,7 @@ export function fnv1a(str) {
 }
 
 const PLURAL = typeof Intl !== 'undefined' ? new Intl.PluralRules('ru') : null;
-// Russian plural forms: plural(5, ['файл', 'файла', 'файлов']) -> 'файлов'
+// Russian plural forms [one, few, many]: plural(5, forms) -> forms[2]; the word forms are in strings.js (WORDS).
 export function plural(n, forms) {
   const cat = PLURAL ? PLURAL.select(n) : 'many';
   return cat === 'one' ? forms[0] : cat === 'few' ? forms[1] : forms[2];

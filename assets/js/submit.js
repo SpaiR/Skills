@@ -1,8 +1,8 @@
 // Submit dialog (feedback / approve / close), jumps to comments and drafts, the finished screen.
 
-import { CLOSE_AFTER_S, isMac, narrowScreen, NOTES } from './constants.js';
+import { CLOSE_AFTER_S, isMac, narrowScreen } from './constants.js';
 import { fileByPath, finished, R, S, secByKey, sections, setFinished, ui } from './state.js';
-import { $main, h, icon, pad2, plural } from './dom.js';
+import { $main, h, icon, pad2 } from './dom.js';
 import { api, cancelSave, save } from './persist.js';
 import { lineAt } from './lines.js';
 import { commentCount, filesMode, groupFor, isViewed, secComments, sectionOpen } from './model.js';
@@ -15,13 +15,7 @@ import { flash, goToNote, revealFile } from './events.js';
 import { closeMenu } from './menu.js';
 import { dialogEl, dialogOpener } from './dialogs.js';
 import { buildMarkdown } from './feedback.js';
-
-const SUBMIT_TITLES = { feedback: 'Отправить фидбек', approve: 'Одобрить изменения', close: 'Закрыть без ответа' };
-const SUBMIT_HINTS = {
-  feedback: 'Сессия Claude Code получит этот текст как твоё сообщение: ответит на вопросы и внесёт просьбы о правках.',
-  approve: 'Сессия получит одобрение. Ничего не будет закоммичено. Комментарии, если есть, приложатся.',
-  close: 'Сервер остановится, в сессию уйдёт только отметка, что ревью закрыто. Комментарии останутся в state.json.',
-};
+import { T } from './strings.js';
 
 const fileOrder = () => new Map(R.files.map((f, i) => [f.path, i]));
 
@@ -53,10 +47,10 @@ function submitSummary() {
   const secDone = sections.filter((s) => S.reviewed[s.key]).length;
   const item = (dt, dd) => h('div', { class: 'sum-item' }, h('dt', {}, dt), h('dd', {}, dd));
   return [
-    item('Комментарии к строкам', String(c.lines)),
-    item('К главам', String(c.secs)),
-    item('Общий', c.global ? 'есть' : 'нет'),
-    item('Просмотрено', `${viewed} из ${plural(files, ['файла', 'файлов', 'файлов'])}, ${secDone} из ${plural(sections.length, ['главы', 'глав', 'глав'])}`),
+    item(T.submit.lineComments, String(c.lines)),
+    item(T.submit.chapterComments, String(c.secs)),
+    item(T.submit.globalComment, c.global ? T.submit.yes : T.submit.no),
+    item(T.viewed, T.submit.viewed(viewed, files, secDone, sections.length)),
   ];
 }
 
@@ -66,16 +60,16 @@ function submitWarnings(action, d) {
     const left = R.files.filter((f) => !isViewed(fileByPath.get(f.path)));
     if (left.length) {
       out.push(h('div', { class: 'callout callout-warning dlg-warn' },
-        h('p', { class: 'warn-head' }, 'Не все файлы просмотрены'),
+        h('p', { class: 'warn-head' }, T.submit.notAllViewed),
         h('ul', { class: 'dlg-paths' }, left.slice(0, 5).map((f) => h('li', {}, f.path))),
-        left.length > 5 && h('p', { class: 'dlg-more' }, `и ещё ${left.length - 5}`)));
+        left.length > 5 && h('p', { class: 'dlg-more' }, T.submit.andMore(left.length - 5))));
     }
   }
   const drafts = draftList();
   if (drafts.length) {
     out.push(h('div', { class: 'callout callout-warning dlg-warn dlg-drafts' },
-      h('p', {}, `Есть неотправленные черновики: ${drafts.length}. Они не войдут в фидбек.`),
-      h('button', { class: 'btn sm', type: 'button', onclick: () => { d.close(); goToDraft(drafts[0][0]); } }, 'Перейти', icon('arrow-right'))));
+      h('p', {}, T.submit.drafts(drafts.length)),
+      h('button', { class: 'btn sm', type: 'button', onclick: () => { d.close(); goToDraft(drafts[0][0]); } }, T.submit.goTo, icon('arrow-right'))));
   }
   return out;
 }
@@ -85,7 +79,7 @@ const firstLine = (s) => String(s || '').split('\n').find((l) => l.trim()) || ''
 function submitList(d) {
   const order = fileOrder();
   const items = secComments().map((sec) => ({
-    loc: sec.synthetic ? sec.title : `Глава ${pad2(sec.idx + 1)}`,
+    loc: sec.synthetic ? sec.title : T.chapterNo(pad2(sec.idx + 1)),
     text: S.sectionComments[sec.key],
     go: () => goToSectionComment(sec.key),
   }));
@@ -93,12 +87,12 @@ function submitList(d) {
   for (const a of notes) {
     items.push({
       loc: `${a.file}:${a.start === a.end ? a.start : `${a.start}–${a.end}`}`,
-      text: a.text || (a.suggestion ? 'Предложенная правка' : ''),
+      text: a.text || (a.suggestion ? T.comments.suggestion : ''),
       go: () => goToNote(a.id),
     });
   }
   if (!items.length) return null;
-  return h('ul', { class: 'dlg-list', 'aria-label': 'Комментарии' }, items.map((it) => h('li', {},
+  return h('ul', { class: 'dlg-list', 'aria-label': T.submit.listAria }, items.map((it) => h('li', {},
     h('button', { class: 'dlg-item', type: 'button', title: it.loc, onclick: () => { d.close(); it.go(); } },
       h('span', { class: 'dlg-loc' }, it.loc),
       h('span', { class: 'dlg-text' }, firstLine(it.text))))));
@@ -112,13 +106,13 @@ export function openSubmit(action) {
   const d = dialogEl('submit', 'submit');
   if (d.open) return;
   d.opener = opener || document.getElementById(action === 'approve' ? 'approve-btn' : 'submit-btn');
-  const title = SUBMIT_TITLES[action];
+  const title = T.submit.titles[action];
   const withComments = action !== 'close';
   const send = h('button', { class: 'btn primary', type: 'button', 'aria-keyshortcuts': isMac ? 'Meta+Enter' : 'Control+Enter' }, title);
-  const cancel = h('button', { class: 'btn', type: 'button', onclick: () => d.close() }, 'Отмена');
+  const cancel = h('button', { class: 'btn', type: 'button', onclick: () => d.close() }, T.submit.cancel);
   const summary = h('dl', { class: 'dlg-summary' });
   const preview = h('pre', { class: 'preview' });
-  const empty = h('p', { class: 'dlg-empty', hidden: true }, 'Комментариев пока нет: кликни по номеру строки в диффе или напиши общий комментарий.');
+  const empty = h('p', { class: 'dlg-empty', hidden: true }, T.submit.empty);
   const error = h('div', { class: 'dlg-error', role: 'alert', hidden: true });
   let sending = false;
   const refresh = () => {
@@ -130,7 +124,7 @@ export function openSubmit(action) {
   };
   let ta = null;
   if (withComments) {
-    ta = h('textarea', { class: 'global', rows: 4, placeholder: 'Общий комментарий к ревью (необязательно)', 'aria-label': 'Общий комментарий' });
+    ta = h('textarea', { class: 'global', rows: 4, placeholder: T.submit.globalPlaceholder, 'aria-label': T.submit.globalAria });
     ta.value = S.globalComment;
     ta.addEventListener('input', () => { S.globalComment = ta.value; save(); refresh(); });
   }
@@ -138,7 +132,7 @@ export function openSubmit(action) {
     if (send.disabled) return;
     sending = true;
     send.disabled = true;
-    send.textContent = 'Отправляю…';
+    send.textContent = T.submit.sending;
     error.hidden = true;
     const markdown = action === 'close' || (action === 'approve' && commentCount() === 0) ? '' : buildMarkdown(action);
     const counts = submitCounts();
@@ -153,7 +147,7 @@ export function openSubmit(action) {
       sending = false;
       send.disabled = false;
       send.textContent = title;
-      error.textContent = `Не удалось отправить: ${err.message}. Прогресс сохранён, попробуй ещё раз.`;
+      error.textContent = T.submit.failed(err.message);
       error.hidden = false;
     }
   });
@@ -162,12 +156,12 @@ export function openSubmit(action) {
   d.setAttribute('aria-describedby', 'submit-hint');
   d.replaceChildren(...[
     h('div', { class: 'dlg-head' },
-      h('div', {}, h('h2', { id: 'submit-title' }, title), h('p', { id: 'submit-hint', class: 'dlg-hint' }, SUBMIT_HINTS[action]))),
+      h('div', {}, h('h2', { id: 'submit-title' }, title), h('p', { id: 'submit-hint', class: 'dlg-hint' }, T.submit.hints[action]))),
     summary,
     ...submitWarnings(action, d),
     withComments && submitList(d),
     ta,
-    withComments && h('details', { class: 'dlg-preview' }, h('summary', {}, 'Что уйдёт в сессию'), preview),
+    withComments && h('details', { class: 'dlg-preview' }, h('summary', {}, T.submit.preview), preview),
     action === 'feedback' && empty,
     error,
     h('div', { class: 'dlg-actions' }, cancel, send),
@@ -207,25 +201,13 @@ function goToDraft(key) {
 }
 
 function showFinished(action, counts) {
-  const text = {
-    feedback: 'Фидбек отправлен в сессию Claude Code.',
-    approve: 'Одобрение отправлено в сессию Claude Code.',
-    close: 'Ревью закрыто.',
-  }[action];
-  let sub = 'Комментарии сохранены в state.json.';
-  if (action !== 'close') {
-    // Zero parts are omitted: "0 on chapters" is noise. The word "comment" is inflected by the first number.
-    const parts = [];
-    if (counts.lines) parts.push(`${plural(counts.lines, NOTES)} к строкам`);
-    if (counts.secs) parts.push(`${parts.length ? counts.secs : plural(counts.secs, NOTES)} к главам`);
-    if (counts.global) parts.push(parts.length ? 'и общий комментарий' : 'общий комментарий');
-    sub = parts.length ? `Отправлено: ${parts.join(', ').replace(', и ', ' и ')}.` : 'Без комментариев.';
-  }
+  const text = T.finished.title[action];
+  const sub = action === 'close' ? T.finished.savedInState : T.finished.sent(counts);
   const closing = h('p', { class: 'finished-close', role: 'status' });
   document.body.replaceChildren(h('main', { class: 'finished' },
     h('div', { class: `finished-icon ${action === 'close' ? 'closed' : 'sent'}` }, icon(action === 'close' ? 'x' : 'check')),
     h('h1', {}, text),
-    h('p', {}, 'Сервер остановлен, вкладку можно закрыть.'),
+    h('p', {}, T.finished.serverStopped),
     h('p', { class: 'finished-sub' }, sub),
     closing));
   autoClose(closing, CLOSE_AFTER_S);
@@ -236,12 +218,12 @@ function showFinished(action, counts) {
 function autoClose(el, seconds) {
   const tick = (left) => {
     if (left > 0) {
-      el.textContent = `Вкладка закроется через ${left} с`;
+      el.textContent = T.finished.closingIn(left);
       setTimeout(() => tick(left - 1), 1000);
       return;
     }
     window.close();
-    setTimeout(() => { if (!window.closed) el.textContent = 'Браузер не дал закрыть вкладку автоматически — закройте её вручную.'; }, 300);
+    setTimeout(() => { if (!window.closed) el.textContent = T.finished.closeManually; }, 300);
   };
   tick(seconds);
 }

@@ -9,6 +9,7 @@ import { lineKey } from './lines.js';
 import { fileQ, rerenderFile, withAnchor } from './rerender.js';
 import { cancelDrag } from './selection.js';
 import { toast } from './toast.js';
+import { T } from './strings.js';
 
 // Expansion is possible if collect.py captured the full file text and it matched the patch.
 export const canExpand = (file) => file.fullAvail && !file.fullBad && file.newLines != null;
@@ -16,10 +17,10 @@ const expandedOf = (file) => S.expanded[file.path] || (S.expanded[file.path] = {
 export const isWhole = (file) => !!(S.expanded[file.path] && S.expanded[file.path].full);
 
 export function expandReason(file) {
-  if (file.fullBad) return 'Файл изменился после сбора диффа — раскрытие недоступно';
+  if (file.fullBad) return T.expand.fileChanged;
   const c = file.content;
-  if (!c) return 'Полный текст не собран: ревью создано старой версией скилла';
-  return c.reason ? `Полный текст не собран: ${c.reason}` : 'Полный текст недоступен';
+  if (!c) return T.expand.oldReview;
+  return c.reason ? T.expand.notCollected(T.fullTextReason(c)) : T.expand.unavailable;
 }
 
 // The full file text (a single hunk from full.patch) is loaded once, on the first expansion.
@@ -36,13 +37,13 @@ export function ensureFull(file) {
         file.full = hunks.length === 1 ? hunks[0].lines : [];
         if (!D.buildView(file.full, file.baseHunks, [], false)) {
           file.fullBad = true;
-          toast('Файл изменился после сбора диффа — раскрытие недоступно');
+          toast(T.expand.fileChanged);
         }
         return !file.fullBad;
       })
       .catch(() => {
         fullLoads.delete(file.path);
-        toast('Не удалось загрузить полный текст файла');
+        toast(T.expand.loadFailed);
         return false;
       }));
   }

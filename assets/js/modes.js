@@ -13,6 +13,7 @@ import { renderMain } from './section.js';
 import { cancelDrag } from './selection.js';
 import { toast } from './toast.js';
 import { closeMenu } from './menu.js';
+import { T } from './strings.js';
 
 // Mode class and panel width. --sec-head-h is 0 in Files mode, which has no sticky chapter headers,
 // so every offset below the top bar (L.secHead) is recomputed by itself.
@@ -101,7 +102,7 @@ export function setAllFilesOpen(open) {
   save();
   rerenderAllFiles();
   updateChrome();
-  toast(open ? 'Все файлы развёрнуты' : 'Все файлы свёрнуты');
+  toast(open ? T.keys.allExpanded : T.keys.allCollapsed);
 }
 
 function readLayoutVars() {

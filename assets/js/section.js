@@ -1,6 +1,6 @@
 // Main column: the hero block, chapter cards, the Files mode group and chapter comments.
 
-import { FILES, isMac, MOD_ENTER } from './constants.js';
+import { isMac, MOD_ENTER } from './constants.js';
 import { finished, R, S, secByKey, sections, ui } from './state.js';
 import { $main, h, icon, pad2, plural } from './dom.js';
 import { save } from './persist.js';
@@ -13,6 +13,7 @@ import { renderFile } from './file.js';
 import { fitTextarea } from './comments.js';
 import { closeForm, revealEditor } from './forms.js';
 import { toast } from './toast.js';
+import { T, WORDS } from './strings.js';
 
 // In Files mode, no intent: people read code there, not the story of the change.
 function renderHero() {
@@ -20,26 +21,26 @@ function renderHero() {
   const compact = filesMode();
   const commits = m.commits || [];
   const meta = [
-    m.label,
-    m.branch && `ветка ${m.branch}`,
+    T.rangeLabel(m),
+    m.branch && T.branch(m.branch),
     m.worktree ? `${m.repoName} (worktree ${m.worktree})` : m.repoName,
-    plural(t.files, FILES),
+    plural(t.files, WORDS.files),
     statPair(t.additions, t.deletions),
-    commits.length > 0 && plural(commits.length, ['коммит', 'коммита', 'коммитов']),
-    g.generator && g.generator.model && `гайд: ${g.generator.model}`,
+    commits.length > 0 && plural(commits.length, WORDS.commits),
+    g.generator && g.generator.model && T.section.guideModel(g.generator.model),
   ].filter(Boolean);
   return h('header', { class: 'hero' },
     h('h1', { id: 'review-title' }, g.title),
     !compact && g.intent && h('div', { class: 'intent md', html: md(g.intent) }),
     h('div', { class: 'hero-meta' }, meta.flatMap((part, i) => (i ? [h('span', { class: 'sep' }, ' · '), part] : [part]))),
-    (m.notes || []).map((note) => h('div', { class: 'callout callout-note' }, note)),
+    (m.notes || []).map((note) => h('div', { class: 'callout callout-note' }, T.note(note))),
     commits.length > 0 && h('details', { class: 'commits' },
-      h('summary', {}, h('span', { class: 'marker', 'aria-hidden': 'true' }, '›'), `Коммиты · ${commits.length}`),
+      h('summary', {}, h('span', { class: 'marker', 'aria-hidden': 'true' }, '›'), T.section.commits(commits.length)),
       h('ul', {}, commits.map((c) => {
         const sp = c.indexOf(' ');
         return h('li', {}, h('code', { class: 'hash' }, sp > 0 ? c.slice(0, sp) : c), h('span', {}, sp > 0 ? c.slice(sp + 1) : ''));
       }))),
-    m.untrackedIncluded > 0 && h('p', { class: 'hero-untracked' }, `Включены неотслеживаемые файлы: ${m.untrackedIncluded}`));
+    m.untrackedIncluded > 0 && h('p', { class: 'hero-untracked' }, T.section.untracked(m.untrackedIncluded)));
 }
 
 export function renderMain() {
@@ -48,7 +49,7 @@ export function renderMain() {
 
 // Headless group of Files mode: only the filter row and the file cards.
 function renderFilesGroup(sec) {
-  return h('section', { class: 'sec headless', id: sec.key, dataset: { key: sec.key }, 'aria-label': 'Файлы' },
+  return h('section', { class: 'sec headless', id: sec.key, dataset: { key: sec.key }, 'aria-label': T.toc.files },
     filterStatus(),
     secFiles(sec).map((f) => renderFile(f, sec)));
 }
@@ -56,8 +57,8 @@ function renderFilesGroup(sec) {
 export function filterStatus() {
   const total = R.files.length, shown = ui.visible ? ui.visible.size : total;
   return h('div', { class: 'filter-status', hidden: !ui.visible, role: 'status' },
-    h('span', {}, `Показано ${shown} из ${plural(total, FILES)}`),
-    h('button', { class: 'btn sm ghost', type: 'button', dataset: { act: 'filter-reset' } }, 'Сбросить фильтр'));
+    h('span', {}, T.section.filesShown(shown, total)),
+    h('button', { class: 'btn sm ghost', type: 'button', dataset: { act: 'filter-reset' } }, T.section.resetFilter));
 }
 
 export function renderSection(sec) {
@@ -67,8 +68,8 @@ export function renderSection(sec) {
   const st = secStats(sec);
   const current = ui.curSec === sec.key;
   const summary = open || !done
-    ? [plural(st.files, FILES), st.files > 0 && [' · ', statPair(st.add, st.del)]]
-    : [plural(st.files, FILES), ' · просмотрено'];
+    ? [plural(st.files, WORDS.files), st.files > 0 && [' · ', statPair(st.add, st.del)]]
+    : [plural(st.files, WORDS.files), T.section.viewedSuffix];
   const head = h('div', { class: `sec-head${current ? ' is-current' : ''}`, dataset: { anchor: `s:${sec.key}` } },
     h('button', {
       class: 'sec-toggle', type: 'button', 'aria-expanded': String(open), 'aria-controls': `${sec.key}-body`, 'aria-keyshortcuts': 'Shift+O',
@@ -79,8 +80,8 @@ export function renderSection(sec) {
     icon('chevron', 'chev')),
     h('span', { class: 'sec-sum' }, summary),
     h('label', { class: 'viewed-toggle' },
-      h('input', { type: 'checkbox', class: 'check', checked: done, dataset: { act: 'sec-viewed' }, 'aria-label': `Просмотрено: глава «${sec.title}»`, 'aria-keyshortcuts': 'Shift+V' }),
-      h('span', {}, 'Просмотрено')));
+      h('input', { type: 'checkbox', class: 'check', checked: done, dataset: { act: 'sec-viewed' }, 'aria-label': T.section.viewedChapter(sec.title), 'aria-keyshortcuts': 'Shift+V' }),
+      h('span', {}, T.viewed)));
 
   const card = h('section', {
     class: `sec${open ? '' : ' collapsed'}${done ? ' reviewed' : ''}`, id: sec.key,
@@ -94,11 +95,11 @@ export function renderSection(sec) {
       sec.overview && h('div', { class: 'overview md', html: md(sec.overview) }),
       renderSectionComment(sec),
       files.length > 0 && h('div', { class: 'aside-files' },
-        h('div', { class: 'aside-label' }, 'Файлы главы'),
+        h('div', { class: 'aside-label' }, T.section.chapterFiles),
         files.map((f) => fileRow(f, sec, false)))));
   const filesBox = h('div', { class: 'sec-files' });
   if (!files.length) {
-    filesBox.append(h('div', { class: 'sec-empty' }, 'Файлов этой главы нет в текущем диффе. Гайд мог устареть.'));
+    filesBox.append(h('div', { class: 'sec-empty' }, T.section.noFiles));
   } else {
     for (const f of files) filesBox.append(renderFile(f, sec));
   }
@@ -106,7 +107,7 @@ export function renderSection(sec) {
     const last = sec.idx === sections.length - 1;
     filesBox.append(h('div', { class: 'sec-foot' },
       h('button', { class: 'btn', type: 'button', dataset: { act: 'sec-done' } },
-        last ? 'Глава просмотрена' : 'Глава просмотрена — к следующей', !last && icon('arrow-right'))));
+        last ? T.section.done : T.section.doneNext, !last && icon('arrow-right'))));
   }
   card.append(h('div', { class: 'sec-body', id: `${sec.key}-body` }, aside, filesBox));
   return card;
@@ -120,21 +121,21 @@ function renderSectionComment(sec) {
     wrap.append(sectionCommentEditor(sec));
   } else if (!value.trim()) {
     wrap.append(h('button', { class: 'btn sm ghost add-sec-comment', type: 'button', dataset: { act: 'sec-comment-edit' }, 'aria-keyshortcuts': 'Shift+C' },
-      icon('plus'), 'Комментарий к главе'));
+      icon('plus'), T.section.comment));
   } else {
     wrap.append(h('div', { class: 'note', dataset: { anchor: `sc:${sec.key}` } },
-      h('div', { class: 'note-head' }, h('span', { class: 'note-title' }, 'Комментарий к главе')),
+      h('div', { class: 'note-head' }, h('span', { class: 'note-title' }, T.section.comment)),
       h('div', { class: 'note-text' }, value.trim()),
       h('div', { class: 'note-foot' },
-        h('button', { class: 'btn sm ghost', type: 'button', dataset: { act: 'sec-comment-edit' }, 'aria-keyshortcuts': 'Shift+C' }, 'Изменить'),
-        h('button', { class: 'btn sm ghost danger', type: 'button', dataset: { act: 'sec-comment-delete' } }, 'Удалить'))));
+        h('button', { class: 'btn sm ghost', type: 'button', dataset: { act: 'sec-comment-edit' }, 'aria-keyshortcuts': 'Shift+C' }, T.edit),
+        h('button', { class: 'btn sm ghost danger', type: 'button', dataset: { act: 'sec-comment-delete' } }, T.delete))));
   }
   return wrap;
 }
 
 function sectionCommentEditor(sec) {
   const ta = h('textarea', {
-    class: 'grow', rows: 3, placeholder: 'Что думаешь о главе целиком', 'aria-label': `Комментарий к главе «${sec.title}»`,
+    class: 'grow', rows: 3, placeholder: T.section.commentPlaceholder, 'aria-label': T.section.commentAria(sec.title),
     'data-focus-key': `sec-comment:${sec.key}`,
   });
   ta.value = S.sectionComments[sec.key] || '';
@@ -153,11 +154,11 @@ function sectionCommentEditor(sec) {
     }
   });
   return h('div', { class: 'editor sec-editor' },
-    h('div', { class: 'editor-head' }, h('span', { class: 'editor-title' }, 'Комментарий к главе')),
+    h('div', { class: 'editor-head' }, h('span', { class: 'editor-title' }, T.section.comment)),
     ta,
     h('div', { class: 'editor-actions' },
-      h('button', { class: 'btn sm primary', type: 'button', dataset: { act: 'sec-comment-done' } }, 'Готово'),
-      h('span', { class: 'hint' }, `${MOD_ENTER} или Esc — готово`)));
+      h('button', { class: 'btn sm primary', type: 'button', dataset: { act: 'sec-comment-done' } }, T.section.commentDone),
+      h('span', { class: 'hint' }, T.section.commentHint(MOD_ENTER))));
 }
 
 export function openSectionComment(key) {
@@ -198,8 +199,8 @@ export function deleteSectionComment(key) {
   save();
   withAnchor(() => rerenderSection(key));
   updateChrome();
-  toast('Комментарий к главе удалён', {
-    label: 'Вернуть', run: () => {
+  toast(T.section.commentDeleted, {
+    label: T.undo, run: () => {
       S.sectionComments[key] = before;
       save();
       withAnchor(() => rerenderSection(key));

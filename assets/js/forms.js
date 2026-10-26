@@ -10,6 +10,7 @@ import { updateChrome } from './header.js';
 import { closeSectionComment } from './section.js';
 import { draftKey, editKey, fitTextarea } from './comments.js';
 import { toast } from './toast.js';
+import { T } from './strings.js';
 
 // Re-render the files where the form or the selection was or has appeared.
 export function refreshFiles(paths, keep) {
@@ -125,8 +126,8 @@ export function deleteNote(id) {
   if (ui.form && ui.form.editId === id) { ui.form = null; setSelection(null); }
   save();
   refreshFiles([a.file]);
-  toast('Комментарий удалён', {
-    label: 'Вернуть', run: () => {
+  toast(T.comments.deleted, {
+    label: T.undo, run: () => {
       if (S.annotations.some((x) => x.id === id)) return;
       S.annotations.splice(Math.min(idx, S.annotations.length), 0, a);
       if (d && !S.drafts[dk]) S.drafts[dk] = d;

@@ -21,6 +21,7 @@ import { setViewMode, setWrap } from './view.js';
 import { closeMenu } from './menu.js';
 import { openHelp } from './help.js';
 import { openSubmit } from './submit.js';
+import { T } from './strings.js';
 
 // Fields where letters are input. "Viewed" checkboxes are not included: keys must keep working after clicking them.
 const TEXT_INPUT = 'textarea, select, [contenteditable]:not([contenteditable="false"]), input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"])';
@@ -44,7 +45,7 @@ const KEYS = {
   Slash: () => focusFilter(),
 };
 // Chapter keys: Files mode has no chapters, so a hint is shown instead of the action.
-const guideOnly = (fn) => () => (filesMode() ? toast('Это действие с главами — оно есть в режиме «Гайд» (G)') : fn());
+const guideOnly = (fn) => () => (filesMode() ? toast(T.keys.guideOnly) : fn());
 KEYS.BracketRight = guideOnly(KEYS.BracketRight);
 KEYS.BracketLeft = guideOnly(KEYS.BracketLeft);
 const SHIFT_KEYS = {
@@ -113,7 +114,7 @@ function stepFile(dir) {
     else { next = -1; list.forEach((f, k) => { if (secIdx(f) < at) next = k; }); }
   }
   if (next < 0 || next >= list.length) {
-    toast(dir > 0 ? 'Это последний файл' : 'Это первый файл');
+    toast(dir > 0 ? T.keys.lastFile : T.keys.firstFile);
     return;
   }
   const el = list[next];
@@ -136,7 +137,7 @@ function stepSection(dir) {
   const cur = sections.findIndex((s) => s.key === ui.curSec);
   const next = cur < 0 ? 0 : cur + dir;
   if (next < 0 || next >= sections.length) {
-    toast(dir > 0 ? 'Это последняя глава' : 'Это первая глава');
+    toast(dir > 0 ? T.keys.lastChapter : T.keys.firstChapter);
     return;
   }
   const key = sections[next].key;
@@ -185,7 +186,7 @@ function stepChange(dir) {
     if (next < 0) next = dir > 0 ? list.length : -1;
   }
   if (next < 0 || next >= list.length) {
-    toast(dir > 0 ? 'Дальше изменений нет' : 'Это первое изменение');
+    toast(dir > 0 ? T.keys.noMoreChanges : T.keys.firstChange);
     return;
   }
   ui.cursor = list[next];
@@ -204,7 +205,7 @@ function commentAtCursor() {
   const c = ui.cursor;
   const file = c && fileByPath.get(c.path);
   if (!file || !blockRows(c).length) {
-    toast('Выбери изменение клавишами N/P или кликни по номеру строки');
+    toast(T.keys.pickChange);
     return;
   }
   const lines = file.lines.slice(c.from, c.to + 1);
@@ -222,8 +223,6 @@ function currentFile() {
   return el ? { file, sec: secByKey.get(c.sec), head: el.querySelector('.file-head') } : null;
 }
 
-const NO_FILE = 'Нет текущего файла: выбери его клавишами J/K';
-
 // Re-rendering removes the focused node. Focus returns to the button of the file or chapter header
 // unless it has moved elsewhere by itself (for example, into a form field).
 function refocus(secKey, path) {
@@ -234,7 +233,7 @@ function refocus(secKey, path) {
 
 function toggleCurrentFileViewed() {
   const cur = currentFile();
-  if (!cur) { toast(NO_FILE); return; }
+  if (!cur) { toast(T.keys.noFile); return; }
   ui.pin = { sec: cur.sec.key, path: cur.file.path };
   const closed = setFileViewed(cur.file, !isViewed(cur.file), cur.head);
   refocus(closed || cur.sec.key, closed ? null : cur.file.path);
@@ -242,7 +241,7 @@ function toggleCurrentFileViewed() {
 
 function toggleCurrentFile() {
   const cur = currentFile();
-  if (!cur) { toast(NO_FILE); return; }
+  if (!cur) { toast(T.keys.noFile); return; }
   if (cur.file.binary) return;
   ui.pin = { sec: cur.sec.key, path: cur.file.path };
   toggleFile(cur.file, cur.sec, !fileOpen(cur.file));
@@ -251,8 +250,8 @@ function toggleCurrentFile() {
 
 function toggleCurrentWholeFile() {
   const cur = currentFile();
-  if (!cur) { toast(NO_FILE); return; }
-  if (!wholeButton(cur.file)) { toast('У этого файла весь текст уже в диффе'); return; }
+  if (!cur) { toast(T.keys.noFile); return; }
+  if (!wholeButton(cur.file)) { toast(T.keys.wholeInDiff); return; }
   ui.pin = { sec: cur.sec.key, path: cur.file.path };
   setWholeFile(cur.file, !isWhole(cur.file));
 }
