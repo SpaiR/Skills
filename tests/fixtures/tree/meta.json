@@ -1,12 +1,16 @@
 {
-  "version": 2,
+  "version": 3,
   "root": "/private/var/folders/fp/m6vmxbdx6bv9bz1w82wbt7m00000gp/T/tmp.lL2xfNTRvG/harness/tree-repo",
   "repoName": "tree-repo",
   "worktree": null,
   "branch": "feature",
   "head": "12fb01596193b542e316950c9df68f06a9df6a4c",
   "mode": "since-base",
-  "label": "main...HEAD + незакоммиченное",
+  "label": "main...HEAD + uncommitted",
+  "range": {
+    "mode": "since-base",
+    "base": "main"
+  },
   "base": "main",
   "mergeBase": "3edb373374796da5214ae9f1c60f54237b1d5dad",
   "newRev": "worktree",
