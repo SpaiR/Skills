@@ -100,8 +100,8 @@ work (two features, or a feature plus an unrelated refactor), each gets its own 
    This is not only about UI: a schema migration, a retry policy or an infrastructure swap also deserves one plain
    sentence.
 
-If the main risk rests on one section, **say so directly**: this is the place to read slowly, the rest follows from it.
-For a genuinely risky change in behaviour or contract, use a separate callout (sample):
+If the main risk rests on one section, **say so directly** (sample: «вот место, где стоит читать медленно, остальное
+следует из него»). For a genuinely risky change in behaviour or contract, use a separate callout (sample):
 
 ```markdown
 > [!WARNING]
