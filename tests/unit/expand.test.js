@@ -1,23 +1,18 @@
-// Тесты раскрытия контекста (buildView, expandRange, mergeRanges, quoteLines): node harness/tests/expand.test.js
-// Патчи настоящие: временный git-репозиторий, -U3 и -U100000000 по одной правке.
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const os = require('node:os');
-const path = require('node:path');
-const { execFileSync } = require('node:child_process');
-const D = require(path.join(__dirname, '../../assets/js/diffcore.js'));
-
-let passed = 0;
-function test(name, fn) {
-  try { fn(); passed++; console.log('ok  ', name); }
-  catch (e) { console.log('FAIL', name); console.log(e); process.exitCode = 1; }
-}
+// Tests of context expansion in diffcore (buildView, expandRange, mergeRanges, gapsOf, quoteLines).
+// The patches are real: a temporary git repository, -U3 and -U100000000 for the same edit.
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { after, test } from 'node:test';
+import * as D from '../../assets/js/diffcore.js';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dr-expand-'));
 const git = (cwd, ...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'core.autocrlf=false', ...args], { cwd, encoding: 'utf8' });
 let seq = 0;
 
-// before/after — содержимое файла; rename — новое имя. Возвращает {base, full} как разобранные ханки.
+// before/after are the file contents; rename is the new file name. Returns {base, full} as parsed hunks.
 function diffOf(before, after, rename) {
   const dir = path.join(tmp, `r${seq++}`);
   fs.mkdirSync(dir);
@@ -31,7 +26,7 @@ function diffOf(before, after, rename) {
   const flags = ['diff', '--cached', '--no-color', '--find-renames', 'HEAD'];
   const base = D.parsePatch(git(dir, ...flags, '-U3'));
   const fullHunks = D.parsePatch(git(dir, ...flags, '-U100000000'));
-  assert.equal(fullHunks.length, 1, 'полный дифф — один ханк');
+  assert.equal(fullHunks.length, 1, 'the full diff is a single hunk');
   return { base, full: fullHunks[0].lines };
 }
 
@@ -40,7 +35,7 @@ const text = (arr, nl = true) => arr.join('\n') + (nl ? '\n' : '');
 const visible = (view) => view.hunks.flatMap((h) => h.lines);
 const sig = (lines) => lines.map((l) => `${l.t}:${l.o ?? ''}:${l.n ?? ''}:${l.s}`);
 
-// Файл на 100 строк, правки в 30 и 70: два ханка, три промежутка.
+// A 100-line file edited at lines 30 and 70: two hunks, three gaps.
 const two = () => {
   const a = nums(1, 100), b = a.slice();
   b[29] = 'changed 30';
@@ -48,22 +43,22 @@ const two = () => {
   return diffOf(text(a), text(b));
 };
 
-test('buildView без раскрытий повторяет исходные ханки', () => {
+test('buildView without expansions reproduces the original hunks', () => {
   const { base, full } = two();
   const v = D.buildView(full, base, [], false);
   assert.equal(v.hunks.length, base.length);
   assert.deepEqual(sig(visible(v)), sig(base.flatMap((h) => h.lines)));
   assert.deepEqual(v.hunks.map((h) => h.header.replace(/ @@.*/, ' @@')), base.map((h) => h.header.replace(/ @@.*/, ' @@')));
-  visible(v).forEach((l, k) => assert.equal(l.i, k, 'сквозной индекс'));
+  visible(v).forEach((l, k) => assert.equal(l.i, k, 'running index'));
 });
 
-test('промежутки: начало, середина, хвост — с новыми номерами и at', () => {
+test('gaps: start, middle and tail, with new line numbers and the at position', () => {
   const { base, full } = two();
   const v = D.buildView(full, base, [], false);
   assert.deepEqual(v.gaps.map((g) => [g.at, g.newFrom, g.newTo, g.n]), [[0, 1, 26, 26], [1, 34, 66, 33], [2, 74, 100, 27]]);
 });
 
-test('expandRange: up — над следующим ханком, down — под предыдущим, короткий — целиком', () => {
+test('expandRange: up reveals above the next hunk, down below the previous one, a short gap in full', () => {
   const g = { newFrom: 34, newTo: 66, n: 33 };
   assert.deepEqual(D.expandRange(g, 'up', 20), [47, 66]);
   assert.deepEqual(D.expandRange(g, 'down', 20), [34, 53]);
@@ -71,7 +66,7 @@ test('expandRange: up — над следующим ханком, down — по�
   assert.deepEqual(D.expandRange({ newFrom: 1, newTo: 15, n: 15 }, 'up', 20), [1, 15]);
 });
 
-test('частичное раскрытие вверх: ханк растёт, заголовок и номера пересчитаны', () => {
+test('partial expansion upwards grows the hunk and recomputes header and numbers', () => {
   const { base, full } = two();
   const v0 = D.buildView(full, base, [], false);
   const v = D.buildView(full, base, [D.expandRange(v0.gaps[1], 'up', 20)], false);
@@ -80,7 +75,7 @@ test('частичное раскрытие вверх: ханк растёт, �
   assert.deepEqual(v.gaps.find((g) => g.at === 1).newTo, 46);
 });
 
-test('промежуток закрылся — ханки слились, разделителя нет', () => {
+test('a closed gap merges the hunks and leaves no separator', () => {
   const { base, full } = two();
   const v0 = D.buildView(full, base, [], false);
   const v = D.buildView(full, base, [D.expandRange(v0.gaps[1], 'all', 20)], false);
@@ -88,7 +83,7 @@ test('промежуток закрылся — ханки слились, ра�
   assert.deepEqual(v.gaps.map((g) => g.at), [0, 1]);
 });
 
-test('весь файл: все строки, промежутков нет', () => {
+test('whole file shows every line and no gaps', () => {
   const { base, full } = two();
   const v = D.buildView(full, base, [], true);
   assert.equal(v.gaps.length, 0);
@@ -96,7 +91,7 @@ test('весь файл: все строки, промежутков нет', ()
   assert.ok(v.hunks[0].header.startsWith('@@ -1,100 +1,100 @@'));
 });
 
-test('изолированный раскрытый диапазон посреди промежутка — отдельный ханк без fn', () => {
+test('an isolated expanded range in the middle of a gap becomes a separate hunk without fn', () => {
   const { base, full } = two();
   const v = D.buildView(full, base, [[50, 50]], false);
   assert.equal(v.hunks.length, 3);
@@ -104,18 +99,18 @@ test('изолированный раскрытый диапазон посре�
   assert.equal(v.hunks[1].lines[0].s, 'line 50');
 });
 
-test('вставка в начало файла (старая длина 0 в -U0 смысле) и удаление в конце', () => {
+test('an insertion at the start of the file and a deletion at the end', () => {
   const a = nums(1, 40);
   const b = ['new top', ...a.slice(0, 39)];
   const { base, full } = diffOf(text(a), text(b));
   const v = D.buildView(full, base, [], false);
   assert.deepEqual(sig(visible(v)), sig(base.flatMap((h) => h.lines)));
-  assert.equal(v.gaps.length, 1, 'только середина');
+  assert.equal(v.gaps.length, 1, 'only the middle');
   const all = D.buildView(full, base, [], true);
   assert.equal(visible(all).filter((l) => l.t === 'del').length, 1);
 });
 
-test('нет перевода строки в конце: nonl переносится, хвост раскрывается', () => {
+test('no newline at end of file: nonl is carried over and the tail can be expanded', () => {
   const a = nums(1, 60), b = a.slice();
   b[9] = 'changed 10';
   const { base, full } = diffOf(text(a, false), text(b, false));
@@ -128,7 +123,7 @@ test('нет перевода строки в конце: nonl переноси�
   assert.equal(last.nonl, true);
 });
 
-test('CRLF: \\r остаётся в тексте строк, сверка проходит', () => {
+test('CRLF: \\r stays in the line text and the consistency check passes', () => {
   const a = nums(1, 30).map((s) => `${s}\r`), b = a.slice();
   b[14] = 'changed 15\r';
   const { base, full } = diffOf(text(a), text(b));
@@ -137,7 +132,7 @@ test('CRLF: \\r остаётся в тексте строк, сверка про
   assert.ok(visible(v)[0].s.endsWith('\r'));
 });
 
-test('переименование с правкой: работает так же', () => {
+test('a rename with an edit works the same way', () => {
   const a = nums(1, 50), b = a.slice();
   b[24] = 'changed 25';
   const { base, full } = diffOf(text(a), text(b), 'g.txt');
@@ -146,7 +141,7 @@ test('переименование с правкой: работает так ж
   assert.equal(v.gaps.length, 2);
 });
 
-test('расхождение с исходным патчем → null', () => {
+test('a mismatch with the original patch returns null', () => {
   const { base, full } = two();
   const bad = full.map((l) => (l.n === 30 && l.t === 'add' ? { ...l, s: 'другое' } : l));
   assert.equal(D.buildView(bad, base, [], false), null);
@@ -154,7 +149,7 @@ test('расхождение с исходным патчем → null', () => {
   assert.equal(D.buildView(shifted, base, [], false), null);
 });
 
-test('gapsOf по ханкам совпадает с промежутками buildView — до и после раскрытий', () => {
+test('gapsOf on hunks matches the gaps of buildView before and after expansions', () => {
   const strip = (gs) => gs.map(({ at, n, newFrom, newTo }) => ({ at, n, newFrom, newTo }));
   const cases = [two()];
   const a = nums(1, 40);
@@ -169,15 +164,14 @@ test('gapsOf по ханкам совпадает с промежутками bu
   }
 });
 
-test('mergeRanges: соседние и пересекающиеся сливаются, мусор отброшен', () => {
+test('mergeRanges merges adjacent and overlapping ranges and drops garbage', () => {
   assert.deepEqual(D.mergeRanges([[10, 12], [1, 3], [4, 5], [11, 20], [30, 29], 'x']), [[1, 5], [10, 20]]);
 });
 
-test('quoteLines: строки стороны по номерам из полного списка', () => {
+test('quoteLines returns the lines of a side by number from the full list', () => {
   const { full } = two();
   assert.deepEqual(D.quoteLines(full, 'new', 29, 31).map((l) => l.s), ['line 29', 'changed 30', 'line 31']);
   assert.deepEqual(D.quoteLines(full, 'old', 30, 30).map((l) => l.s), ['line 30']);
 });
 
-fs.rmSync(tmp, { recursive: true, force: true });
-console.log(`\n${passed} passed${process.exitCode ? ', есть провалы' : ''}`);
+after(() => fs.rmSync(tmp, { recursive: true, force: true }));
