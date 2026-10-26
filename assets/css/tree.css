@@ -1,0 +1,70 @@
+/* Files mode: file tree, filter, resize handle, headless group. */
+
+/* There are no sticky chapter heads: everything computed from --sec-head-h moves up under the header. */
+html.mode-files { --sec-head-h: 0px; }
+.mode-seg { flex: none; }
+.mode-seg button { min-width: 64px; }
+
+.tree-head { display: flex; flex-direction: column; gap: 8px; padding: 0 0 10px 8px; }
+.tree-title { display: flex; align-items: baseline; justify-content: space-between; padding-right: 6px; }
+.tree-title .toc-label { padding: 0; }
+.tree-progress { font-size: var(--fs-xs); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.tree-filter { position: relative; display: flex; align-items: center; }
+.tree-filter .icon { position: absolute; left: 8px; width: 14px; height: 14px; color: var(--ink-3); pointer-events: none; }
+.tree-input {
+  width: 100%; height: 30px; padding: 0 8px 0 28px; font: var(--fs-sm)/1 var(--font-sans); color: var(--ink);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm);
+}
+.tree-input::placeholder { color: var(--ink-3); }
+.tree-input:hover { border-color: var(--ctrl-border); }
+.tree-input:focus-visible { outline: 2px solid var(--focus); outline-offset: -1px; border-color: transparent; }
+.tree-opt { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-xs); color: var(--ink-2); cursor: pointer; user-select: none; width: max-content; }
+
+.tree { display: flex; flex-direction: column; gap: 1px; }
+.tree-row {
+  --indent: calc((var(--lvl, 1) - 1) * 14px);
+  display: grid; align-items: center; gap: 4px; height: 26px; padding: 0 6px 0 calc(4px + var(--indent));
+  border-radius: var(--r-xs); cursor: pointer; color: var(--ink); user-select: none;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.tree-row:hover { background: var(--tint); }
+.tree-row:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.tree-dir { grid-template-columns: 18px minmax(0, 1fr) auto; }
+.tree-dir .chev { width: 14px; height: 14px; justify-self: center; color: var(--ink-3); transition: transform var(--dur) var(--ease); }
+.tree-dir[aria-expanded="false"] .chev { transform: rotate(-90deg); }
+.tree-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 var(--fs-xs)/26px var(--font-mono); color: var(--ink-2); }
+.tree-count { font-size: var(--fs-xs); color: var(--ink-3); font-variant-numeric: tabular-nums; padding-left: 6px; }
+.tree-dir.done .tree-name { color: var(--ink-3); }
+.tree-file.file-row { width: auto; padding-left: calc(4px + var(--indent)); }
+.tree-empty { padding: 12px 8px; font-size: var(--fs-sm); color: var(--ink-3); }
+
+/* Width handle: a thin strip on the right edge of the panel, visible on hover. */
+/* Outside the panel's scroll area: fixed at its right border (#layout starts after the --page-pad inset). */
+.tree-resize {
+  position: fixed; top: var(--header-h); bottom: 0; left: calc(var(--page-pad) + var(--sidebar-w) - 4px);
+  width: 8px; cursor: col-resize; z-index: var(--z-sec-head);
+}
+.tree-resize::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; background: transparent;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.tree-resize:hover::after, .tree-resize:focus-visible::after, body.resizing .tree-resize::after { background: var(--accent); }
+.tree-resize:focus-visible { outline: none; }
+body.resizing { cursor: col-resize; user-select: none; }
+
+/* Headless group: file cards sit directly in the column, without a chapter frame. */
+.sec.headless { background: none; border: 0; border-radius: 0; overflow: visible; display: flex; flex-direction: column; gap: 12px; }
+.filter-status {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 36px; padding: 2px 4px 2px 12px; font-size: var(--fs-sm); color: var(--ink-2);
+  background: var(--accent-soft); border-radius: var(--r-sm);
+}
+.filter-status[hidden] { display: none; }
+.file-summary.with-chip { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.sec-chip {
+  flex: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 1px 8px; border: 1px solid var(--hair); border-radius: var(--r-pill); background: var(--tint);
+  font: 500 var(--fs-xs)/18px var(--font-sans); color: var(--ink-2); cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.sec-chip:hover { background: var(--accent-soft); border-color: transparent; color: var(--accent); }

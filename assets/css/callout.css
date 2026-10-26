@@ -1,0 +1,13 @@
+/* Callouts inside overviews and the intent. */
+
+/* Callouts */
+/* Square left edge, like the current chapter row in the table of contents: on a rounded corner the bar bends into a bracket. */
+.callout {
+  border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: 10px 14px; margin: 0 0 12px;
+  background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); color: var(--ink);
+}
+.callout > :last-child { margin-bottom: 0; }
+.callout-title { font-size: var(--fs-sm); font-weight: 600; color: var(--accent); margin-bottom: 2px; }
+.callout-warning, .callout-caution { background: var(--warn-soft); box-shadow: inset 3px 0 0 var(--warn-border); }
+.callout-warning .callout-title, .callout-caution .callout-title { color: var(--warn); }
+.callout p { margin: 0 0 8px; }

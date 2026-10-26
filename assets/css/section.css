@@ -1,0 +1,70 @@
+/* Chapter card: sticky head, overview aside, two-column layout. */
+
+.sec {
+  background: var(--surface); border: 1px solid var(--hair); border-radius: var(--r-lg);
+  overflow: clip; margin-bottom: var(--s-4);
+  scroll-margin-top: calc(var(--header-h) + 8px);
+}
+.sec-head {
+  position: sticky; top: var(--header-h); z-index: var(--z-sec-head);
+  height: var(--sec-head-h); display: flex; align-items: center; gap: 12px;
+  padding: 0 16px 0 20px; background: var(--surface); border-bottom: 1px solid var(--hair);
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.sec-head:has(.sec-toggle:hover) { background: var(--tint); }
+.sec-toggle {
+  flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; gap: 12px;
+  padding: 0 8px; margin-left: -8px; border: 0; background: transparent; text-align: left; cursor: pointer; border-radius: var(--r-sm);
+}
+/* The button spans the full head height and the chapter card clips everything outside its edge (overflow: clip), so the focus ring goes inside. */
+.sec-toggle:focus-visible { outline-offset: -2px; }
+.sec-num { flex: none; font-size: var(--fs-sm); font-weight: 500; line-height: 1; color: var(--ink-3); white-space: nowrap; }
+.sec-toggle h2 {
+  min-width: 0; font-size: var(--fs-h2); font-weight: 600; line-height: 24px; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sec-toggle .chev { color: var(--ink-3); transition: transform var(--dur) var(--ease); }
+.sec-head.is-current .sec-num, .sec-head.is-current .chev { color: var(--accent); }
+.sec-sum { flex: none; font-size: var(--fs-xs); line-height: 1; color: var(--ink-3); white-space: nowrap; }
+.viewed-toggle { flex: none; display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-sm); color: var(--ink-2); cursor: pointer; user-select: none; }
+@container main (max-width: 759.98px) { .sec-sum { display: none; } }
+
+.sec.collapsed .sec-head { position: static; background: var(--tint); border-bottom: 0; }
+.sec.collapsed .sec-head:has(.sec-toggle:hover) { background: var(--hair); }
+.sec.collapsed .sec-toggle h2 { color: var(--ink-2); font-weight: 500; }
+.sec.collapsed .chev { transform: rotate(-90deg); }
+
+.sec-body { display: block; }
+.sec-aside { padding: 16px 24px 12px; border-bottom: 1px solid var(--hair); min-width: 0; }
+.overview { font-size: var(--fs-prose); line-height: var(--lh-prose); color: var(--ink-2); max-width: 64ch; }
+.overview .callout { font-size: var(--fs-sm); line-height: 1.55; }
+.aside-files { display: none; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--hair); }
+.aside-label { font-size: var(--fs-xs); font-weight: 600; color: var(--ink-3); padding: 0 4px 6px; }
+.aside-files .file-row { margin-left: -4px; width: calc(100% + 8px); }
+
+.sec-files { background: var(--tint); padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.sec-empty { min-height: 96px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: var(--fs-sm); color: var(--ink-3); }
+.sec-foot { display: flex; justify-content: flex-end; }
+
+/* Two-column mode: the overview sticks on the left, diffs go on the right.
+   The threshold is 1080px, not 1100: with a 1440px window and the table of contents open, #main is 1096px wide. */
+@container main (min-width: 1080px) {
+  body:not(.view-split) .sec-body { display: grid; grid-template-columns: var(--aside-w) minmax(0, 1fr); }
+  body:not(.view-split) .sec-aside { padding: 20px 24px; border-bottom: 0; border-right: 1px solid var(--hair); }
+  body:not(.view-split) .aside-in {
+    position: sticky; top: calc(var(--header-h) + var(--sec-head-h) + 12px);
+    max-height: calc(100vh - var(--header-h) - var(--sec-head-h) - 24px); overflow: auto; overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+  body:not(.view-split) .aside-files { display: block; }
+}
+@container main (min-width: 1500px) {
+  body.view-split .sec-body { display: grid; grid-template-columns: var(--aside-w) minmax(0, 1fr); }
+  body.view-split .sec-aside { padding: 20px 24px; border-bottom: 0; border-right: 1px solid var(--hair); }
+  body.view-split .aside-in {
+    position: sticky; top: calc(var(--header-h) + var(--sec-head-h) + 12px);
+    max-height: calc(100vh - var(--header-h) - var(--sec-head-h) - 24px); overflow: auto; overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+  body.view-split .aside-files { display: block; }
+}
