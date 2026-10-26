@@ -93,6 +93,11 @@ nouns, and import `T` in the module. Do not put Russian text anywhere else. Step
   write a `guide.json` there and check it with
   `python3 scripts/validate.py --guide tests/fixtures/<name>/guide.json --meta tests/fixtures/<name>/meta.json`.
   Absolute paths inside are recorded data; leave them as they are.
+- `tests/fixtures/pr-github` and `pr-gitlab` are `mixed2` with a PR/MR `meta.json` (`mode: "pr"`, `meta.pr`); the
+  description carries HTML and a `javascript:` link on purpose (escaping tests).
+- Nothing in the test suites talks to GitHub or GitLab. `tests/fakecli/gh` and `tests/fakecli/glab` stand in for the
+  CLIs: put `tests/fakecli` first on `PATH`, describe the answers in a JSON rules file named by `$FAKE_CLI_RULES`, and
+  read the calls back from the JSONL log in `$FAKE_CLI_LOG` (format in the header of `tests/fakecli/gh`).
 - `tests/fixtures/mixed/feedback.golden.md` is compared byte for byte with what the viewer submits in
   `tests/e2e/submit-and-final.test.js`. If you change the template on purpose, run
   `node --test --test-name-pattern 'byte for byte' tests/e2e/submit-and-final.test.js`. The failure message

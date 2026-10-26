@@ -5,6 +5,8 @@ paths:
 
 # Scripts (scripts/)
 
+- External commands: `git`, and `gh`/`glab` only from `remote.py` and `publish.py`. Network access goes only
+  through those two CLIs and their logins; the scripts never handle tokens.
 - Python standard library only; target Python 3.9+ (`target-version` in `pyproject.toml`). No third-party
   imports, no `requirements.txt`. Ruff is a dev tool, run through `uvx`.
 - Each script is a CLI with `--help` (argparse, module docstring as description). `serve.py` imports
@@ -17,7 +19,7 @@ paths:
   (`Error: ...` on stderr), `3` no changes (JSON with `"reason": "no-changes"` on stdout). `validate.py`: `0` ok,
   `1` errors. `SKILL.md` steps 2 and 4 branch on these.
 - `serve.py` prints `DIFF_REVIEW_URL: <url>` as its first line and `DIFF_REVIEW_RESULT: <status> [<path>]` as its
-  last line, statuses `feedback|approved|closed|timeout`. Nothing else goes to stdout. `SKILL.md` steps 5 and 6
+  last line, statuses `feedback|approved|published|closed|timeout`. Nothing else goes to stdout. `SKILL.md` steps 5 and 6
   parse these markers: change both sides together.
 
 ## Never touch the user's repository state
@@ -27,7 +29,9 @@ paths:
 - The copy is made with `shutil.copy2` to keep the index mtime. With a fresh mtime git would no longer see entries
   as "racily clean", would not re-read a file edited right after `add`/`commit` without a size change, and that
   file would vanish from the diff. Do not replace it with `shutil.copy` or a fresh `read-tree`.
-- No writes to the working tree, the real index, refs or config. Run git with `core.quotePath=false` and the
+- No writes to the working tree, the real index, refs or config. The one exception is `collect.py --pr`: it may
+  `git fetch` the PR/MR commits into the user's matching clone, which adds objects and updates `FETCH_HEAD` and
+  remote-tracking refs, nothing else. Everything else goes to the cache clone under `$TMPDIR/diff-review/repos/`. Run git with `core.quotePath=false` and the
   fixed `DIFF_FLAGS` (no colour, no external diff, no textconv).
 
 ## meta.json versions
@@ -38,6 +42,13 @@ paths:
   in `CLAUDE.md`. When you bump, add the fallback in `assets/js/strings.js`/`expand.js` and a test.
 - New `notes[].code` or `content.reason` codes need Russian text in `strings.js` (`NOTES`, `FULL_TEXT_REASONS`).
 - Machine data in meta is codes, not prose (field details in `CLAUDE.md`).
+
+## Publishing (publish.py)
+
+- Only on an explicit `POST /api/publish` from the page; nothing is posted on startup, timeout or close.
+- GitHub: one atomic review; GitLab: discussions, then the note, then approve, each recorded in `published.json` so
+  a retry never posts twice. The request/response contract is in `publish.py`'s docstring; the page builds the
+  payload in `assets/js/publish.js`; change both together.
 
 ## serve.py security
 
