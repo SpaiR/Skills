@@ -29,7 +29,7 @@ scripts/serve.py            stdlib HTTP server for the viewer and its API
 assets/viewer.html          page shell; loads css/index.css and js/main.js
 assets/js/                  native ES modules of the viewer; strings.js holds all page text
 assets/css/                 index.css @imports the parts in cascade order
-tests/unit/                 node:test: diffcore, expand, contrast
+tests/unit/                 node:test: diffcore, expand, strings, contrast
 tests/python/               unittest: collect, serve, validate
 tests/e2e/                  node:test + playwright-core against system Chrome; lib.js holds helpers
 tests/fixtures/             recorded outdirs (mixed, mixed2, large, big, tree) + feedback.golden.md

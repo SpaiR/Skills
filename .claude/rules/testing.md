@@ -9,7 +9,7 @@ paths:
 
 | Command | What | Runner |
 |---|---|---|
-| `npm run test:unit` | `tests/unit/*.test.js`: diffcore, expand, palette contrast | `node --test` |
+| `npm run test:unit` | `tests/unit/*.test.js`: diffcore, expand, strings formatters, palette contrast | `node --test` |
 | `npm run test:py` | `tests/python/test_*.py`: collect, serve, validate | `python3 -m unittest` (no pytest) |
 | `npm run test:e2e` | `tests/e2e/*.test.js`: the real viewer served by `serve.py` | `node --test --test-concurrency=1` |
 
@@ -35,7 +35,8 @@ paths:
   about old outdirs.
 - `mixed/feedback.golden.md` must stay byte-identical to what the viewer posts for the state in
   `submit-and-final.test.js`. Change it only when a change to `T.feedback`/`feedback.js` is intended: regenerate it
-  from the actual output that the failing test prints, and review the diff line by line.
+  from the actual output that the failing test prints, and review the diff line by line. The fixture `mixed` is
+  meta v1; `tests/unit/strings.test.js` checks that the v3 range of `mixed2` renders the same range line.
 
 ## Rules
 
