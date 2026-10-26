@@ -40,7 +40,7 @@ Commit subjects follow [Conventional Commits](https://www.conventionalcommits.or
 ```
 
 - Types: `feat`, `fix`, `refactor`, `test`, `docs`, `style`, `build`, `chore`, `perf`.
-- Scopes: `viewer`, `collect`, `serve`, `validate`, `skill`, `tests`, `repo`.
+- Scopes: `viewer`, `collect`, `remote`, `publish`, `serve`, `validate`, `skill`, `tests`, `repo`.
 - Add `!` (and a `BREAKING CHANGE:` footer) for incompatible changes to `meta.json`, `guide.json`, `state.json` or
   the `DIFF_REVIEW_*` output markers.
 
