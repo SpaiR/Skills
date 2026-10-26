@@ -54,7 +54,7 @@ function submitSummary() {
   ];
 }
 
-function submitWarnings(action, d) {
+export function submitWarnings(action, d) {
   const out = [];
   if (action === 'approve') {
     const left = R.files.filter((f) => !isViewed(fileByPath.get(f.path)));
@@ -277,9 +277,15 @@ function goToDraft(key) {
   flash(el);
 }
 
-function showFinished(action, counts) {
+// pub: for 'publish', {pr, inline, folded} from the publish response.
+export function showFinished(action, counts, pub) {
   const text = T.finished.title[action];
-  const sub = action === 'close' ? T.finished.savedInState : T.finished.sent(counts);
+  const sub =
+    action === 'close'
+      ? T.finished.savedInState
+      : pub
+        ? T.finished.published(pub.pr.provider, pub.inline, pub.folded)
+        : T.finished.sent(counts);
   const closing = h('p', { class: 'finished-close', role: 'status' });
   document.body.replaceChildren(
     h(
@@ -293,6 +299,12 @@ function showFinished(action, counts) {
       h('h1', {}, text),
       h('p', {}, T.finished.serverStopped),
       h('p', { class: 'finished-sub' }, sub),
+      pub &&
+        h(
+          'p',
+          {},
+          h('a', { href: pub.pr.url, target: '_blank', rel: 'noopener noreferrer' }, T.pr.open(pub.pr.provider)),
+        ),
       closing,
     ),
   );

@@ -172,3 +172,42 @@
   padding: 6px var(--page-pad);
   border-bottom: 1px solid var(--hair);
 }
+
+/* PR/MR state badge (header and hero). */
+.pr-state {
+  flex: none;
+  display: inline-block;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 18px;
+  padding: 0 8px;
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+.pr-state.is-open {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.pr-state.is-draft {
+  background: var(--tint);
+  color: var(--ink-2);
+}
+.pr-state.is-merged {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.pr-state.is-closed {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+a.range-label {
+  text-decoration: none;
+}
+a.range-label:hover {
+  text-decoration: underline;
+}
+@media (max-width: 767.98px) {
+  #top .pr-state {
+    display: none;
+  }
+}

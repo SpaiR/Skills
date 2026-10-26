@@ -31,14 +31,26 @@ process.on('exit', () => {
 });
 
 // Copies a fixture into a temp dir (with an optional state.json), starts serve.py on it and waits for its URL.
-export async function startFixture(fx, state) {
+// opts.meta: fields merged into meta.json (`pr` is merged one level deep); opts.env: extra environment for serve.py.
+export async function startFixture(fx, state, opts = {}) {
   const run = fs.mkdtempSync('/tmp/dr-test-');
   for (const f of ['guide.json', 'guide.patch', 'meta.json'])
     fs.copyFileSync(path.join(FIXTURES, fx, f), path.join(run, f));
+  if (opts.meta) {
+    const metaPath = path.join(run, 'meta.json');
+    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+    const { pr, ...rest } = opts.meta;
+    Object.assign(meta, rest);
+    if (pr) meta.pr = { ...meta.pr, ...pr };
+    fs.writeFileSync(metaPath, JSON.stringify(meta));
+  }
   const full = path.join(FIXTURES, fx, 'full.patch');
   if (fs.existsSync(full)) fs.copyFileSync(full, path.join(run, 'full.patch'));
   if (state) fs.writeFileSync(path.join(run, 'state.json'), JSON.stringify(state));
-  const proc = spawn('python3', [SERVE, '--dir', run, '--timeout-min', '10'], { stdio: ['ignore', 'pipe', 'pipe'] });
+  const proc = spawn('python3', [SERVE, '--dir', run, '--timeout-min', '10'], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, ...opts.env },
+  });
   live.add(proc);
   proc.on('exit', () => live.delete(proc));
   let out = '';
@@ -67,6 +79,8 @@ export async function startFixture(fx, state) {
     run,
     proc,
     state: () => JSON.parse(fs.readFileSync(path.join(run, 'state.json'), 'utf8')),
+    // Everything serve.py printed so far (stdout and stderr).
+    output: () => out,
     stop: () => {
       try {
         proc.kill();
@@ -115,8 +129,8 @@ export function useEnv() {
     errors: [],
     requests: [],
     // Starts a fixture server that is stopped automatically when the file ends.
-    async server(fx, state) {
-      const s = await startFixture(fx, state);
+    async server(fx, state, opts) {
+      const s = await startFixture(fx, state, opts);
       env.servers.push(s);
       return s;
     },

@@ -22,10 +22,11 @@ function renderHero() {
     t = m.totals;
   const compact = filesMode();
   const commits = m.commits || [];
+  const pr = m.pr;
   const meta = [
-    T.rangeLabel(m),
-    m.branch && T.branch(m.branch),
-    m.worktree ? `${m.repoName} (worktree ${m.worktree})` : m.repoName,
+    !pr && T.rangeLabel(m),
+    !pr && m.branch && T.branch(m.branch),
+    !pr && (m.worktree ? `${m.repoName} (worktree ${m.worktree})` : m.repoName),
     plural(t.files, WORDS.files),
     statPair(t.additions, t.deletions),
     commits.length > 0 && plural(commits.length, WORDS.commits),
@@ -36,6 +37,7 @@ function renderHero() {
     { class: 'hero' },
     h('h1', { id: 'review-title' }, g.title),
     !compact && g.intent && h('div', { class: 'intent md', html: md(g.intent) }),
+    pr && renderPr(pr, compact),
     h(
       'div',
       { class: 'hero-meta' },
@@ -63,6 +65,40 @@ function renderHero() {
       ),
     m.untrackedIncluded > 0 && h('p', { class: 'hero-untracked' }, T.section.untracked(m.untrackedIncluded)),
   );
+}
+
+// The PR/MR the review is about. Its description is someone else's text: md() escapes HTML and links only
+// http(s); HTML comments (PR templates) are dropped.
+function renderPr(pr, compact) {
+  const body = String(pr.body || '')
+    .replace(/<!--[\s\S]*?(-->|$)/g, '')
+    .trim();
+  const state = pr.state === 'open' && pr.draft ? 'draft' : pr.state;
+  return [
+    h(
+      'p',
+      { class: 'pr-line' },
+      h('span', { class: `pr-state is-${state}` }, T.pr.state(pr)),
+      h(
+        'a',
+        { href: pr.url, target: '_blank', rel: 'noopener noreferrer', title: T.pr.open(pr.provider) },
+        `${T.pr.ref(pr.provider, pr.number)}: ${pr.title}`,
+      ),
+      h('span', { class: 'sep' }, ' · '),
+      pr.repo,
+      pr.author && [h('span', { class: 'sep' }, ' · '), h('span', { class: 'nowrap' }, T.pr.author(pr.author))],
+      h('span', { class: 'sep' }, ' · '),
+      h('code', { class: 'pr-branches' }, T.pr.branches(pr.headRef, pr.baseRef)),
+    ),
+    !compact &&
+      body &&
+      h(
+        'details',
+        { class: 'commits pr-body' },
+        h('summary', {}, h('span', { class: 'marker', 'aria-hidden': 'true' }, '›'), T.pr.description(pr.provider)),
+        h('div', { class: 'md pr-md', html: md(body) }),
+      ),
+  ];
 }
 
 export function renderMain() {

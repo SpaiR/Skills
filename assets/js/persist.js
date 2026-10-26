@@ -13,7 +13,13 @@ export async function api(method, path, body, keepalive) {
     headers: { 'X-Review-Token': TOKEN, 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`${res.status} ${T.serverError(await res.text())}`);
+  if (!res.ok) {
+    const text = await res.text();
+    const err = new Error(`${res.status} ${T.serverError(text)}`);
+    err.status = res.status;
+    err.body = text;
+    throw err;
+  }
   return res.json();
 }
 

@@ -6,6 +6,7 @@ import { h, icon } from './dom.js';
 import { toggleMenu } from './menu.js';
 import { commentCount, isViewed, splitAvailable } from './model.js';
 import { setMode } from './modes.js';
+import { canPublish, openPublish } from './publish.js';
 import { fileByPath, R, S, sections } from './state.js';
 import { T, WORDS } from './strings.js';
 import { openSubmit } from './submit.js';
@@ -18,6 +19,7 @@ export function renderHeader() {
     ? `${m.repoName} (worktree ${m.worktree})`
     : `${m.repoName}${m.branch ? ` · ${T.branch(m.branch)}` : ''}`;
   const range = T.rangeLabel(m);
+  const pr = m.pr;
   const top = document.getElementById('top');
   top.replaceChildren(
     h(
@@ -56,7 +58,20 @@ export function renderHeader() {
           ),
         ),
       ),
-      h('span', { class: 'range-label', title: range }, range),
+      pr
+        ? h(
+            'a',
+            {
+              class: 'range-label',
+              href: pr.url,
+              target: '_blank',
+              rel: 'noopener noreferrer',
+              title: T.pr.open(pr.provider),
+            },
+            range,
+          )
+        : h('span', { class: 'range-label', title: range }, range),
+      pr && h('span', { class: `pr-state is-${pr.state === 'open' && pr.draft ? 'draft' : pr.state}` }, T.pr.state(pr)),
       h(
         'div',
         { class: 'top-ctx' },
@@ -108,6 +123,19 @@ export function renderHeader() {
         },
         icon('more'),
       ),
+      canPublish() &&
+        h(
+          'button',
+          {
+            class: 'btn',
+            id: 'publish-btn',
+            type: 'button',
+            title: T.header.publish(pr.provider),
+            'aria-label': T.header.publish(pr.provider),
+            onclick: openPublish,
+          },
+          h('span', { class: 'btn-text' }, T.header.publishShort),
+        ),
       h(
         'button',
         {

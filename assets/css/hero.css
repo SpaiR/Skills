@@ -135,3 +135,35 @@
   color: var(--ink);
   font-weight: 600;
 }
+
+/* The PR/MR line and its description (meta.pr). */
+.pr-line {
+  margin: 12px 0 0;
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  color: var(--ink-3);
+  max-width: 72ch;
+}
+.pr-line a {
+  color: var(--ink);
+  font-weight: 600;
+}
+.pr-line .sep {
+  white-space: pre;
+}
+.pr-line .pr-state {
+  margin-right: 8px;
+}
+.pr-line .nowrap,
+.pr-branches {
+  white-space: nowrap;
+}
+.pr-branches {
+  font: var(--fs-xs) / 1.6 var(--font-mono);
+}
+.pr-md {
+  margin: 8px 0 0 16px;
+  max-width: 68ch;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
