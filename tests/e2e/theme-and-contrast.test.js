@@ -11,7 +11,6 @@ describe('themes and contrast', () => {
   });
 
   it('applies the palette variables from the specification in both themes, system and explicit', async () => {
-    // was 3
     const want = {
       light: {
         '--surface': '#ffffff',
@@ -59,7 +58,6 @@ describe('themes and contrast', () => {
   });
 
   it('colours add, del and context code the same as --ink in both themes', async () => {
-    // was 5
     for (const scheme of ['light', 'dark']) {
       const page = await env.open(mixed, { colorScheme: scheme });
       const r = await page.evaluate(() => {
@@ -83,7 +81,6 @@ describe('themes and contrast', () => {
   });
 
   it('switches the theme from the More menu, saves it in state.json and keeps it after reload; Auto restores the system theme', async (t) => {
-    // was 45
     const fx = await env.server('mixed');
     const page = await env.open(fx, { colorScheme: 'light' });
     const before = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
@@ -124,7 +121,6 @@ describe('themes and contrast', () => {
   });
 
   it('keeps the text of .btn.primary at contrast 4.5 or more in the dark theme, system and explicit', async (t) => {
-    // was 46
     const fx = await env.server('mixed');
     const out = [];
     for (const [scheme, attr] of [
@@ -171,7 +167,6 @@ describe('themes and contrast', () => {
   });
 
   it('never paints code text in an add or del status colour, in both themes and on both fixtures', async (t) => {
-    // was 50
     const out = [];
     for (const fxName of ['mixed', 'big']) {
       const fx = await env.server(fxName);
@@ -211,7 +206,6 @@ describe('themes and contrast', () => {
   });
 
   it('keeps --bg, --surface and --tint distinct in the dark theme, and word highlights distinct from their line background', async (t) => {
-    // was 51
     const fx = await env.server('mixed');
     const page = await env.open(fx, { colorScheme: 'dark' });
     const r = await page.evaluate(() => {

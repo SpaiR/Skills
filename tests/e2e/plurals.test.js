@@ -36,7 +36,6 @@ describe('plural forms', () => {
   const env = useEnv();
 
   it('has no "(ов)" or "комм." and uses correct plural forms in every state; chapters read "1 файл", "2 файла", "3 файла"', async () => {
-    // was 44
     const fx = await env.server('mixed', {
       version: 1,
       annotations: [

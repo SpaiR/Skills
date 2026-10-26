@@ -38,7 +38,6 @@ describe('keyboard', () => {
     });
 
   it('moves to the next file on keydown code=KeyJ even when key is "о" (Russian layout)', async (t) => {
-    // was 20
     const page = await env.open(shared);
     const before = await current(page);
     await page.evaluate(() =>
@@ -52,7 +51,6 @@ describe('keyboard', () => {
   });
 
   it('does what the shortcut table says for every key', async (t) => {
-    // was 21
     const fx = await env.server('mixed');
     const page = await env.open(fx);
     const out = [];
@@ -187,7 +185,6 @@ describe('keyboard', () => {
   });
 
   it('lets j, v and s be typed into a textarea without triggering shortcuts', async (t) => {
-    // was 22
     const page = await env.open(shared);
     await toFile(page, COLLECT);
     await page.click(num('new', 54));
@@ -212,7 +209,6 @@ describe('keyboard', () => {
   });
 
   it('reaches chapter and file buttons, checkboxes and table of contents rows with Tab, each with a solid --focus outline', async (t) => {
-    // was 23
     const page = await env.open(shared);
     const seen = new Set();
     const bad = [];
@@ -250,7 +246,6 @@ describe('keyboard', () => {
   });
 
   it('scrolls instantly on J and gives the chevron transition-duration 0s under reduced motion', async (t) => {
-    // was 47
     const page = await env.open(big, { reducedMotion: 'reduce' });
     await page.keyboard.press('j');
     await page.keyboard.press('j');
@@ -275,7 +270,6 @@ describe('keyboard', () => {
   });
 
   it('lays out the More menu in the specified order and roles, navigates it with arrows, Home, End, Enter and Space, and returns focus on Esc or an outside click', async (t) => {
-    // was 3.13
     const fx = await env.server('mixed');
     const page = await env.open(fx);
     await page.click('#more-btn');

@@ -30,7 +30,6 @@ describe('line comments', () => {
     );
 
   it('keeps the form text through collapsing a file, S twice and marking chapter 2, and stores the draft in state.json', async (t) => {
-    // was 24
     const fx = await env.server('mixed');
     const page = await env.open(fx);
     await toFile(page, COLLECT);
@@ -67,7 +66,6 @@ describe('line comments', () => {
   });
 
   it('shows a .draft-row after reload and "Продолжить" opens the form with the text and focus', async (t) => {
-    // was 25
     const fx = await env.server('mixed', {
       version: 1,
       drafts: {
@@ -109,7 +107,6 @@ describe('line comments', () => {
   });
 
   it('turns the first text into a .has-draft draft when another line is clicked, and opens an empty form there', async (t) => {
-    // was 26
     const fx = await env.server('mixed');
     const page = await env.open(fx);
     await toFile(page, COLLECT);
@@ -135,7 +132,6 @@ describe('line comments', () => {
   });
 
   it('selects old line 53 (del) to new line 56 by Shift-click, by dragging and in side-by-side view: "Строки 53–55 · старая версия"', async (t) => {
-    // was 27
     const page = await env.open(shared);
     await toFile(page, COLLECT);
     await page.click(num('old', 53));
@@ -169,7 +165,6 @@ describe('line comments', () => {
   });
 
   it('treats a click on the old number of a context line as the new version', async (t) => {
-    // was 28
     const page = await env.open(shared);
     await toFile(page, COLLECT);
     await page.click(num('old', 56)); // ctx: old 56 = new 59
@@ -180,7 +175,6 @@ describe('line comments', () => {
   });
 
   it('marks new lines 54–58 with .has-note after saving, and paints the selected add line with --add-line plus an overlay', async (t) => {
-    // was 29
     const fx = await env.server('mixed');
     const page = await env.open(fx);
     await toFile(page, COLLECT);
@@ -211,7 +205,6 @@ describe('line comments', () => {
   });
 
   it('reveals .cmt-btn on row hover, opens the form on click, and offers it on del lines but not on old numbers of context lines', async (t) => {
-    // was 30
     const page = await env.open(shared);
     await toFile(page, COLLECT);
     const row = page.locator(`${COLLECT} tr.ln`).filter({ has: page.locator(`td.num[data-side=new][data-no="57"]`) });
@@ -234,7 +227,6 @@ describe('line comments', () => {
   });
 
   it('removes a comment with a toast offering "Вернуть", and undo restores the same id in the same place', async (t) => {
-    // was 31
     const notes = [
       { id: 'aaa', file: 'scripts/collect.py', side: 'new', start: 34, end: 34, text: 'первый', suggestion: '' },
       { id: 'bbb', file: 'scripts/collect.py', side: 'new', start: 54, end: 55, text: 'второй', suggestion: '' },
@@ -276,7 +268,6 @@ describe('line comments', () => {
   });
 
   it('fills the suggestion field with the original lines, indents with Tab, and renders a "Предложенная правка" card with − and +', async (t) => {
-    // was 32
     const fx = await env.server('mixed');
     const page = await env.open(fx);
     await toFile(page, COLLECT);

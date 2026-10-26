@@ -17,7 +17,6 @@ describe('submit and final screens', () => {
   });
 
   it('opens the submit dialog as :modal, keeps 15 Tab presses inside it, and Esc closes it and returns focus to the button', async () => {
-    // was 37
     const page = await env.open(shared);
     await page.click('#submit-btn');
     const modal = await page.evaluate(() => document.querySelector('dialog#submit').matches(':modal'));
@@ -39,7 +38,6 @@ describe('submit and final screens', () => {
   });
 
   it('warns on "Одобрить" with 1 of 4 chapters viewed and lists the unviewed files', async (t) => {
-    // was 38
     const fx = await env.server('mixed');
     const page = await env.open(fx);
     await page.click('#toc .toc-group[data-key=s1] .toc-status');
@@ -63,7 +61,6 @@ describe('submit and final screens', () => {
   });
 
   it('shows "Есть неотправленные черновики: 1" in the dialog and "Перейти" leads to the draft', async (t) => {
-    // was 39
     const fx = await env.server('mixed', {
       version: 1,
       drafts: {
@@ -94,7 +91,6 @@ describe('submit and final screens', () => {
   });
 
   it('closes the dialog and scrolls to the .note when a comment in the list is clicked', async (t) => {
-    // was 40
     const notes = [
       { id: 'n1', file: 'scripts/collect.py', side: 'new', start: 34, end: 34, text: 'первый', suggestion: '' },
       {
@@ -130,7 +126,6 @@ describe('submit and final screens', () => {
   });
 
   it('shows "Не удалось отправить" in [role=alert] inside the dialog, without alert(), when the server is stopped', async (t) => {
-    // was 41
     const fx = await env.server('mixed', { version: 1, globalComment: 'общий' });
     const page = await env.open(fx);
     let alerts = 0;
@@ -160,7 +155,6 @@ describe('submit and final screens', () => {
   });
 
   it('posts Markdown to /api/submit that is byte for byte equal to feedback.golden.md', async (t) => {
-    // was 42
     const state = {
       version: 1,
       annotations: [
@@ -197,7 +191,6 @@ describe('submit and final screens', () => {
   });
 
   it('shows the matching heading and "Сервер остановлен, вкладку можно закрыть." for feedback, approve and close', async (t) => {
-    // was 43 (stage 7-10)
     const want = {
       feedback: 'Фидбек отправлен в сессию Claude Code.',
       approve: 'Одобрение отправлено в сессию Claude Code.',
@@ -240,7 +233,6 @@ describe('submit and final screens', () => {
   });
 
   it('shows "Сервер остановлен, вкладку можно закрыть." on the final screen of all three actions without intercepting the request', async (t) => {
-    // was 43 (extras)
     const out = [];
     for (const action of ['feedback', 'approve', 'close']) {
       const fx = await env.server('mixed', {

@@ -13,7 +13,6 @@ describe('syntax highlighting and diff rendering', () => {
   });
 
   it('shows + and − in the sign column and leaves signs and line numbers out of a mouse selection', async () => {
-    // was 6
     const page = await env.open(mixed);
     const signs = await page.evaluate(() => ({
       add: [...document.querySelectorAll('tr.ln[data-t=add] td.sign')].every((td) => td.textContent === '+'),
@@ -37,7 +36,6 @@ describe('syntax highlighting and diff rendering', () => {
   });
 
   it('highlights the changed word in a modified pair and nowhere else, and not at all on the big fixture', async (t) => {
-    // was 7
     const page = await env.open(mixed);
     const r = await page.evaluate(() => {
       const f = document.querySelector('.file[data-path="scripts/validate.py"]');
@@ -63,7 +61,6 @@ describe('syntax highlighting and diff rendering', () => {
   });
 
   it('shows hunk separators of collect.py: lines 1–30 hidden, then 12 and 6 unchanged lines', async () => {
-    // was 8
     const page = await env.open(mixed);
     const t = await page.$$eval(`${fileSel('scripts/collect.py')} tr.hunk`, (rows) => rows.map((r) => r.textContent));
     assert.ok(t[0].includes('строки 1–30 не показаны'), JSON.stringify(t));
@@ -72,7 +69,6 @@ describe('syntax highlighting and diff rendering', () => {
   });
 
   it('renders an added file (big SKILL.md) without old-side line numbers', async () => {
-    // was 9
     const page = await env.open(big);
     const n = await page.$$eval(`${fileSel('SKILL.md')} td.num[data-side=old]`, (x) => x.length);
     const rows = await page.$$eval(`${fileSel('SKILL.md')} tr.ln`, (x) => x.length);
@@ -81,7 +77,6 @@ describe('syntax highlighting and diff rendering', () => {
   });
 
   it('wraps long lines under the code with the same indent, and W switches to 20px rows with horizontal scroll and saves the choice', async () => {
-    // was 10
     const page = await env.open(mixed);
     const sel = `${fileSel('scripts/validate.py')} td.num[data-side=new][data-no="59"]`;
     await page.locator(sel).scrollIntoViewIfNeeded();
@@ -127,7 +122,6 @@ describe('syntax highlighting and diff rendering', () => {
   });
 
   it('shows added and deleted files unified and modified files split in side-by-side view, with a hatched filler', async () => {
-    // was 11
     const page = await env.open(mixed);
     await page.click(`${fileSel('assets/viewer.html')} [data-act=show-file]`);
     await page.keyboard.press('s');
@@ -154,7 +148,6 @@ describe('syntax highlighting and diff rendering', () => {
   });
 
   it('escapes code: no script, img, iframe or on* attributes in #main, and a deleted <script tag is visible as text', async () => {
-    // was 13
     const page = await env.open(mixed);
     const show = page.locator(`${fileSel('assets/viewer.html')} [data-act=show-file]`);
     if (await show.count()) await show.click();
@@ -173,7 +166,6 @@ describe('syntax highlighting and diff rendering', () => {
   });
 
   it('highlights keywords and comments in collect.py with palette colours and leaves SKILL.md plain', async (t) => {
-    // was 12 (first of two)
     const page = await env.open(await env.server('big'));
     const r = await page.evaluate(() => {
       const f = document.querySelector('.file[data-path="scripts/collect.py"]');
@@ -220,7 +212,6 @@ describe('syntax highlighting and diff rendering', () => {
   });
 
   it('combines a syntax token with a word highlight (validate.py line 16: "12" is both t-num and w)', async () => {
-    // was 12 (second of two)
     const page = await env.open(await env.server('mixed'));
     const r = await page.evaluate(() => {
       const tr = document

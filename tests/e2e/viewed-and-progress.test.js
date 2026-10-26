@@ -16,7 +16,6 @@ describe('viewed state and progress', () => {
     });
 
   it('marks the current file with V: hash in state, "Просмотрен" note, counter +1, table of contents row at opacity .6', async (t) => {
-    // was 33
     const fx = await env.server('mixed');
     const page = await env.open(fx);
     await page.keyboard.press('j');
@@ -46,7 +45,6 @@ describe('viewed state and progress', () => {
   });
 
   it('marks chapter 2 as reviewed, collapses it and fills its status when both files are viewed; unmarking one file clears reviewed.s2', async (t) => {
-    // was 34
     const fx = await env.server('mixed');
     const page = await env.open(fx);
     for (const p of ['scripts/validate.py', 'scripts/test_collect.py'])
@@ -70,7 +68,6 @@ describe('viewed state and progress', () => {
   });
 
   it('treats chapter 1 as viewed in old state without filesViewed but with reviewed.s1 = true', async (t) => {
-    // was 35
     const fx = await env.server('mixed', { version: 1, reviewed: { s1: true } });
     const page = await env.open(fx);
     const r = await page.evaluate(() => ({
@@ -85,7 +82,6 @@ describe('viewed state and progress', () => {
   });
 
   it('shows progress without a border at 0 and in --success with "Всё просмотрено" at 100%', async (t) => {
-    // was 36
     const fx = await env.server('mixed');
     const page = await env.open(fx);
     const p0 = await page.evaluate(() => {

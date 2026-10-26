@@ -12,7 +12,6 @@ describe('layout and scrolling', () => {
   });
 
   it('keeps #top 52px tall and the page free of horizontal scroll at 1024, 1440 and 1920 px', async () => {
-    // was 14
     for (const fx of [mixed, big]) {
       for (const width of [1024, 1440, 1920]) {
         const page = await env.open(fx, { viewport: { width, height: 900 } });
@@ -29,7 +28,6 @@ describe('layout and scrolling', () => {
   });
 
   it('hides the table of contents at 1024 px, opens it over the content with T and closes it with Esc', async () => {
-    // was 15
     const page = await env.open(mixed, { viewport: { width: 1024, height: 800 } });
     const tr = () =>
       page.evaluate(() => {
@@ -58,7 +56,6 @@ describe('layout and scrolling', () => {
   });
 
   it('puts the chapter aside next to the files at 1440, below them at 1024 and in side-by-side view at 1440', async (t) => {
-    // was 16
     const geo = (page) =>
       page.evaluate(() => {
         const sec = document.querySelector('.sec[data-key=s1]');
@@ -97,7 +94,6 @@ describe('layout and scrolling', () => {
   });
 
   it('pins the chapter header at 52, the file header at 100 and marks the current file in the table of contents', async () => {
-    // was 17
     const page = await env.open(big);
     await page.evaluate(() => {
       const f = document.querySelector('.file[data-path="assets/viewer.js"]');
@@ -125,7 +121,6 @@ describe('layout and scrolling', () => {
   });
 
   it('scrolls a file clicked in the table of contents to 100±1 px at 1024, 1440 and 1920 px', async (t) => {
-    // was 18
     const out = [];
     for (const width of [1024, 1440, 1920]) {
       for (const reducedMotion of ['reduce', 'no-preference']) {
@@ -151,7 +146,6 @@ describe('layout and scrolling', () => {
   });
 
   it('does not shift chapter 2 by more than 2px when chapter 1 is marked or a file above the window is collapsed', async (t) => {
-    // was 19
     const fx = await env.server('mixed');
     const page = await env.open(fx);
     const y0 = 300;

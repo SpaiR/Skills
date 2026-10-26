@@ -12,7 +12,6 @@ describe('performance on the big fixture', () => {
   });
 
   it('is ready within 300 ms of the data, marks a file viewed within 50 ms and keeps the chapter 3 node', async (t) => {
-    // was 48
     const runs = [];
     for (let k = 0; k < 3; k++) {
       const fx = await env.server('big');
@@ -54,7 +53,6 @@ describe('performance on the big fixture', () => {
   });
 
   it('switches the view and wrapping within 150 ms (until the next frame)', async (t) => {
-    // was 4.12 in stage 1-6
     const fx = await env.server('big');
     const page = await env.open(fx, { viewport: { width: 1920, height: 1080 } });
     const ms = [];
@@ -85,7 +83,6 @@ describe('performance on the big fixture', () => {
   });
 
   it('opens the comment form within 50 ms (until the next frame)', async (t) => {
-    // was 4.12 in stage 7-10
     const page = await env.open(big);
     await page.evaluate(
       ([s, d]) => window.scrollTo(0, document.querySelector(s).getBoundingClientRect().top + scrollY - d),
