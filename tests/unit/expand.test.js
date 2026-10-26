@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const D = require(path.join(__dirname, '../../assets/diffcore.js'));
+const D = require(path.join(__dirname, '../../assets/js/diffcore.js'));
 
 let passed = 0;
 function test(name, fn) {

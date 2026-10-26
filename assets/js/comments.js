@@ -1,0 +1,194 @@
+// Line comment rendering inside the diff: note cards, suggestions, draft rows and the comment editor.
+
+import { isMac, isMod, MOD_ENTER } from './constants.js';
+import { S, ui } from './state.js';
+import { cap, h, rangeLabel, sideLabel, uid } from './dom.js';
+import { save } from './persist.js';
+import { quote } from './lines.js';
+import { formIn, td } from './diff.js';
+import { closeForm, deleteDraft, revealEditor } from './forms.js';
+
+export const draftKey = (path, side, start, end) => `${path}|${side}|${start}|${end}`;
+export const editKey = (id) => `edit|${id}`;
+export const FIELD_SIZING = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('field-sizing', 'content');
+
+// Высота поля по тексту: от 3 строк до 50vh. Где есть field-sizing, это делает CSS.
+export function fitTextarea(ta) {
+  if (FIELD_SIZING || !ta.isConnected) return;
+  ta.style.height = 'auto';
+  ta.style.height = `${Math.min(ta.scrollHeight + 2, window.innerHeight * 0.5)}px`;
+}
+
+// Строки, которые встают под строкой таблицы: карточки, черновики, форма.
+export function trailing(file, sec, marks, keys, cols) {
+  const rows = [];
+  for (const [side, no] of keys) {
+    if (no == null) continue;
+    const list = marks.after.get(`${side}:${no}`);
+    if (!list) continue;
+    for (const it of list) {
+      if (it.kind === 'note') rows.push(...noteRows(file, sec, it.a, cols));
+      else if (it.kind === 'draft') rows.push(annotRow(cols, it.d.side, draftCard(it.key, it.d)));
+      else rows.push(annotRow(cols, ui.form.side, editorCard(file, null)));
+    }
+  }
+  return rows;
+}
+
+function annotRow(cols, side, card) {
+  const cell = td('annot-cell');
+  cell.colSpan = cols;
+  cell.append(h('div', { class: `annot-in side-${side}` }, card));
+  const tr = document.createElement('tr');
+  tr.className = 'annot-row';
+  tr.append(cell);
+  return tr;
+}
+
+function noteRows(file, sec, a, cols) {
+  const form = formIn(file.path, sec ? sec.key : '');
+  if (form && form.editId === a.id) return [annotRow(cols, a.side, editorCard(file, a))];
+  const out = [annotRow(cols, a.side, noteCard(file, a))];
+  const dk = editKey(a.id);
+  if (S.drafts[dk]) out.push(annotRow(cols, a.side, draftCard(dk, S.drafts[dk])));
+  return out;
+}
+
+function noteCard(file, a) {
+  return h('div', { class: 'note', dataset: { anchor: `n:${a.id}`, id: a.id } },
+    h('div', { class: 'note-head' },
+      h('span', { class: 'note-title' }, `${cap(rangeLabel(a))} · ${sideLabel(a.side)}`),
+      h('span', { class: 'note-actions' },
+        h('button', { class: 'btn sm ghost', type: 'button', dataset: { act: 'note-edit', id: a.id } }, 'Изменить'),
+        h('button', { class: 'btn sm ghost danger', type: 'button', dataset: { act: 'note-delete', id: a.id } }, 'Удалить'))),
+    a.text && h('div', { class: 'note-text' }, a.text),
+    a.suggestion && suggestionBox(file, a));
+}
+
+// Мини-дифф правки: исходные строки диапазона со знаком −, затем предложенные со знаком +.
+function suggestionBox(file, a) {
+  const line = (t, sign, text) => h('div', { class: `sg-line sg-${t}` }, h('span', { class: 'sg-sign' }, sign), h('span', { class: 'sg-code' }, text));
+  return h('div', { class: 'suggestion' },
+    h('div', { class: 'suggestion-head' }, 'Предложенная правка'),
+    h('div', { class: 'sg-body' },
+      quote(file, a.side, a.start, a.end).map((l) => line('del', '−', l.s)),
+      a.suggestion.split('\n').map((s) => line('add', '+', s))));
+}
+
+function draftCard(key, d) {
+  const text = String(d.text || '').replace(/\s+/g, ' ').trim() || (d.suggestion ? 'предложенная правка' : '');
+  const short = text.length > 80 ? `${text.slice(0, 80).trimEnd()}…` : text;
+  return h('div', { class: 'draft-row', dataset: { anchor: `d:${key}`, key } },
+    h('span', { class: 'draft-text', title: text },
+      h('span', { class: 'draft-label' }, d.editingId ? 'Черновик правки:' : 'Черновик:'), ' ',
+      h('span', { class: 'draft-q' }, '«'), h('span', { class: 'draft-quote' }, short), h('span', { class: 'draft-q' }, '»')),
+    h('span', { class: 'draft-actions' },
+      h('button', { class: 'btn sm ghost', type: 'button', dataset: { act: 'draft-continue', key } }, 'Продолжить'),
+      h('button', { class: 'btn sm ghost danger', type: 'button', dataset: { act: 'draft-delete', key } }, 'Удалить')));
+}
+
+// Черновик формы: пишется на каждый ввод. Пустой новый комментарий и неизменённая правка черновика не дают.
+function writeDraft(f, text, suggestion, existing) {
+  const unchanged = existing
+    ? text === existing.text && suggestion === (existing.suggestion || '')
+    : !text.trim() && !suggestion.trim();
+  if (unchanged) delete S.drafts[f.key];
+  else {
+    S.drafts[f.key] = { file: f.path, side: f.side, start: f.start, end: f.end, text, suggestion };
+    if (existing) S.drafts[f.key].editingId = existing.id;
+  }
+}
+
+// Tab в поле правки вставляет два пробела, Shift+Tab убирает отступ у строк выделения.
+function indentText(ta, outdent) {
+  const v = ta.value, s = ta.selectionStart, e = ta.selectionEnd;
+  if (!outdent && s === e) { ta.setRangeText('  ', s, e, 'end'); return; }
+  const ls = v.lastIndexOf('\n', s - 1) + 1;
+  let le = v.indexOf('\n', e > s && v[e - 1] === '\n' ? e - 1 : e);
+  if (le < 0) le = v.length;
+  const lines = v.slice(ls, le).split('\n');
+  let first = 0, total = 0;
+  const out = lines.map((l, k) => {
+    if (!outdent) return `  ${l}`;
+    const n = (/^ {1,2}|^\t/.exec(l) || [''])[0].length;
+    if (k === 0) first = n;
+    total += n;
+    return l.slice(n);
+  });
+  ta.setRangeText(out.join('\n'), ls, le, 'preserve');
+  if (outdent) ta.setSelectionRange(Math.max(ls, s - first), Math.max(ls, e - total));
+  else ta.setSelectionRange(s + 2, e + 2 * lines.length);
+}
+
+// Форма комментария (3.10). existing — редактируемая аннотация.
+function editorCard(file, existing) {
+  const f = ui.form;
+  const d = S.drafts[f.key];
+  const ta = h('textarea', { class: 'grow', rows: 3, placeholder: 'Вопрос, замечание или просьба', 'aria-label': 'Текст комментария', 'data-focus-key': 'form-text' });
+  ta.value = d ? d.text : existing ? existing.text : '';
+  const sg = h('textarea', { class: 'grow mono', rows: 3, spellcheck: 'false', placeholder: 'Код, которым заменить выделенные строки', 'aria-label': 'Предложенная правка', 'data-focus-key': 'form-sug' });
+  sg.value = d ? d.suggestion || '' : existing ? existing.suggestion || '' : '';
+  const sugBox = h('div', { class: 'sug-box', hidden: !f.sugOpen },
+    h('div', { class: 'sug-head' },
+      h('span', { class: 'sug-label' }, 'Предложенная правка'),
+      // Tab здесь вставляет отступ: выйти из поля клавиатурой можно только так.
+      h('span', { class: 'hint' }, `Tab — отступ · Esc — закрыть форму · ${MOD_ENTER} — сохранить`)),
+    sg);
+  const sugToggle = h('button', { class: 'btn sm ghost sug-toggle', type: 'button', hidden: f.sugOpen }, '± Предложить правку');
+  const saveBtn = h('button', { class: 'btn sm primary', type: 'button', 'aria-keyshortcuts': isMac ? 'Meta+Enter' : 'Control+Enter' }, 'Сохранить');
+  const closeBtn = h('button', { class: 'btn sm', type: 'button' }, 'Закрыть');
+  const discard = h('button', { class: 'btn sm ghost danger', type: 'button' }, 'Удалить черновик');
+  const refresh = () => {
+    saveBtn.disabled = !ta.value.trim() && !(f.sugOpen && sg.value.trim());
+    discard.classList.toggle('is-off', !S.drafts[f.key]);
+  };
+  const sync = () => {
+    writeDraft(f, ta.value, f.sugOpen ? sg.value : '', existing);
+    refresh();
+    save();
+  };
+  const commit = () => {
+    const text = ta.value.trim();
+    const suggestion = f.sugOpen ? sg.value.replace(/\s+$/, '') : '';
+    if (!text && !suggestion) return;
+    if (existing) Object.assign(existing, { text, suggestion });
+    else S.annotations.push({ id: uid(), file: f.path, side: f.side, start: f.start, end: f.end, text, suggestion });
+    delete S.drafts[f.key];
+    save();
+    closeForm(true);
+  };
+  sugToggle.addEventListener('click', () => {
+    f.sugOpen = true;
+    sugBox.hidden = false;
+    sugToggle.hidden = true;
+    if (!sg.value) sg.value = quote(file, f.side, f.start, f.end).map((l) => l.s).join('\n');
+    sync();
+    fitTextarea(sg);
+    sg.focus({ preventScroll: true });
+    // Форма выросла: её нижний ряд с «Сохранить» мог уйти за край окна.
+    revealEditor(sg.closest('.editor'));
+  });
+  saveBtn.addEventListener('click', commit);
+  closeBtn.addEventListener('click', () => closeForm(true));
+  discard.addEventListener('click', () => deleteDraft(f.key));
+  for (const t of [ta, sg]) {
+    t.addEventListener('input', () => { fitTextarea(t); sync(); });
+    t.addEventListener('keydown', (e) => {
+      if (e.isComposing) return;
+      if (e.key === 'Enter' && isMod(e)) { e.preventDefault(); commit(); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeForm(true); }
+      else if (t === sg && e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); indentText(sg, e.shiftKey); sync(); }
+    });
+  }
+  refresh();
+  return h('div', { class: 'editor annot-form', dataset: { anchor: 'form' } },
+    h('div', { class: 'editor-head' },
+      h('span', { class: 'editor-title' }, `${cap(rangeLabel(f))} · ${sideLabel(f.side)}`),
+      !existing && h('span', { class: 'hint' }, 'Shift+клик — расширить диапазон')),
+    ta, sugToggle, sugBox,
+    h('div', { class: 'editor-actions' }, saveBtn, closeBtn, discard,
+      // Короткий вариант — когда длинный не помещается в ряд с кнопками (container query в CSS).
+      h('span', { class: 'hint save-hint', title: 'Esc закрывает форму, текст остаётся черновиком' },
+        h('span', { class: 'hint-long' }, `${MOD_ENTER} — сохранить · Esc — закрыть, черновик останется`),
+        h('span', { class: 'hint-short' }, `${MOD_ENTER} — сохранить · Esc — закрыть`))));
+}

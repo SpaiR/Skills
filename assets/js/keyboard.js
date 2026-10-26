@@ -1,0 +1,279 @@
+// Global keyboard shortcuts and the actions behind them (J/K, ]/[, N/P, V, O, E, C, ...).
+
+import { isMod, narrowScreen } from './constants.js';
+import { fileByPath, finished, L, S, secByKey, sections, selection, ui } from './state.js';
+import { $main } from './dom.js';
+import { fileBlocks, rowIndex } from './lines.js';
+import { isWhole, setWholeFile } from './expand.js';
+import { fileOpen, filesMode, isViewed } from './model.js';
+import { setFileViewed, setSectionViewed } from './viewed.js';
+import { fileQ, secQ, stickyOffset } from './rerender.js';
+import { setDrawer, toggleToc } from './toc.js';
+import { setAllFilesOpen, setMode } from './modes.js';
+import { applyCurrent, jumpToSection, scrollToElement, trackCurrent } from './nav.js';
+import { closeSectionComment, openSectionComment } from './section.js';
+import { wholeButton } from './file.js';
+import { closeForm, openLineForm } from './forms.js';
+import { cancelDrag } from './selection.js';
+import { toast } from './toast.js';
+import { toggleFile, toggleSection } from './events.js';
+import { setViewMode, setWrap } from './view.js';
+import { closeMenu } from './menu.js';
+import { openHelp } from './help.js';
+import { openSubmit } from './submit.js';
+
+// Поля, где буквы — это ввод. Чекбоксы «Просмотрено» сюда не входят: после клика по ним клавиши должны работать.
+const TEXT_INPUT = 'textarea, select, [contenteditable]:not([contenteditable="false"]), input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"])';
+
+const KEYS = {
+  KeyJ: () => stepFile(1),
+  KeyK: () => stepFile(-1),
+  BracketRight: () => stepSection(1),
+  BracketLeft: () => stepSection(-1),
+  KeyN: () => stepChange(1),
+  KeyP: () => stepChange(-1),
+  KeyV: () => toggleCurrentFileViewed(),
+  KeyO: () => toggleCurrentFile(),
+  KeyE: () => toggleCurrentWholeFile(),
+  KeyC: () => commentAtCursor(),
+  KeyS: () => setViewMode(S.viewMode === 'split' ? 'unified' : 'split'),
+  KeyW: () => setWrap(!S.wrap),
+  KeyT: () => toggleToc(),
+  KeyG: () => setMode(filesMode() ? 'guide' : 'files'),
+  KeyZ: () => setAllFilesOpen(false),
+  Slash: () => focusFilter(),
+};
+// Клавиши глав: в «Файлах» глав нет — подсказка вместо действия.
+const guideOnly = (fn) => () => (filesMode() ? toast('Это действие с главами — оно есть в режиме «Гайд» (G)') : fn());
+KEYS.BracketRight = guideOnly(KEYS.BracketRight);
+KEYS.BracketLeft = guideOnly(KEYS.BracketLeft);
+const SHIFT_KEYS = {
+  KeyV: guideOnly(() => toggleCurrentSectionViewed()),
+  KeyO: guideOnly(() => toggleCurrentSection()),
+  KeyC: guideOnly(() => { if (ui.curSec) openSectionComment(ui.curSec); }),
+  KeyZ: () => setAllFilesOpen(true),
+};
+
+function focusFilter() {
+  if (!filesMode()) setMode('files');
+  if (narrowScreen.matches && !ui.drawer) setDrawer(true);
+  else if (!narrowScreen.matches && S.tocOpen === false) toggleToc();
+  const input = document.getElementById('tree-filter');
+  if (input) { input.focus(); input.select(); }
+}
+
+export function onKeyDown(e) {
+  if (finished || e.isComposing) return;
+  const t = e.target instanceof Element ? e.target : null;
+  if (t && t.closest(TEXT_INPUT)) return;
+  if (document.querySelector('dialog[open]')) return;
+  if (ui.menu && t && ui.menu.contains(t)) return;
+  const code = e.code;
+  if (code === 'Enter' && isMod(e) && !e.altKey && !e.shiftKey) {
+    e.preventDefault();
+    openSubmit('feedback');
+    return;
+  }
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === '?' || (code === 'Slash' && e.shiftKey)) { e.preventDefault(); openHelp(); return; }
+  if (code === 'Escape') { onEscape(); return; }
+  const fn = (e.shiftKey ? SHIFT_KEYS : KEYS)[code];
+  if (!fn) return;
+  e.preventDefault();
+  // Текущий элемент обновляется в кадре после прокрутки; клавиша, нажатая сразу после неё, получает свежий.
+  trackCurrent();
+  fn();
+}
+
+// Esc закрывает по очереди: меню, выезжающее оглавление, форму (черновик остаётся), выделение, курсор.
+function onEscape() {
+  if (ui.menu) { closeMenu(true); return; }
+  if (narrowScreen.matches && ui.drawer) { setDrawer(false); return; }
+  if (ui.drag) { cancelDrag(); return; }
+  if (ui.secForm) { closeSectionComment(); return; }
+  if (ui.form || selection) { closeForm(true); return; }
+  if (ui.cursor) { ui.cursor = null; applyCursor(); }
+}
+
+const openFileEls = () => [...$main().querySelectorAll('.sec:not(.collapsed) .file:not([hidden])')];
+
+// J/K: соседний файл в раскрытых главах, включая свёрнутые файлы.
+function stepFile(dir) {
+  const list = openFileEls();
+  if (!list.length) return;
+  const c = ui.curFile;
+  const cur = c ? list.findIndex((f) => f.dataset.path === c.path && f.closest('.sec').dataset.key === c.sec) : -1;
+  let next = cur + dir;
+  if (cur < 0) {
+    // Текущего файла нет (после ]/[ или V, закрывшего главу): соседний файл считается от текущей главы.
+    const at = sections.findIndex((s) => s.key === ui.curSec);
+    const secIdx = (f) => secByKey.get(f.closest('.sec').dataset.key).idx;
+    if (at < 0) next = dir > 0 ? 0 : list.length - 1;
+    else if (dir > 0) { next = list.findIndex((f) => secIdx(f) >= at); if (next < 0) next = list.length; }
+    else { next = -1; list.forEach((f, k) => { if (secIdx(f) < at) next = k; }); }
+  }
+  if (next < 0 || next >= list.length) {
+    toast(dir > 0 ? 'Это последний файл' : 'Это первый файл');
+    return;
+  }
+  const el = list[next];
+  goFile(el.dataset.path, el.closest('.sec').dataset.key);
+}
+
+// Заголовок файла под заголовок главы, файл текущий, фокус на его кнопке.
+function goFile(path, key) {
+  ui.curFile = { path, sec: key };
+  ui.curSec = key;
+  ui.pin = { sec: key, path };
+  applyCurrent(true);
+  scrollToElement(() => $main().querySelector(fileQ(key, path)), L.header + L.secHead);
+  const t = $main().querySelector(`${fileQ(key, path)} .file-toggle`);
+  if (t) t.focus({ preventScroll: true });
+}
+
+// ]/[: соседняя глава, включая свёрнутые.
+function stepSection(dir) {
+  const cur = sections.findIndex((s) => s.key === ui.curSec);
+  const next = cur < 0 ? 0 : cur + dir;
+  if (next < 0 || next >= sections.length) {
+    toast(dir > 0 ? 'Это последняя глава' : 'Это первая глава');
+    return;
+  }
+  const key = sections[next].key;
+  ui.curSec = key;
+  ui.curFile = null;
+  ui.pin = { sec: key, path: null };
+  applyCurrent(true);
+  jumpToSection(key);
+  const t = $main().querySelector(`${secQ(key)} .sec-toggle`);
+  if (t) t.focus({ preventScroll: true });
+}
+
+// Строки таблицы блока изменений (в «Рядом» блок занимает пары).
+function blockRows(c) {
+  const fileEl = c && $main().querySelector(fileQ(c.sec, c.path));
+  const file = c && fileByPath.get(c.path);
+  if (!fileEl || !file || !fileEl.querySelector('table.diff')) return [];
+  const idx = new Set();
+  for (let li = c.from; li <= c.to; li++) idx.add(rowIndex(file, li));
+  return [...idx].map((i) => fileEl.querySelector(`tr.ln[data-i="${i}"]`)).filter(Boolean);
+}
+
+function applyCursor() {
+  for (const el of $main().querySelectorAll('tr.ln.cursor')) el.classList.remove('cursor');
+  for (const tr of blockRows(ui.cursor)) tr.classList.add('cursor');
+}
+
+// N/P: следующий блок изменений в раскрытых файлах раскрытых глав.
+function stepChange(dir) {
+  const list = [];
+  for (const fileEl of $main().querySelectorAll('.sec:not(.collapsed) .file:not(.collapsed):not([hidden])')) {
+    if (!fileEl.querySelector('table.diff')) continue;
+    const file = fileByPath.get(fileEl.dataset.path), sec = fileEl.closest('.sec').dataset.key;
+    for (const b of fileBlocks(file)) list.push({ path: file.path, sec, from: b.from, to: b.to });
+  }
+  const c = ui.cursor;
+  let next = -1;
+  const cur = c ? list.findIndex((b) => b.path === c.path && b.sec === c.sec && b.from === c.from) : -1;
+  if (cur >= 0) next = cur + dir;
+  else if (list.length) {
+    // Без курсора — от экрана: первый блок под закреплёнными заголовками или последний над ними.
+    const line = stickyOffset() - 1;
+    const top = (b) => { const r = blockRows(b)[0]; return r ? r.getBoundingClientRect().top : -Infinity; };
+    if (dir > 0) next = list.findIndex((b) => top(b) >= line);
+    else for (let k = 0; k < list.length && top(list[k]) < line; k++) next = k;
+    if (next < 0) next = dir > 0 ? list.length : -1;
+  }
+  if (next < 0 || next >= list.length) {
+    toast(dir > 0 ? 'Дальше изменений нет' : 'Это первое изменение');
+    return;
+  }
+  ui.cursor = list[next];
+  // Файл курсора становится текущим и закреплённым: иначе V, O и Shift+V сработали бы
+  // на файле или главе, закреплённых раньше клавишами J/K/]/[, хотя их уже нет на экране.
+  ui.curFile = { path: ui.cursor.path, sec: ui.cursor.sec };
+  ui.curSec = ui.cursor.sec;
+  ui.pin = { sec: ui.cursor.sec, path: ui.cursor.path };
+  applyCurrent(true);
+  applyCursor();
+  scrollToElement(() => blockRows(ui.cursor)[0], stickyOffset() + Math.round(window.innerHeight * 0.25));
+}
+
+// C: форма на блоке под курсором. Есть добавленные строки — новая сторона по ним, иначе старая по удалённым.
+function commentAtCursor() {
+  const c = ui.cursor;
+  const file = c && fileByPath.get(c.path);
+  if (!file || !blockRows(c).length) {
+    toast('Выбери изменение клавишами N/P или кликни по номеру строки');
+    return;
+  }
+  const lines = file.lines.slice(c.from, c.to + 1);
+  const adds = lines.filter((l) => l.t === 'add');
+  const side = adds.length ? 'new' : 'old';
+  const picked = adds.length ? adds : lines.filter((l) => l.t === 'del');
+  const nos = picked.map((l) => (side === 'new' ? l.n : l.o));
+  openLineForm(file, c.sec, { side, start: Math.min(...nos), end: Math.max(...nos) }, { li: picked[0].i, side }, false, blockRows(c)[0]);
+}
+
+function currentFile() {
+  const c = ui.curFile;
+  const file = c && fileByPath.get(c.path);
+  const el = file && $main().querySelector(fileQ(c.sec, c.path));
+  return el ? { file, sec: secByKey.get(c.sec), head: el.querySelector('.file-head') } : null;
+}
+
+const NO_FILE = 'Нет текущего файла: выбери его клавишами J/K';
+
+// Перерисовка убирает узел с фокусом. Фокус возвращается на кнопку заголовка файла или главы,
+// если он не ушёл сам (например, в поле формы).
+function refocus(secKey, path) {
+  if (document.activeElement && document.activeElement !== document.body) return;
+  const t = $main().querySelector(path ? `${fileQ(secKey, path)} .file-toggle` : `${secQ(secKey)} .sec-toggle`);
+  if (t) t.focus({ preventScroll: true });
+}
+
+function toggleCurrentFileViewed() {
+  const cur = currentFile();
+  if (!cur) { toast(NO_FILE); return; }
+  ui.pin = { sec: cur.sec.key, path: cur.file.path };
+  const closed = setFileViewed(cur.file, !isViewed(cur.file), cur.head);
+  refocus(closed || cur.sec.key, closed ? null : cur.file.path);
+}
+
+function toggleCurrentFile() {
+  const cur = currentFile();
+  if (!cur) { toast(NO_FILE); return; }
+  if (cur.file.binary) return;
+  ui.pin = { sec: cur.sec.key, path: cur.file.path };
+  toggleFile(cur.file, cur.sec, !fileOpen(cur.file));
+  refocus(cur.sec.key, cur.file.path);
+}
+
+function toggleCurrentWholeFile() {
+  const cur = currentFile();
+  if (!cur) { toast(NO_FILE); return; }
+  if (!wholeButton(cur.file)) { toast('У этого файла весь текст уже в диффе'); return; }
+  ui.pin = { sec: cur.sec.key, path: cur.file.path };
+  setWholeFile(cur.file, !isWhole(cur.file));
+}
+
+function currentSecHead() {
+  const el = ui.curSec && $main().querySelector(secQ(ui.curSec));
+  return el ? el.querySelector('.sec-head') : null;
+}
+
+function toggleCurrentSectionViewed() {
+  const sec = secByKey.get(ui.curSec);
+  if (!sec) return;
+  ui.pin = { sec: sec.key, path: null };
+  setSectionViewed(sec, !S.reviewed[sec.key], currentSecHead());
+  refocus(sec.key, null);
+}
+
+function toggleCurrentSection() {
+  const sec = secByKey.get(ui.curSec);
+  if (!sec) return;
+  ui.pin = { sec: sec.key, path: null };
+  toggleSection(sec, currentSecHead());
+  refocus(sec.key, null);
+}
