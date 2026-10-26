@@ -48,6 +48,8 @@ const SERVER_ERRORS = {
   already_submitted: 'уже отправлено',
   not_a_pr: 'это ревью не PR и не MR',
   event: 'недопустимое действие',
+  comments: 'некорректные комментарии к строкам',
+  body: 'некорректный запрос',
   publish_failed: 'GitHub или GitLab вернул ошибку',
   head_moved: 'в PR появились новые коммиты',
 };
