@@ -1,20 +1,12 @@
-// Mini Markdown renderer for the guide intent/overview texts, with Russian typography fixes.
+// Mini Markdown renderer for the guide intent/overview texts, with the page language typography fixes.
 
 import { esc } from './dom.js';
-
-// Russian typography for guide text: short prepositions and conjunctions do not hang at the end of a line,
-// particles and dashes do not start a line. Display only: feedback.md is not built from this.
-function typo(text) {
-  return text
-    .replace(/(?<=^|[\s(«„"])([А-Яа-яЁё]{1,2}|для|при|без|над|под|про|что|как) /gu, '$1 ')
-    .replace(/ (же|ли|бы)(?=[\s.,;:!?)»]|$)/gu, ' $1')
-    .replace(/ —/g, ' —');
-}
+import { T, typography } from './strings.js';
 
 export function inline(src) {
   return src.split(/(`[^`]+`)/).map((part) => {
     if (/^`[^`]+`$/.test(part)) return `<code>${esc(part.slice(1, -1))}</code>`;
-    return typo(esc(part))
+    return typography(esc(part))
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
   }).join('');
@@ -39,7 +31,7 @@ export function md(src) {
       const m = /^\[!(IMPORTANT|WARNING|NOTE|TIP|CAUTION)\]\s*$/i.exec(body[0] || '');
       if (m) {
         const kind = m[1].toLowerCase();
-        const title = { important: 'Важно', warning: 'Внимание', note: 'Заметка', tip: 'Совет', caution: 'Осторожно' }[kind];
+        const title = T.callouts[kind];
         out.push(`<div class="callout callout-${kind}"><div class="callout-title">${title}</div>${md(body.slice(1).join('\n'))}</div>`);
       } else {
         out.push(`<blockquote>${md(body.join('\n'))}</blockquote>`);

@@ -8,22 +8,23 @@ import { setAllFilesOpen } from './modes.js';
 import { setTheme, setWrap } from './view.js';
 import { openHelp } from './help.js';
 import { openSubmit } from './submit.js';
+import { T } from './strings.js';
 
 function menuItems() {
   return [
-    { kind: 'check', label: 'Перенос строк', key: 'W', on: () => S.wrap, run: () => setWrap(!S.wrap) },
+    { kind: 'check', label: T.menu.wrap, key: 'W', on: () => S.wrap, run: () => setWrap(!S.wrap) },
     'sep',
-    { kind: 'label', label: 'Тема' },
-    { kind: 'radio', label: 'Авто', hint: 'как в системе', on: () => S.theme === 'auto', run: () => setTheme('auto') },
-    { kind: 'radio', label: 'Светлая', icon: 'sun', on: () => S.theme === 'light', run: () => setTheme('light') },
-    { kind: 'radio', label: 'Тёмная', icon: 'moon', on: () => S.theme === 'dark', run: () => setTheme('dark') },
+    { kind: 'label', label: T.menu.theme },
+    { kind: 'radio', label: T.menu.auto, hint: T.menu.autoHint, on: () => S.theme === 'auto', run: () => setTheme('auto') },
+    { kind: 'radio', label: T.menu.light, icon: 'sun', on: () => S.theme === 'light', run: () => setTheme('light') },
+    { kind: 'radio', label: T.menu.dark, icon: 'moon', on: () => S.theme === 'dark', run: () => setTheme('dark') },
     'sep',
-    { kind: 'check', label: filesMode() ? 'Дерево файлов' : 'Оглавление', key: 'T', on: tocVisible, run: () => { toggleToc(); renderMenuState(); } },
-    { kind: 'item', label: 'Свернуть все файлы', key: 'Z', run: () => { closeMenu(true); setAllFilesOpen(false); } },
-    { kind: 'item', label: 'Развернуть все файлы', key: '⇧Z', run: () => { closeMenu(true); setAllFilesOpen(true); } },
-    { kind: 'item', label: 'Горячие клавиши', key: '?', run: () => openHelp() },
+    { kind: 'check', label: filesMode() ? T.menu.tree : T.menu.toc, key: 'T', on: tocVisible, run: () => { toggleToc(); renderMenuState(); } },
+    { kind: 'item', label: T.menu.collapseAll, key: 'Z', run: () => { closeMenu(true); setAllFilesOpen(false); } },
+    { kind: 'item', label: T.menu.expandAll, key: '⇧Z', run: () => { closeMenu(true); setAllFilesOpen(true); } },
+    { kind: 'item', label: T.menu.help, key: '?', run: () => openHelp() },
     'sep',
-    { kind: 'item', label: 'Закрыть без ответа…', run: () => { closeMenu(); openSubmit('close'); } },
+    { kind: 'item', label: T.menu.closeReview, run: () => { closeMenu(); openSubmit('close'); } },
   ];
 }
 
@@ -35,7 +36,7 @@ export function toggleMenu() {
 function openMenu() {
   const btn = document.getElementById('more-btn');
   const items = menuItems();
-  const menu = h('div', { class: 'menu', role: 'menu', 'aria-label': 'Ещё' });
+  const menu = h('div', { class: 'menu', role: 'menu', 'aria-label': T.header.more });
   // Theme items are a labelled group: the screen reader reads the label once, and the items do not repeat the word.
   let box = menu;
   for (const it of items) {

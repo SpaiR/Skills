@@ -13,6 +13,10 @@ The user's index is never modified: untracked files are added with `git add -N`
 to a temporary copy of the index (GIT_INDEX_FILE).
 
 Exit codes: 0 - success, 2 - argument or git error, 3 - no changes.
+
+meta.json (version 3) carries no prose for the viewer: `range` describes the diff range, `notes` are
+{code, text} objects and `content.reason` of a file without full text is a code. The viewer turns
+them into page text; `label` and the note `text` are plain English for the session summary.
 """
 
 import argparse
@@ -36,6 +40,18 @@ LOG_LIMIT = 50
 FULL_CONTEXT = "-U100000000"
 FULL_FILE_MAX = 1024 * 1024        # new side of a file larger than this gets no full text
 FULL_TOTAL_MAX = 64 * 1024 * 1024  # total size limit for full.patch
+META_VERSION = 3
+# Notes about how the diff was collected: code for the viewer, English text for the session summary.
+NOTE_TEXT = {
+    "no_commits": "the repository has no commits, all working tree files are included",
+    "base_not_found": "base branch not found, only uncommitted changes are included",
+    "full_text_mismatch": "full file text not collected: git output did not match the file list, "
+                          "context expansion is unavailable",
+}
+
+
+def note(code):
+    return {"code": code, "text": NOTE_TEXT[code]}
 
 
 class CollectError(Exception):
@@ -172,7 +188,8 @@ def collect_full(root, diff_args, env, new_rev, name_status, numstat, notes):
     """Full diff (one hunk per file) for modified and renamed files.
 
     Returns {"chunks": {file index: patch chunk}, "lines": {index: line count of the new version},
-    "reasons": {index: why there is no full text}}.
+    "reasons": {index: code of why there is no full text}}. Codes: binary, unchanged, unreadable,
+    too_large (the file is over FULL_FILE_MAX), total_limit (FULL_TOTAL_MAX reached), not_collected.
     It is the same git diff as for guide.patch, only with a huge context: lines go through the same
     filters (eol, LFS), and the set of changes does not depend on the context length.
     """
@@ -182,9 +199,9 @@ def collect_full(root, diff_args, env, new_rev, name_status, numstat, notes):
     for i in mr:
         st = numstat[i]
         if st["binary"]:
-            reasons[i] = "бинарный файл"
+            reasons[i] = "binary"
         elif not st["additions"] and not st["deletions"]:
-            reasons[i] = "содержимое не менялось"
+            reasons[i] = "unchanged"
         else:
             cand.append(i)
     if not cand:
@@ -193,11 +210,11 @@ def collect_full(root, diff_args, env, new_rev, name_status, numstat, notes):
     keep, excluded, total = [], set(), 0
     for i, size in zip(cand, sizes):
         if size is None:
-            reasons[i] = "не удалось прочитать файл"
+            reasons[i] = "unreadable"
         elif size > FULL_FILE_MAX:
-            reasons[i] = f"файл больше {FULL_FILE_MAX // 1024} КиБ"
+            reasons[i] = "too_large"
         elif total + size > FULL_TOTAL_MAX:
-            reasons[i] = "превышен общий лимит полного текста"
+            reasons[i] = "total_limit"
         else:
             total += size
             keep.append(i)
@@ -214,10 +231,9 @@ def collect_full(root, diff_args, env, new_rev, name_status, numstat, notes):
     got = split_patch(raw.stdout.decode(errors="replace")) if raw.returncode == 0 else []
     expected = [i for i in mr if i not in excluded]
     if len(got) != len(expected):
-        notes.append("полный текст файлов не собран: вывод git не сошёлся со списком файлов, "
-                     "раскрытие контекста недоступно")
+        notes.append(note("full_text_mismatch"))
         for i in keep:
-            reasons[i] = "не собран"
+            reasons[i] = "not_collected"
         return {"chunks": {}, "lines": {}, "reasons": reasons}
     keep_set = set(keep)
     for i, chunk in zip(expected, got):
@@ -226,12 +242,24 @@ def collect_full(root, diff_args, env, new_rev, name_status, numstat, notes):
         # Git quotes paths with special characters; such a file simply stays without full text.
         same = chunk.split("\n", 1)[0].endswith(f" b/{name_status[i]['path']}")
         if not same or len(re.findall(r"(?m)^@@ ", chunk)) != 1:
-            reasons[i] = "не собран"
+            reasons[i] = "not_collected"
             continue
         chunks[i] = chunk
         body = chunk.split("\n@@ ", 1)[1].split("\n")[1:]
         lines[i] = sum(1 for l in body if l[:1] in (" ", "+"))
     return {"chunks": chunks, "lines": lines, "reasons": reasons}
+
+
+def file_content(i, full):
+    """meta "content" of file i: the line count of the full text or the code of why there is none.
+    Files outside collect_full (added, deleted, copied) get in_diff: the diff already shows all of them."""
+    if i in full["chunks"]:
+        return {"available": True, "lines": full["lines"][i]}
+    reason = full["reasons"].get(i, "in_diff")
+    content = {"available": False, "reason": reason}
+    if reason == "too_large":
+        content["limitKiB"] = FULL_FILE_MAX // 1024
+    return content
 
 
 def collect(args):
@@ -258,23 +286,26 @@ def collect(args):
     if mode == "since-base":
         base = resolve_base(root, args.base)
         if not head:
-            notes.append("в репозитории нет коммитов, взяты все файлы рабочего дерева")
+            notes.append(note("no_commits"))
             mode = "uncommitted"
         elif not base:
-            notes.append("базовая ветка не найдена, взяты только незакоммиченные изменения")
+            notes.append(note("base_not_found"))
             mode = "uncommitted"
         else:
             merge_base = out(root, "merge-base", base, "HEAD")
             diff_args, use_untracked, new_rev = [merge_base], True, "worktree"
             log_args = [f"{merge_base}..HEAD"]
-            label = f"{base}...HEAD + незакоммиченное"
+            label = f"{base}...HEAD + uncommitted"
+            rng = {"mode": "since-base", "base": base}
 
     if mode == "uncommitted":
         diff_args, use_untracked, new_rev = ["HEAD" if head else EMPTY_TREE], True, "worktree"
-        label = "HEAD + незакоммиченное" if head else "рабочее дерево (коммитов нет)"
+        label = "HEAD + uncommitted" if head else "working tree (no commits)"
+        rng = {"mode": "uncommitted", "hasCommits": bool(head)}
     elif mode == "staged":
         diff_args, new_rev = ["--cached", "HEAD" if head else EMPTY_TREE], "index"
-        label = "индекс (staged)"
+        label = "index (staged)"
+        rng = {"mode": "staged"}
     elif mode == "commit":
         if not args.ref:
             raise CollectError("commit mode requires --ref <sha>")
@@ -283,7 +314,9 @@ def collect(args):
             raise CollectError(f"commit `{args.ref}` not found")
         parent = verify(root, f"{sha}^") or EMPTY_TREE
         diff_args, log_args, new_rev = [parent, sha], ["-1", sha], sha
-        label = f"{sha[:10]} {out(root, 'log', '-1', '--format=%s', sha)}"
+        subject = out(root, "log", "-1", "--format=%s", sha)
+        label = f"{sha[:10]} {subject}"
+        rng = {"mode": "commit", "sha": sha, "subject": subject}
     elif mode == "range":
         m = re.fullmatch(r"(.*?)(\.\.\.?)(.*)", args.ref or "")
         if not m:
@@ -299,6 +332,7 @@ def collect(args):
             diff_args, log_args = [a, b], [f"{a}..{b}"]
         new_rev = b
         label = f"{a}{dots}{b}"
+        rng = {"mode": "range", "from": a, "dots": dots, "to": b}
     elif mode == "branch":
         if not args.ref or not verify(root, args.ref):
             raise CollectError(f"branch `{args.ref}` not found")
@@ -308,6 +342,7 @@ def collect(args):
         merge_base = out(root, "merge-base", base, args.ref)
         diff_args, log_args, new_rev = [merge_base, args.ref], [f"{merge_base}..{args.ref}"], args.ref
         label = f"{base}...{args.ref}"
+        rng = {"mode": "branch", "base": base, "ref": args.ref}
 
     env, tmpdir, untracked = (None, None, 0)
     try:
@@ -346,12 +381,11 @@ def collect(args):
             "additions": st["additions"],
             "deletions": st["deletions"],
             "binary": st["binary"],
-            "content": {"available": True, "lines": full["lines"][i]} if i in full["chunks"] else
-                       {"available": False, "reason": full["reasons"].get(i, "весь файл уже в диффе")},
+            "content": file_content(i, full),
         })
 
     meta = {
-        "version": 2,
+        "version": META_VERSION,
         "root": str(root),
         "repoName": repo_name,
         "worktree": root.name if repo_name != root.name else None,
@@ -359,6 +393,7 @@ def collect(args):
         "head": head,
         "mode": mode,
         "label": label,
+        "range": rng,
         "base": base,
         "mergeBase": merge_base,
         "newRev": new_rev,
@@ -382,6 +417,11 @@ def default_outdir(meta):
     return Path(tempfile.gettempdir()) / "diff-review" / f"{meta['repoName']}-{branch}-{stamp}"
 
 
+def note_texts(meta):
+    """Notes for the JSON summary the session reads: English text only."""
+    return [n["text"] for n in meta["notes"]]
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--repo", default=".", help="repository or worktree directory")
@@ -399,7 +439,8 @@ def main():
         sys.exit(2)
 
     if patch is None:
-        print(json.dumps({"ok": False, "reason": "no-changes", **meta}, ensure_ascii=False))
+        print(json.dumps({"ok": False, "reason": "no-changes", **meta, "notes": note_texts(meta)},
+                         ensure_ascii=False))
         print(f"No changes: `{meta['root']}`, {meta['label']}.", file=sys.stderr)
         sys.exit(3)
 
@@ -422,7 +463,7 @@ def main():
         "deletions": t["deletions"],
         "untrackedIncluded": meta["untrackedIncluded"],
         "commits": len(meta["commits"]),
-        "notes": meta["notes"],
+        "notes": note_texts(meta),
     }, ensure_ascii=False, indent=2))
 
 

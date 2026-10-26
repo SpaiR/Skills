@@ -1,6 +1,5 @@
 // File card: header, summary, collapsed note and the diff body.
 
-import { NOTES } from './constants.js';
 import { guideOf, ui } from './state.js';
 import { basename, dirname, fileDomId, h, icon, plural } from './dom.js';
 import { inline } from './markdown.js';
@@ -8,6 +7,7 @@ import { canExpand, expandReason, isWhole } from './expand.js';
 import { collapseReason, fileComments, fileOpen, isViewed } from './model.js';
 import { statPair, statusBadge } from './toc.js';
 import { renderDiff } from './diff.js';
+import { T, WORDS } from './strings.js';
 
 function renderPath(file) {
   const parts = [];
@@ -23,8 +23,8 @@ export function wholeButton(file) {
   return h('button', {
     class: 'btn sm ghost whole-btn', type: 'button', dataset: { act: 'whole-file' },
     'aria-pressed': String(on), 'aria-keyshortcuts': 'E', disabled: !ok,
-    title: ok ? (on ? 'Показать только изменения и раскрытое (E)' : 'Показать весь файл (E)') : expandReason(file),
-  }, icon('expand-all'), h('span', { class: 'whole-text' }, 'Весь файл'));
+    title: ok ? (on ? T.file.wholeOn : T.file.wholeOff) : expandReason(file),
+  }, icon('expand-all'), h('span', { class: 'whole-text' }, T.file.whole));
 }
 
 export function renderFile(file, sec) {
@@ -40,12 +40,12 @@ export function renderFile(file, sec) {
     h('div', { class: 'file-h', role: 'heading', 'aria-level': '3' },
       h('button', { class: 'file-toggle', type: 'button', 'aria-expanded': String(open), 'aria-keyshortcuts': 'O', dataset: { act: 'toggle-file' }, title: file.oldPath ? `${file.oldPath} → ${file.path}` : file.path },
         icon('chevron', 'chev'), statusBadge(file), renderPath(file))),
-    count > 0 && h('button', { class: 'badge comments', type: 'button', dataset: { act: 'first-note' }, title: plural(count, NOTES) }, icon('comment'), String(count)),
+    count > 0 && h('button', { class: 'badge comments', type: 'button', dataset: { act: 'first-note' }, title: plural(count, WORDS.notes) }, icon('comment'), String(count)),
     open && wholeButton(file),
     h('span', { class: 'file-stat' }, statPair(file.additions, file.deletions, file.binary)),
     h('label', { class: 'viewed' },
-      h('input', { type: 'checkbox', class: 'check', checked: viewed, dataset: { act: 'file-viewed' }, 'aria-label': `Просмотрено: ${file.path}`, 'aria-keyshortcuts': 'V' }),
-      h('span', { class: 'viewed-text' }, 'Просмотрено')));
+      h('input', { type: 'checkbox', class: 'check', checked: viewed, dataset: { act: 'file-viewed' }, 'aria-label': T.file.viewedAria(file.path), 'aria-keyshortcuts': 'V' }),
+      h('span', { class: 'viewed-text' }, T.viewed)));
 
   const box = h('div', {
     class: `file${viewed ? ' is-viewed' : ''}${open ? '' : ' collapsed'}`, id: fileDomId(file.path),
@@ -55,20 +55,20 @@ export function renderFile(file, sec) {
   // In Files mode, a file from a chapter shows the chapter number and title: a jump to the file in the guide.
   if (g && g.sec) {
     box.append(h('div', { class: 'file-summary with-chip' },
-      h('button', { class: 'sec-chip', type: 'button', dataset: { act: 'to-guide' }, title: 'Открыть этот файл в гайде' },
-        g.sec.synthetic ? g.sec.title : `Глава ${g.sec.idx + 1} · ${g.sec.title}`),
+      h('button', { class: 'sec-chip', type: 'button', dataset: { act: 'to-guide' }, title: T.file.openInGuide },
+        g.sec.synthetic ? g.sec.title : T.chapterChip(g.sec.idx + 1, g.sec.title)),
       summary && h('span', { html: inline(summary) })));
   } else if (summary) box.append(h('div', { class: 'file-summary', html: inline(summary) }));
   if (!open) {
     const reason = collapseReason(file);
     if (reason) {
       box.append(h('div', { class: 'collapsed-note' }, h('span', {}, reason.text),
-        !reason.noShow && h('button', { class: 'btn sm ghost', type: 'button', dataset: { act: 'show-file' } }, 'Показать')));
+        !reason.noShow && h('button', { class: 'btn sm ghost', type: 'button', dataset: { act: 'show-file' } }, T.file.show)));
     }
     return box;
   }
-  if (file.binary) box.append(h('div', { class: 'file-empty' }, 'Бинарный файл — содержимое не показывается'));
-  else if (!file.hunks.length) box.append(h('div', { class: 'file-empty' }, 'Содержимое не менялось (переименование или смена прав).'));
+  if (file.binary) box.append(h('div', { class: 'file-empty' }, T.file.binary));
+  else if (!file.hunks.length) box.append(h('div', { class: 'file-empty' }, T.file.noContentChange));
   else box.append(renderDiff(file, sec));
   return box;
 }

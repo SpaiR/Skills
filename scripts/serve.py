@@ -53,6 +53,22 @@ def asset_file(path):
 
 
 MAX_BODY = 20 * 1024 * 1024
+# API error codes the viewer may show; it maps them to page text (assets/js/strings.js).
+ERR_TOO_LARGE = "request_too_large"
+ERR_EMPTY_FEEDBACK = "empty_feedback"
+ERR_ALREADY_SUBMITTED = "already_submitted"
+SUBMIT_ACTIONS = ("feedback", "approve", "close")
+
+
+def submit_error(action, markdown, submitted):
+    """Why a submit request is rejected, as (HTTP status, error code); None if it is accepted."""
+    if action not in SUBMIT_ACTIONS:
+        return HTTPStatus.BAD_REQUEST, "action"
+    if action == "feedback" and not markdown:
+        return HTTPStatus.BAD_REQUEST, ERR_EMPTY_FEEDBACK
+    if submitted:
+        return HTTPStatus.CONFLICT, ERR_ALREADY_SUBMITTED
+    return None
 
 
 def load_review(outdir):
@@ -121,7 +137,7 @@ def main():
         def _body(self):
             length = int(self.headers.get("Content-Length") or 0)
             if length > MAX_BODY:
-                raise ValueError("слишком большой запрос")
+                raise ValueError(ERR_TOO_LARGE)
             return json.loads(self.rfile.read(length) or b"{}")
 
         def do_GET(self):
@@ -169,12 +185,9 @@ def main():
                 return self._send(HTTPStatus.BAD_REQUEST, {"error": str(e)})
             action = body.get("action")
             markdown = (body.get("markdown") or "").strip()
-            if action not in ("feedback", "approve", "close"):
-                return self._send(HTTPStatus.BAD_REQUEST, {"error": "action"})
-            if action == "feedback" and not markdown:
-                return self._send(HTTPStatus.BAD_REQUEST, {"error": "пустой фидбек"})
-            if done.is_set():
-                return self._send(HTTPStatus.CONFLICT, {"error": "уже отправлено"})
+            rejected = submit_error(action, markdown, done.is_set())
+            if rejected:
+                return self._send(rejected[0], {"error": rejected[1]})
             if markdown and action != "close":
                 feedback_path.write_text(markdown + "\n", encoding="utf-8")
             result["status"] = {"feedback": "feedback", "approve": "approved", "close": "closed"}[action]

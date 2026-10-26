@@ -24,8 +24,6 @@ export const basename = (p) => p.split('/').pop();
 export const dirname = (p) => (p.includes('/') ? p.slice(0, p.lastIndexOf('/') + 1) : '');
 export const pad2 = (n) => String(n).padStart(2, '0');
 export const plural = (n, forms) => `${n} ${D.plural(n, forms)}`;
-export const rangeLabel = (a) => (a.start === a.end ? `строка ${a.start}` : `строки ${a.start}–${a.end}`);
-export const sideLabel = (side) => (side === 'new' ? 'новая версия' : 'старая версия');
 export const cap = (s) => s[0].toUpperCase() + s.slice(1);
 export const uid = () => Math.random().toString(36).slice(2, 10);
 export const fileDomId = (path) => 'f-' + Array.from(path).map((c) => c.charCodeAt(0).toString(36)).join('');

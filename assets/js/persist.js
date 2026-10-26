@@ -4,6 +4,7 @@ import * as D from './diffcore.js';
 import { TOKEN, TREE_MAX, TREE_MIN } from './constants.js';
 import { finished, S, sections } from './state.js';
 import { secFiles } from './model.js';
+import { T } from './strings.js';
 
 export async function api(method, path, body, keepalive) {
   const res = await fetch(path, {
@@ -12,7 +13,7 @@ export async function api(method, path, body, keepalive) {
     headers: { 'X-Review-Token': TOKEN, 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+  if (!res.ok) throw new Error(`${res.status} ${T.serverError(await res.text())}`);
   return res.json();
 }
 

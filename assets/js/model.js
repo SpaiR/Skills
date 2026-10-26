@@ -1,8 +1,8 @@
 // Derived model queries over the review data and user state: groups, viewed/open flags, counters.
 
-import { BIG_FILE_LINES, LINES, LOCKFILE, SPLIT_MIN_MAIN } from './constants.js';
+import { BIG_FILE_LINES, LOCKFILE, SPLIT_MIN_MAIN } from './constants.js';
 import { fileByPath, filesGroup, S, sections, ui } from './state.js';
-import { plural } from './dom.js';
+import { T } from './strings.js';
 
 export const secFiles = (sec) => sec.diffs.map((d) => fileByPath.get(d.file)).filter(Boolean);
 export const filesMode = () => S.mode === 'files';
@@ -21,11 +21,11 @@ export function fileOpen(file) {
 
 // Reason for collapsing by default: the first condition that matches.
 export function collapseReason(file) {
-  if (isViewed(file)) return { text: 'Просмотрен' };
-  if (file.binary) return { text: 'Бинарный файл — содержимое не показывается', noShow: true };
-  if (file.status === 'deleted') return { text: `Удалён, ${plural(file.deletions, LINES)}` };
-  if (LOCKFILE.test(file.path)) return { text: 'Lock-файл — обычно не читают' };
-  if (lineCount(file) > BIG_FILE_LINES) return { text: `Большой дифф: ${plural(lineCount(file), LINES)}` };
+  if (isViewed(file)) return { text: T.viewedFile };
+  if (file.binary) return { text: T.file.binary, noShow: true };
+  if (file.status === 'deleted') return { text: T.file.collapsedDeleted(file.deletions) };
+  if (LOCKFILE.test(file.path)) return { text: T.file.collapsedLockfile };
+  if (lineCount(file) > BIG_FILE_LINES) return { text: T.file.collapsedBig(lineCount(file)) };
   return null;
 }
 

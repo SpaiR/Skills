@@ -2,11 +2,12 @@
 
 import { isMac, isMod, MOD_ENTER } from './constants.js';
 import { S, ui } from './state.js';
-import { cap, h, rangeLabel, sideLabel, uid } from './dom.js';
+import { cap, h, uid } from './dom.js';
 import { save } from './persist.js';
 import { quote } from './lines.js';
 import { formIn, td } from './diff.js';
 import { closeForm, deleteDraft, revealEditor } from './forms.js';
+import { T } from './strings.js';
 
 export const draftKey = (path, side, start, end) => `${path}|${side}|${start}|${end}`;
 export const editKey = (id) => `edit|${id}`;
@@ -57,10 +58,10 @@ function noteRows(file, sec, a, cols) {
 function noteCard(file, a) {
   return h('div', { class: 'note', dataset: { anchor: `n:${a.id}`, id: a.id } },
     h('div', { class: 'note-head' },
-      h('span', { class: 'note-title' }, `${cap(rangeLabel(a))} · ${sideLabel(a.side)}`),
+      h('span', { class: 'note-title' }, `${cap(T.lineRange(a.start, a.end))} · ${T.side(a.side)}`),
       h('span', { class: 'note-actions' },
-        h('button', { class: 'btn sm ghost', type: 'button', dataset: { act: 'note-edit', id: a.id } }, 'Изменить'),
-        h('button', { class: 'btn sm ghost danger', type: 'button', dataset: { act: 'note-delete', id: a.id } }, 'Удалить'))),
+        h('button', { class: 'btn sm ghost', type: 'button', dataset: { act: 'note-edit', id: a.id } }, T.edit),
+        h('button', { class: 'btn sm ghost danger', type: 'button', dataset: { act: 'note-delete', id: a.id } }, T.delete))),
     a.text && h('div', { class: 'note-text' }, a.text),
     a.suggestion && suggestionBox(file, a));
 }
@@ -69,22 +70,22 @@ function noteCard(file, a) {
 function suggestionBox(file, a) {
   const line = (t, sign, text) => h('div', { class: `sg-line sg-${t}` }, h('span', { class: 'sg-sign' }, sign), h('span', { class: 'sg-code' }, text));
   return h('div', { class: 'suggestion' },
-    h('div', { class: 'suggestion-head' }, 'Предложенная правка'),
+    h('div', { class: 'suggestion-head' }, T.comments.suggestion),
     h('div', { class: 'sg-body' },
       quote(file, a.side, a.start, a.end).map((l) => line('del', '−', l.s)),
       a.suggestion.split('\n').map((s) => line('add', '+', s))));
 }
 
 function draftCard(key, d) {
-  const text = String(d.text || '').replace(/\s+/g, ' ').trim() || (d.suggestion ? 'предложенная правка' : '');
+  const text = String(d.text || '').replace(/\s+/g, ' ').trim() || (d.suggestion ? T.comments.suggestionLower : '');
   const short = text.length > 80 ? `${text.slice(0, 80).trimEnd()}…` : text;
   return h('div', { class: 'draft-row', dataset: { anchor: `d:${key}`, key } },
     h('span', { class: 'draft-text', title: text },
-      h('span', { class: 'draft-label' }, d.editingId ? 'Черновик правки:' : 'Черновик:'), ' ',
+      h('span', { class: 'draft-label' }, d.editingId ? T.comments.draftEdit : T.comments.draft), ' ',
       h('span', { class: 'draft-q' }, '«'), h('span', { class: 'draft-quote' }, short), h('span', { class: 'draft-q' }, '»')),
     h('span', { class: 'draft-actions' },
-      h('button', { class: 'btn sm ghost', type: 'button', dataset: { act: 'draft-continue', key } }, 'Продолжить'),
-      h('button', { class: 'btn sm ghost danger', type: 'button', dataset: { act: 'draft-delete', key } }, 'Удалить')));
+      h('button', { class: 'btn sm ghost', type: 'button', dataset: { act: 'draft-continue', key } }, T.comments.continue),
+      h('button', { class: 'btn sm ghost danger', type: 'button', dataset: { act: 'draft-delete', key } }, T.delete)));
 }
 
 // Form draft: written on every input. An empty new comment and an unchanged edit produce no draft.
@@ -124,20 +125,20 @@ function indentText(ta, outdent) {
 function editorCard(file, existing) {
   const f = ui.form;
   const d = S.drafts[f.key];
-  const ta = h('textarea', { class: 'grow', rows: 3, placeholder: 'Вопрос, замечание или просьба', 'aria-label': 'Текст комментария', 'data-focus-key': 'form-text' });
+  const ta = h('textarea', { class: 'grow', rows: 3, placeholder: T.comments.placeholder, 'aria-label': T.comments.textAria, 'data-focus-key': 'form-text' });
   ta.value = d ? d.text : existing ? existing.text : '';
-  const sg = h('textarea', { class: 'grow mono', rows: 3, spellcheck: 'false', placeholder: 'Код, которым заменить выделенные строки', 'aria-label': 'Предложенная правка', 'data-focus-key': 'form-sug' });
+  const sg = h('textarea', { class: 'grow mono', rows: 3, spellcheck: 'false', placeholder: T.comments.suggestionPlaceholder, 'aria-label': T.comments.suggestion, 'data-focus-key': 'form-sug' });
   sg.value = d ? d.suggestion || '' : existing ? existing.suggestion || '' : '';
   const sugBox = h('div', { class: 'sug-box', hidden: !f.sugOpen },
     h('div', { class: 'sug-head' },
-      h('span', { class: 'sug-label' }, 'Предложенная правка'),
+      h('span', { class: 'sug-label' }, T.comments.suggestion),
       // Tab inserts indentation here: this is the only way to leave the field with the keyboard.
-      h('span', { class: 'hint' }, `Tab — отступ · Esc — закрыть форму · ${MOD_ENTER} — сохранить`)),
+      h('span', { class: 'hint' }, T.comments.suggestionHint(MOD_ENTER))),
     sg);
-  const sugToggle = h('button', { class: 'btn sm ghost sug-toggle', type: 'button', hidden: f.sugOpen }, '± Предложить правку');
-  const saveBtn = h('button', { class: 'btn sm primary', type: 'button', 'aria-keyshortcuts': isMac ? 'Meta+Enter' : 'Control+Enter' }, 'Сохранить');
-  const closeBtn = h('button', { class: 'btn sm', type: 'button' }, 'Закрыть');
-  const discard = h('button', { class: 'btn sm ghost danger', type: 'button' }, 'Удалить черновик');
+  const sugToggle = h('button', { class: 'btn sm ghost sug-toggle', type: 'button', hidden: f.sugOpen }, T.comments.suggest);
+  const saveBtn = h('button', { class: 'btn sm primary', type: 'button', 'aria-keyshortcuts': isMac ? 'Meta+Enter' : 'Control+Enter' }, T.comments.save);
+  const closeBtn = h('button', { class: 'btn sm', type: 'button' }, T.close);
+  const discard = h('button', { class: 'btn sm ghost danger', type: 'button' }, T.comments.discardDraft);
   const refresh = () => {
     saveBtn.disabled = !ta.value.trim() && !(f.sugOpen && sg.value.trim());
     discard.classList.toggle('is-off', !S.drafts[f.key]);
@@ -183,12 +184,12 @@ function editorCard(file, existing) {
   refresh();
   return h('div', { class: 'editor annot-form', dataset: { anchor: 'form' } },
     h('div', { class: 'editor-head' },
-      h('span', { class: 'editor-title' }, `${cap(rangeLabel(f))} · ${sideLabel(f.side)}`),
-      !existing && h('span', { class: 'hint' }, 'Shift+клик — расширить диапазон')),
+      h('span', { class: 'editor-title' }, `${cap(T.lineRange(f.start, f.end))} · ${T.side(f.side)}`),
+      !existing && h('span', { class: 'hint' }, T.comments.extendHint)),
     ta, sugToggle, sugBox,
     h('div', { class: 'editor-actions' }, saveBtn, closeBtn, discard,
       // The short variant is used when the long one does not fit in the row with the buttons (container query in CSS).
-      h('span', { class: 'hint save-hint', title: 'Esc закрывает форму, текст остаётся черновиком' },
-        h('span', { class: 'hint-long' }, `${MOD_ENTER} — сохранить · Esc — закрыть, черновик останется`),
-        h('span', { class: 'hint-short' }, `${MOD_ENTER} — сохранить · Esc — закрыть`))));
+      h('span', { class: 'hint save-hint', title: T.comments.saveHintTitle },
+        h('span', { class: 'hint-long' }, T.comments.saveHintLong(MOD_ENTER)),
+        h('span', { class: 'hint-short' }, T.comments.saveHintShort(MOD_ENTER)))));
 }

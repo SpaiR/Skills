@@ -1,6 +1,6 @@
 // File tree sidebar of Files mode: tree building, path filter, "hide viewed", resizer, tree keyboard.
 
-import { NOTES, TREE_DEFAULT, TREE_MAX, TREE_MIN } from './constants.js';
+import { TREE_DEFAULT, TREE_MAX, TREE_MIN } from './constants.js';
 import { fileByPath, filesGroup, R, S, treeRoot, ui } from './state.js';
 import { $main, basename, h, icon, plural } from './dom.js';
 import { save } from './persist.js';
@@ -10,11 +10,12 @@ import { statPair, statusBadge } from './toc.js';
 import { applyModeLayout } from './modes.js';
 import { jumpToFile, queueTrack } from './nav.js';
 import { filterStatus } from './section.js';
+import { LOCALE, T, WORDS } from './strings.js';
 
 // Directories before files, everything alphabetical with numeric ordering. A directory without files and with a single
 // subdirectory is merged with it into one row: src/core/.
 export function buildTree(paths) {
-  const coll = new Intl.Collator('ru', { numeric: true, sensitivity: 'base' });
+  const coll = new Intl.Collator(LOCALE, { numeric: true, sensitivity: 'base' });
   const root = { name: '', path: '', dirs: new Map(), files: [] };
   for (const p of paths) {
     const parts = p.split('/');
@@ -73,8 +74,8 @@ export function resetFilter() {
 
 function treeHead() {
   const input = h('input', {
-    id: 'tree-filter', type: 'search', class: 'tree-input', placeholder: 'Фильтр по пути', autocomplete: 'off', spellcheck: 'false',
-    'aria-label': 'Фильтр файлов по пути', 'aria-keyshortcuts': '/',
+    id: 'tree-filter', type: 'search', class: 'tree-input', placeholder: T.toc.filterPlaceholder, autocomplete: 'off', spellcheck: 'false',
+    'aria-label': T.toc.filterAria, 'aria-keyshortcuts': '/',
   });
   input.value = ui.filter;
   input.addEventListener('input', () => { ui.filter = input.value; applyVisible(); });
@@ -96,16 +97,16 @@ function treeHead() {
   const hide = h('input', { id: 'tree-hide-viewed', type: 'checkbox', class: 'check', checked: S.hideViewed });
   hide.addEventListener('change', () => { S.hideViewed = hide.checked; save(); applyVisible(); });
   return h('div', { class: 'tree-head' },
-    h('div', { class: 'tree-title' }, h('span', { class: 'toc-label' }, 'Файлы'), h('span', { class: 'tree-progress', title: 'Просмотрено файлов' })),
+    h('div', { class: 'tree-title' }, h('span', { class: 'toc-label' }, T.toc.files), h('span', { class: 'tree-progress', title: T.viewedFiles })),
     h('div', { class: 'tree-filter' }, icon('search'), input),
-    h('label', { class: 'tree-opt' }, hide, h('span', {}, 'Скрыть просмотренные')));
+    h('label', { class: 'tree-opt' }, hide, h('span', {}, T.toc.hideViewed)));
 }
 
 function treeResizer() {
   const bar = h('div', {
-    class: 'tree-resize', role: 'separator', tabindex: '0', 'aria-orientation': 'vertical', 'aria-label': 'Ширина панели файлов',
+    class: 'tree-resize', role: 'separator', tabindex: '0', 'aria-orientation': 'vertical', 'aria-label': T.toc.resizeAria,
     'aria-valuemin': String(TREE_MIN), 'aria-valuemax': String(TREE_MAX), 'aria-valuenow': String(S.treeW || TREE_DEFAULT),
-    title: 'Потяни, чтобы изменить ширину',
+    title: T.toc.resizeTitle,
   });
   const set = (w) => {
     S.treeW = Math.round(Math.min(TREE_MAX, Math.max(TREE_MIN, w)));
@@ -147,7 +148,7 @@ function treeDirRow(d, level, open, viewed) {
   },
   icon('chevron', 'chev'),
   h('span', { class: 'tree-name' }, `${d.name}/`),
-  h('span', { class: 'tree-count', title: 'Просмотрено файлов' }, `${viewed}/${total}`));
+  h('span', { class: 'tree-count', title: T.viewedFiles }, `${viewed}/${total}`));
 }
 
 function treeFileRow(file, level) {
@@ -163,19 +164,19 @@ function treeFileRow(file, level) {
   statusBadge(file, true),
   h('span', { class: 'fr-name' }, h('span', { class: 'fr-base' }, basename(file.path))),
   h('span', { class: 'fr-meta' },
-    comments > 0 && h('span', { class: 'fr-comments', title: plural(comments, NOTES) }, icon('comment'), String(comments)),
+    comments > 0 && h('span', { class: 'fr-comments', title: plural(comments, WORDS.notes) }, icon('comment'), String(comments)),
     statPair(file.additions, file.deletions, file.binary),
-    viewed && h('span', { class: 'fr-check', title: 'Просмотрен' }, icon('check'))));
+    viewed && h('span', { class: 'fr-check', title: T.viewedFile }, icon('check'))));
 }
 
 export function renderTree() {
   const toc = document.getElementById('toc');
   let list = toc.querySelector(':scope > .tree');
   if (!list) {
-    list = h('div', { class: 'tree', role: 'tree', 'aria-label': 'Файлы' });
+    list = h('div', { class: 'tree', role: 'tree', 'aria-label': T.toc.files });
     list.addEventListener('keydown', onTreeKey);
     toc.replaceChildren(treeHead(), list,
-      h('button', { class: 'toc-help', type: 'button', dataset: { act: 'help' }, 'aria-keyshortcuts': '?' }, h('kbd', {}, '?'), ' — горячие клавиши'),
+      h('button', { class: 'toc-help', type: 'button', dataset: { act: 'help' }, 'aria-keyshortcuts': '?' }, h('kbd', {}, '?'), T.helpButton),
       treeResizer());
   }
   const total = R.files.length;
@@ -196,7 +197,7 @@ export function renderTree() {
     for (const p of node.files) if (!filtering || ui.visible.has(p)) rows.push(treeFileRow(fileByPath.get(p), level));
   };
   walk(treeRoot, 1);
-  list.replaceChildren(...(rows.length ? rows : [h('div', { class: 'tree-empty' }, 'Ни один файл не подходит под фильтр')]));
+  list.replaceChildren(...(rows.length ? rows : [h('div', { class: 'tree-empty' }, T.toc.noMatch)]));
   // One tree item in the Tab order (roving tabindex): the one that had focus, the current file, or the first.
   const pick = (focusKey && list.querySelector(`[data-tkey="${CSS.escape(focusKey)}"]`))
     || list.querySelector('.tree-row[aria-current]') || list.querySelector('.tree-row');

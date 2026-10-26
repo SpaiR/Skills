@@ -1,4 +1,5 @@
 """Tests for diff-review collect.py full.patch (plain unittest; pytest is not installed)."""
+import argparse
 import json
 import os
 import subprocess
@@ -6,15 +7,17 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 SCRIPTS = Path(__file__).resolve().parents[2] / "scripts"
 COLLECT = SCRIPTS / "collect.py"
 sys.path.insert(0, str(SCRIPTS))
+import collect  # noqa: E402
 import serve  # noqa: E402
 
 ENV = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
        "GIT_COMMITTER_EMAIL": "t@t", "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null"}
-WHOLE = "весь файл уже в диффе"
+WHOLE = "in_diff"
 
 
 def git(repo, *a, check=True):
@@ -162,8 +165,8 @@ class Modes(Base):
         d = self.by_path(meta)
         for p in ("new.txt", "del.txt", "u.txt"):
             self.assertEqual(d[p]["content"]["reason"], WHOLE)
-        self.assertEqual(d["bin.dat"]["content"]["reason"], "бинарный файл")
-        self.assertEqual(d["renamed.txt"]["content"]["reason"], "содержимое не менялось")
+        self.assertEqual(d["bin.dat"]["content"]["reason"], "binary")
+        self.assertEqual(d["renamed.txt"]["content"]["reason"], "unchanged")
         self.check_invariants(out, meta, self.wt)
         self.check_serve(out, meta)
 
@@ -256,7 +259,7 @@ class FileKinds(Base):
         out, meta = self.collect("--mode", "uncommitted")
         d = self.by_path(meta)
         self.assertFalse(d["big.txt"]["content"]["available"])
-        self.assertIn("КиБ", d["big.txt"]["content"]["reason"])
+        self.assertEqual(d["big.txt"]["content"], {"available": False, "reason": "too_large", "limitKiB": 1024})
         self.assertTrue(d["a.txt"]["content"]["available"])
         self.assertTrue(d["z.txt"]["content"]["available"])
         self.check_invariants(out, meta, lambda p: (self.repo / p).read_bytes())
@@ -363,6 +366,113 @@ class Compat(Base):
         write(self.repo, "a.txt", "x\n")
         commit(self.repo)
         run_collect(self.repo, self.tmp / "o", "--mode", "uncommitted", expect=3)
+
+
+class MetaV3(Base):
+    """meta v3 carries no prose for the viewer: range is structured, notes and reasons are codes."""
+
+    def build(self):
+        write(self.repo, "a.txt", lines(10, "a"))
+        commit(self.repo, "base")
+        git(self.repo, "checkout", "-q", "-b", "feature")
+        write(self.repo, "a.txt", lines(10, "a").replace("a3\n", "A3\n"))
+        self.f1 = commit(self.repo, "feature: change a")
+        write(self.repo, "a.txt", lines(10, "a").replace("a3\n", "A3\n").replace("a7\n", "A7x\n"))
+
+    def summary(self, *extra, name="out"):
+        r = run_collect(self.repo, self.tmp / name, *extra)
+        return json.loads(r.stdout), json.loads((self.tmp / name / "meta.json").read_text())
+
+    def args(self):
+        return argparse.Namespace(repo=str(self.repo), mode="uncommitted", ref=None, base=None)
+
+    def test_range_and_label_per_mode(self):
+        self.build()
+        git(self.repo, "add", "a.txt")  # gives staged mode something to show
+        cases = [
+            (["--mode", "since-base", "--base", "main"], {"mode": "since-base", "base": "main"},
+             "main...HEAD + uncommitted"),
+            (["--mode", "uncommitted"], {"mode": "uncommitted", "hasCommits": True}, "HEAD + uncommitted"),
+            (["--mode", "staged"], {"mode": "staged"}, "index (staged)"),
+            (["--mode", "commit", "--ref", self.f1], {"mode": "commit", "sha": self.f1, "subject": "feature: change a"},
+             f"{self.f1[:10]} feature: change a"),
+            (["--mode", "range", "--ref", "main..feature"], {"mode": "range", "from": "main", "dots": "..", "to": "feature"},
+             "main..feature"),
+            (["--mode", "range", "--ref", "main...feature"],
+             {"mode": "range", "from": "main", "dots": "...", "to": "feature"}, "main...feature"),
+            (["--mode", "branch", "--ref", "feature", "--base", "main"], {"mode": "branch", "base": "main", "ref": "feature"},
+             "main...feature"),
+        ]
+        for i, (extra, rng, label) in enumerate(cases):
+            with self.subTest(args=extra):
+                summary, meta = self.summary(*extra, name=f"o{i}")
+                self.assertEqual(meta["version"], 3)
+                self.assertEqual(meta["range"], rng)
+                self.assertEqual(meta["label"], label)
+                self.assertEqual(summary["label"], label)
+                self.assertEqual(meta["notes"], [])
+                self.assertEqual(summary["notes"], [])
+
+    def test_no_commits_note(self):
+        write(self.repo, "a.txt", "x\n")
+        summary, meta = self.summary()
+        self.assertEqual(meta["mode"], "uncommitted")
+        self.assertEqual(meta["range"], {"mode": "uncommitted", "hasCommits": False})
+        self.assertEqual(meta["label"], "working tree (no commits)")
+        self.assertEqual(meta["notes"], [{"code": "no_commits", "text": collect.NOTE_TEXT["no_commits"]}])
+        self.assertEqual(summary["notes"], [collect.NOTE_TEXT["no_commits"]])
+
+    def test_base_not_found_note(self):
+        write(self.repo, "a.txt", lines(5, "a"))
+        commit(self.repo)
+        git(self.repo, "branch", "-m", "main", "trunk")  # no main/master/develop and no origin
+        write(self.repo, "a.txt", lines(5, "a").replace("a1\n", "A1\n"))
+        summary, meta = self.summary()
+        self.assertEqual(meta["mode"], "uncommitted")
+        self.assertEqual(meta["range"], {"mode": "uncommitted", "hasCommits": True})
+        self.assertEqual([n["code"] for n in meta["notes"]], ["base_not_found"])
+        self.assertEqual(summary["notes"], [collect.NOTE_TEXT["base_not_found"]])
+
+    def test_session_texts_are_english(self):
+        for code, text in collect.NOTE_TEXT.items():
+            with self.subTest(code=code):
+                self.assertTrue(text.isascii(), text)
+
+    def test_total_limit_reason(self):
+        write(self.repo, "a.txt", lines(10, "a"))
+        write(self.repo, "b.txt", lines(10, "b"))
+        commit(self.repo)
+        write(self.repo, "a.txt", lines(10, "a").replace("a1\n", "A1\n"))
+        write(self.repo, "b.txt", lines(10, "b").replace("b1\n", "B1\n"))
+        size = (self.repo / "a.txt").stat().st_size
+        with mock.patch.object(collect, "FULL_TOTAL_MAX", size + 1):
+            _, meta, _ = collect.collect(self.args())
+        d = self.by_path(meta)
+        self.assertTrue(d["a.txt"]["content"]["available"])
+        self.assertEqual(d["b.txt"]["content"], {"available": False, "reason": "total_limit"})
+
+    def test_git_output_mismatch_and_unreadable(self):
+        write(self.repo, "a.txt", lines(10, "a"))
+        write(self.repo, "ghost.txt", lines(10, "g"))
+        commit(self.repo)
+        write(self.repo, "a.txt", lines(10, "a").replace("a1\n", "A1\n"))
+        # ghost.txt is listed as modified but git shows no diff for it; missing.txt cannot be read.
+        paths = ["a.txt", "ghost.txt", "missing.txt"]
+        name_status = [{"status": "M", "oldPath": None, "path": p} for p in paths]
+        numstat = [{"path": p, "additions": 1, "deletions": 1, "binary": False} for p in paths]
+        notes = []
+        full = collect.collect_full(self.repo, ["HEAD"], None, "worktree", name_status, numstat, notes)
+        self.assertEqual(notes, [{"code": "full_text_mismatch", "text": collect.NOTE_TEXT["full_text_mismatch"]}])
+        self.assertEqual(full["chunks"], {})
+        self.assertEqual(full["reasons"], {0: "not_collected", 1: "not_collected", 2: "unreadable"})
+
+    def test_file_content(self):
+        full = {"chunks": {0: "diff"}, "lines": {0: 12}, "reasons": {1: "too_large", 2: "binary"}}
+        self.assertEqual(collect.file_content(0, full), {"available": True, "lines": 12})
+        self.assertEqual(collect.file_content(1, full),
+                         {"available": False, "reason": "too_large", "limitKiB": collect.FULL_FILE_MAX // 1024})
+        self.assertEqual(collect.file_content(2, full), {"available": False, "reason": "binary"})
+        self.assertEqual(collect.file_content(3, full), {"available": False, "reason": "in_diff"})
 
 
 if __name__ == "__main__":

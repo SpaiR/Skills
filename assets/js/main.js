@@ -21,6 +21,7 @@ import { onMainMouseDown, onMainMouseOver } from './selection.js';
 import { onMainChange, onMainClick } from './events.js';
 import { applyTheme } from './view.js';
 import { onKeyDown } from './keyboard.js';
+import { T } from './strings.js';
 
 function renderShell() {
   renderHeader();
@@ -74,9 +75,9 @@ async function init() {
   } catch (err) {
     $main().replaceChildren(h('div', { class: 'load-error' },
       h('div', { class: 'callout callout-warning' },
-        h('div', { class: 'callout-title' }, 'Внимание'),
-        h('p', {}, `Не удалось загрузить ревью: ${err.message}. Возможно, сервер уже остановлен или ссылка без токена.`)),
-      h('button', { class: 'btn', type: 'button', onclick: () => location.reload() }, 'Повторить')));
+        h('div', { class: 'callout-title' }, T.attention),
+        h('p', {}, T.page.loadError(err.message))),
+      h('button', { class: 'btn', type: 'button', onclick: () => location.reload() }, T.page.retry)));
     return;
   }
   performance.mark('dr-review');
@@ -101,8 +102,8 @@ async function init() {
   setSections(R.guide.sections.map((s, i) => ({ ...s, key: `s${i + 1}` })));
   if (R.guide.unplacedFiles && R.guide.unplacedFiles.length) {
     sections.push({
-      key: 'rest', synthetic: true, title: 'Остальные файлы',
-      overview: 'Файлы, которые не вошли ни в одну главу: шум или мелочи без отдельной истории.',
+      key: 'rest', synthetic: true, title: T.page.restTitle,
+      overview: T.page.restOverview,
       diffs: R.guide.unplacedFiles.map((file) => ({ file })),
     });
   }
@@ -110,11 +111,11 @@ async function init() {
   sections.forEach((s, i) => { s.idx = i; s.total = numbered; secByKey.set(s.key, s); });
   for (const sec of sections) for (const d of sec.diffs) if (!guideOf.has(d.file)) guideOf.set(d.file, { sec, summary: d.summary || '' });
   setTreeRoot(buildTree(R.files.map((f) => f.path)));
-  setFilesGroup({ key: 'files', headless: true, idx: 0, total: 0, title: 'Файлы', diffs: treeRoot.all.map((file) => ({ file })) });
+  setFilesGroup({ key: 'files', headless: true, idx: 0, total: 0, title: T.page.filesGroup, diffs: treeRoot.all.map((file) => ({ file })) });
   secByKey.set(filesGroup.key, filesGroup);
   if (filesMode()) computeVisible();
   migrateFilesViewed();
-  document.title = `Ревью: ${R.guide.title}`;
+  document.title = T.page.title(R.guide.title);
   document.body.classList.toggle('view-split', S.viewMode === 'split');
   document.body.classList.toggle('nowrap', !S.wrap);
   ui.mainW = $main().clientWidth;

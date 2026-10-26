@@ -10,6 +10,7 @@ import { fileQ, secQ } from './rerender.js';
 import { renderTree, toggleTreeDir } from './tree.js';
 import { jumpToFile, jumpToSection } from './nav.js';
 import { openHelp } from './help.js';
+import { T, WORDS } from './strings.js';
 
 export const tocVisible = () => (narrowScreen.matches ? ui.drawer : S.tocOpen !== false);
 
@@ -65,7 +66,7 @@ export function onDrawerTab(e) {
 
 // "+N −M": a zero part is grey, since a red "−0" on new files says nothing. A binary file has no lines.
 export function statPair(add, del, binary) {
-  if (binary) return h('span', { class: 'stat-bin' }, 'бинарный');
+  if (binary) return h('span', { class: 'stat-bin' }, T.binaryStat);
   return [
     h('span', { class: add ? 'stat-add' : 'stat-zero' }, `+${add}`), ' ',
     h('span', { class: del ? 'stat-del' : 'stat-zero' }, `−${del}`),
@@ -73,8 +74,8 @@ export function statPair(add, del, binary) {
 }
 
 export function statusBadge(file, small) {
-  const [code, word] = STATUS[file.status] || STATUS.modified;
-  return h('span', { class: `status st-${file.status}${small ? ' sm' : ''}`, title: word }, code);
+  const st = file.status in STATUS ? file.status : 'modified';
+  return h('span', { class: `status st-${file.status}${small ? ' sm' : ''}`, title: T.status[st] }, STATUS[st]);
 }
 
 // File row: in the contents and in the "Chapter files" list.
@@ -90,9 +91,9 @@ export function fileRow(file, sec, inToc) {
   statusBadge(file, true),
   h('span', { class: 'fr-name' }, h('span', { class: 'fr-base' }, basename(file.path)), h('span', { class: 'fr-dir' }, dirname(file.path))),
   h('span', { class: 'fr-meta' },
-    comments > 0 && h('span', { class: 'fr-comments', title: plural(comments, ['комментарий', 'комментария', 'комментариев']) }, icon('comment'), String(comments)),
+    comments > 0 && h('span', { class: 'fr-comments', title: plural(comments, WORDS.notes) }, icon('comment'), String(comments)),
     statPair(file.additions, file.deletions, file.binary),
-    viewed && h('span', { class: 'fr-check', title: 'Просмотрен' }, icon('check'))));
+    viewed && h('span', { class: 'fr-check', title: T.viewedFile }, icon('check'))));
 }
 
 export function renderToc() {
@@ -100,7 +101,7 @@ export function renderToc() {
   const toc = document.getElementById('toc');
   const scroll = toc.scrollTop;
   toc.replaceChildren(
-    h('div', { class: 'toc-label' }, 'Главы'),
+    h('div', { class: 'toc-label' }, T.toc.chapters),
     h('div', { class: 'toc-list' }, sections.map((sec) => {
       const st = secStats(sec);
       const done = !!S.reviewed[sec.key];
@@ -110,16 +111,16 @@ export function renderToc() {
         h('div', { class: 'toc-sec', 'aria-current': current ? 'true' : null },
           h('button', {
             class: `toc-status ${state}`, type: 'button', dataset: { act: 'toc-sec-viewed', key: sec.key },
-            'aria-label': `Отметить главу «${sec.title}» просмотренной`, 'aria-pressed': String(done),
-            title: done ? 'Глава просмотрена' : 'Отметить главу просмотренной',
+            'aria-label': T.toc.markChapter(sec.title), 'aria-pressed': String(done),
+            title: done ? T.toc.chapterViewed : T.toc.markChapterTitle,
           }, state === 'full' && icon('check')),
           h('button', { class: 'toc-sec-go', type: 'button', dataset: { act: 'goto-sec', key: sec.key } },
             h('span', { class: 'toc-num' }, sec.synthetic ? '—' : pad2(sec.idx + 1)),
             h('span', { class: 'toc-title' }, sec.title),
-            h('span', { class: 'toc-count', title: 'Просмотрено файлов' }, `${st.viewed}/${st.files}`))),
+            h('span', { class: 'toc-count', title: T.viewedFiles }, `${st.viewed}/${st.files}`))),
         !done && st.files > 0 && h('div', { class: 'toc-files' }, secFiles(sec).map((f) => fileRow(f, sec, true))));
     })),
-    h('button', { class: 'toc-help', type: 'button', dataset: { act: 'help' }, 'aria-keyshortcuts': '?' }, h('kbd', {}, '?'), ' — горячие клавиши'));
+    h('button', { class: 'toc-help', type: 'button', dataset: { act: 'help' }, 'aria-keyshortcuts': '?' }, h('kbd', {}, '?'), T.helpButton));
   toc.scrollTop = scroll;
 }
 

@@ -3,11 +3,12 @@
 import * as D from './diffcore.js';
 import { EXPAND_STEP } from './constants.js';
 import { S, selection, ui } from './state.js';
-import { h, icon, plural } from './dom.js';
+import { h, icon } from './dom.js';
 import { lineKey, splitIndex, synTokensOf, wordRangesOf } from './lines.js';
 import { canExpand } from './expand.js';
 import { fileView } from './model.js';
 import { trailing } from './comments.js';
+import { T } from './strings.js';
 
 // Fast cell constructors: big files have thousands of rows.
 export function td(cls, text) {
@@ -23,7 +24,7 @@ function cmtBtn(no) {
   b.type = 'button';
   b.className = 'cmt-btn';
   b.tabIndex = -1;
-  b.setAttribute('aria-label', `Комментарий к строке ${no}`);
+  b.setAttribute('aria-label', T.diff.commentLine(no));
   return b;
 }
 
@@ -56,7 +57,7 @@ function codeTd(file, l, wd, extra) {
     c.append(sp);
   }
   if (l.nonl) {
-    c.append(h('span', { class: 'nonl', title: 'Нет перевода строки в конце файла' }, '⏎̸'));
+    c.append(h('span', { class: 'nonl', title: T.diff.noEol }, '⏎̸'));
   }
   return c;
 }
@@ -68,20 +69,19 @@ function gapRow(gap, hk, cols) {
     dataset: { act: 'gap', dir, from: String(gap.newFrom), to: String(gap.newTo) },
   }, icon(ic));
   const tail = !hk, head = gap.newFrom === 1;
-  const lines = (n) => plural(n, ['строку', 'строки', 'строк']);
   const btns = gap.n <= EXPAND_STEP
-    ? [btn('all', `Показать ${lines(gap.n)}`, 'expand-all')]
+    ? [btn('all', T.diff.showLines(gap.n), 'expand-all')]
     : [
-      !head && btn('down', `Показать ${EXPAND_STEP} строк ниже`, 'expand-down'),
-      !tail && btn('up', `Показать ${EXPAND_STEP} строк выше`, 'expand-up'),
+      !head && btn('down', T.diff.showBelow(EXPAND_STEP), 'expand-down'),
+      !tail && btn('up', T.diff.showAbove(EXPAND_STEP), 'expand-up'),
     ];
   const cell = td('hunk-cell');
   cell.colSpan = cols;
   const inner = h('div', { class: 'hunk-in' },
     h('span', { class: 'gap-btns' }, btns),
     h('span', { class: 'hunk-skip' }, tail
-      ? `⋯ ${plural(gap.n, ['строка', 'строки', 'строк'])} до конца файла`
-      : `⋯ ${plural(gap.n, ['строка без изменений', 'строки без изменений', 'строк без изменений'])}`));
+      ? T.diff.toEnd(gap.n)
+      : T.diff.unchanged(gap.n)));
   if (hk) {
     const range = /^@@ [^@]*@@/.exec(hk.header);
     inner.append(h('span', { class: 'hunk-range' }, range ? range[0].replace(/^@@ -/, '@@ −') : hk.header));
@@ -100,8 +100,8 @@ function hunkRow(hk, cols) {
   const inner = h('div', { class: 'hunk-in' });
   if (hk.skip) {
     inner.append(h('span', { class: 'hunk-skip' }, hk.skip.first
-      ? (hk.skip.n === 1 ? '⋯ строка 1 не показана' : `⋯ строки 1–${hk.skip.to} не показаны`)
-      : `⋯ ${plural(hk.skip.n, ['строка без изменений', 'строки без изменений', 'строк без изменений'])}`));
+      ? T.diff.firstHidden(hk.skip.n, hk.skip.to)
+      : T.diff.unchanged(hk.skip.n)));
   }
   const range = /^@@ [^@]*@@/.exec(hk.header);
   inner.append(h('span', { class: 'hunk-range' }, range ? range[0].replace(/^@@ -/, '@@ −') : hk.header));
@@ -154,7 +154,7 @@ export function renderDiff(file, sec) {
   const table = document.createElement('table');
   table.className = `diff ${view}${view === 'unified' && onlyNew ? ' only-new' : ''}${view === 'unified' && onlyOld ? ' only-old' : ''}`;
   table.style.setProperty('--num-ch', String(numDigits(file)));
-  table.setAttribute('aria-label', `Дифф ${file.path}`);
+  table.setAttribute('aria-label', T.diff.table(file.path));
   const colgroup = document.createElement('colgroup');
   const col = (cls) => { const c = document.createElement('col'); if (cls) c.className = cls; colgroup.append(c); };
   const tbody = document.createElement('tbody');

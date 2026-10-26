@@ -6,6 +6,10 @@ import { h, icon } from './dom.js';
 import { filesMode } from './model.js';
 import { closeMenu } from './menu.js';
 import { dialogEl, dialogOpener } from './dialogs.js';
+import { T } from './strings.js';
+
+// A mouse click in a key combination: shown as a word, not as a key cap.
+const CLICK = 'click';
 
 // Chapter keys are shown only in Guide mode: in Files mode they do nothing.
 function helpGroups() {
@@ -13,37 +17,37 @@ function helpGroups() {
   const guide = !filesMode();
   const rows = (list) => list.filter(Boolean);
   return [
-    ['Навигация', rows([
-      [[['J'], ['K']], 'Следующий / предыдущий файл'],
-      guide && [[[']'], ['[']], 'Следующая / предыдущая глава'],
-      [[['N'], ['P']], 'Следующее / предыдущее изменение'],
-      [[['G']], 'Режим: гайд или файлы'],
-      [[['/']], 'Фильтр файлов'],
+    [T.help.navigation, rows([
+      [[['J'], ['K']], T.help.nextFile],
+      guide && [[[']'], ['[']], T.help.nextChapter],
+      [[['N'], ['P']], T.help.nextChange],
+      [[['G']], T.help.mode],
+      [[['/']], T.help.filter],
     ])],
-    ['Ревью', rows([
-      [[['V']], 'Отметить файл просмотренным'],
-      guide && [[['Shift', 'V']], 'Отметить главу просмотренной'],
-      [[['O']], 'Свернуть или развернуть файл'],
-      [[['E']], 'Весь файл или только изменения'],
-      [[['Z'], ['Shift', 'Z']], 'Свернуть / развернуть все файлы'],
-      guide && [[['Shift', 'O']], 'Свернуть или развернуть главу'],
+    [T.help.review, rows([
+      [[['V']], T.help.markFile],
+      guide && [[['Shift', 'V']], T.help.markChapter],
+      [[['O']], T.help.toggleFile],
+      [[['E']], T.help.wholeFile],
+      [[['Z'], ['Shift', 'Z']], T.help.toggleAll],
+      guide && [[['Shift', 'O']], T.help.toggleChapter],
     ])],
-    ['Комментарии', rows([
-      [[['C']], 'Комментарий к изменению под курсором'],
-      guide && [[['Shift', 'C']], 'Комментарий к главе'],
-      [[['клик']], 'По номеру — комментарий к любой строке'],
-      [[['Shift', 'клик']], 'Расширить диапазон строк'],
-      [[[mod, 'Enter']], 'Сохранить комментарий'],
+    [T.help.comments, rows([
+      [[['C']], T.help.commentChange],
+      guide && [[['Shift', 'C']], T.help.commentChapter],
+      [[[CLICK]], T.help.commentLine],
+      [[['Shift', CLICK]], T.help.extendRange],
+      [[[mod, 'Enter']], T.help.saveComment],
     ])],
-    ['Вид', [
-      [[['S']], 'Единый / Рядом'],
-      [[['W']], 'Перенос строк'],
-      [[['T']], guide ? 'Оглавление' : 'Дерево файлов'],
+    [T.help.view, [
+      [[['S']], T.help.viewMode],
+      [[['W']], T.help.wrap],
+      [[['T']], guide ? T.help.toc : T.help.tree],
     ]],
-    ['Отправка', [
-      [[[mod, 'Enter']], 'Отправить фидбек'],
-      [[['Esc']], 'Закрыть меню, форму, выделение, курсор'],
-      [[['?']], 'Эта справка'],
+    [T.help.sending, [
+      [[[mod, 'Enter']], T.help.submit],
+      [[['Esc']], T.help.escape],
+      [[['?']], T.help.help],
     ]],
   ];
 }
@@ -51,7 +55,7 @@ function helpGroups() {
 function keyCombo(alts) {
   return alts.flatMap((combo, k) => [
     k > 0 && h('span', { class: 'key-or' }, '/'),
-    combo.flatMap((key, j) => [j > 0 && h('span', { class: 'key-plus' }, '+'), key === 'клик' ? h('span', { class: 'key-word' }, key) : h('kbd', {}, key)]),
+    combo.flatMap((key, j) => [j > 0 && h('span', { class: 'key-plus' }, '+'), key === CLICK ? h('span', { class: 'key-word' }, T.help.click) : h('kbd', {}, key)]),
   ]);
 }
 
@@ -66,12 +70,12 @@ export function openHelp() {
   d.setAttribute('aria-labelledby', 'help-title');
   d.replaceChildren(
     h('div', { class: 'dlg-head' },
-      h('h2', { id: 'help-title' }, 'Горячие клавиши'),
-      h('button', { class: 'icon-btn sm dlg-x', type: 'button', 'aria-label': 'Закрыть', onclick: () => d.close() }, icon('x'))),
+      h('h2', { id: 'help-title' }, T.help.title),
+      h('button', { class: 'icon-btn sm dlg-x', type: 'button', 'aria-label': T.close, onclick: () => d.close() }, icon('x'))),
     h('div', { class: 'help-grid' }, helpGroups().map(([title, rows]) => h('section', { class: 'help-group' },
       h('h3', {}, title),
       h('dl', {}, rows.map(([keys, text]) => h('div', { class: 'help-row' }, h('dt', {}, keyCombo(keys)), h('dd', {}, text))))))),
-    h('p', { class: 'dlg-note' }, 'Клавиши работают в любой раскладке. В полях ввода отключены.'));
+    h('p', { class: 'dlg-note' }, T.help.note));
   d.showModal();
   // Focus the dialog itself, not the close button: otherwise the close button becomes the most prominent thing in the help.
   d.tabIndex = -1;
