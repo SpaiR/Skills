@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+"""Fake `gh` / `glab` for tests: answers from a rules file instead of talking to GitHub or GitLab.
+
+`glab` is a symlink to this file; the program name picks the CLI. Put this directory first on PATH.
+
+Environment:
+  FAKE_CLI_RULES  path to a JSON list of rules (required)
+  FAKE_CLI_LOG    path to a JSONL file; every call is appended as {"cli", "argv", "stdin"}
+                  ("env" is added with GH_HOST / GITLAB_HOST when they are set)
+
+A rule is {"cli": "gh"|"glab", "match": ["substring", ...], "nth": 2, "stdout": "...", "stderr": "...", "exit": 0,
+"sleep": 0}.
+- "match": every substring must occur in the space-joined argv (without the program name); [] matches any call.
+- "nth": optional, 1-based; the rule applies only to the nth call that matches its cli and "match" (counted in
+  FAKE_CLI_LOG, so it needs the log). Without "nth" the rule applies to every matching call.
+- "stdout" may also be a JSON value; it is dumped as JSON. "stderr" and "exit" default to "" and 0.
+- "sleep": seconds to wait before answering (to overlap concurrent requests in a test).
+- "clone_from": for `repo clone <repo> <dir> -- <git flags>`: really run
+  `git clone <git flags> <clone_from> <dir>`, where clone_from is a local (bare) repository.
+The first applicable rule wins. No rule: exit 1, stderr "fakecli: no rule for: <argv>".
+stdin is read, and logged, only when argv has --input.
+"""
+
+import json
+import os
+import subprocess
+import sys
+import time
+
+
+def load_log(path):
+    if not path or not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as f:
+        return [json.loads(ln) for ln in f if ln.strip()]
+
+
+def matches(rule, cli, argv_text):
+    return rule.get("cli") == cli and all(s in argv_text for s in rule.get("match", []))
+
+
+def clone(rule, argv):
+    rest = argv[argv.index("clone") + 1 :]
+    flags = rest[rest.index("--") + 1 :] if "--" in rest else []
+    positional = [a for a in rest[: rest.index("--")] if not a.startswith("-")] if "--" in rest else rest
+    if len(positional) < 2:
+        sys.stderr.write("fakecli: clone needs <repo> <dir>\n")
+        return 1
+    res = subprocess.run(["git", "clone", "-q", *flags, rule["clone_from"], positional[1]])
+    return res.returncode
+
+
+def main():
+    cli = os.path.basename(sys.argv[0])
+    argv = sys.argv[1:]
+    text = " ".join(argv)
+    stdin = sys.stdin.read() if "--input" in argv else None
+    log_path = os.environ.get("FAKE_CLI_LOG")
+    previous = load_log(log_path)
+    entry = {"cli": cli, "argv": argv, "stdin": stdin}
+    env = {k: os.environ[k] for k in ("GH_HOST", "GITLAB_HOST") if k in os.environ}
+    if env:
+        entry["env"] = env
+    if log_path:
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry) + "\n")
+
+    with open(os.environ["FAKE_CLI_RULES"], encoding="utf-8") as f:
+        rules = json.load(f)
+    for rule in rules:
+        if not matches(rule, cli, text):
+            continue
+        if "nth" in rule:
+            seen = sum(1 for e in previous if e["cli"] == cli and matches(rule, cli, " ".join(e["argv"])))
+            if seen + 1 != rule["nth"]:
+                continue
+        if "clone_from" in rule:
+            code = clone(rule, argv)
+            if code:
+                sys.exit(code)
+        time.sleep(rule.get("sleep", 0))
+        out = rule.get("stdout", "")
+        sys.stdout.write(out if isinstance(out, str) else json.dumps(out))
+        sys.stderr.write(rule.get("stderr", ""))
+        sys.exit(rule.get("exit", 0))
+    sys.stderr.write(f"fakecli: no rule for: {text}\n")
+    sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
