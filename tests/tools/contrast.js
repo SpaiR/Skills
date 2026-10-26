@@ -1,4 +1,5 @@
-// Проверка контраста палитры из spec.md по формуле WCAG 2.x. Запуск: node contrast.js ; код выхода 1, если есть провал.
+// Checks the contrast of the palette in assets/css/tokens.css and assets/css/themes.css using the WCAG 2.x formula.
+// Usage: node contrast.js ; exits with code 1 if any check fails.
 const hex=h=>{h=h.replace('#','');return [0,2,4].map(i=>parseInt(h.slice(i,i+2),16))};
 const lin=c=>{c/=255;return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4)};
 const L=rgb=>0.2126*lin(rgb[0])+0.7152*lin(rgb[1])+0.0722*lin(rgb[2]);
@@ -24,7 +25,7 @@ for(const [name,t] of Object.entries(T)){
  for(const bn of ['surface','bg','tint','addLine','delLine','addGut','delGut','accentSoft']) check(name,`ink2 on ${bn}`,c('ink2'),c(bn),4.5);
  check(name,'addSign on addLine',c('addSign'),c('addLine'),4.5); check(name,'addSign on addGut',c('addSign'),c('addGut'),4.5);
  check(name,'delSign on delLine',c('delSign'),c('delLine'),4.5); check(name,'delSign on delGut',c('delSign'),c('delGut'),4.5);
- check(name,'accentInk on accent (кнопка)',c('accentInk'),c('accent'),4.5); check(name,'accent on surface (ссылка)',c('accent'),c('surface'),4.5);
+ check(name,'accentInk on accent (button)',c('accentInk'),c('accent'),4.5); check(name,'accent on surface (link)',c('accent'),c('surface'),4.5);
  check(name,'accent on accentSoft',c('accent'),c('accentSoft'),4.5); check(name,'accent on bg',c('accent'),c('bg'),4.5);
  check(name,'success on successSoft',c('success'),c('successSoft'),4.5); check(name,'danger on dangerSoft',c('danger'),c('dangerSoft'),4.5);
  check(name,'warn on warnSoft',c('warn'),c('warnSoft'),4.5); check(name,'success on surface',c('success'),c('surface'),4.5); check(name,'danger on surface',c('danger'),c('surface'),4.5);

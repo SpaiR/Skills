@@ -1,0 +1,6 @@
+/* Reduced-motion overrides for the motion tokens. */
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 0ms; --dur: 0ms; }
+  html { scroll-behavior: auto !important; }
+}

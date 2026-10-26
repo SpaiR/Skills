@@ -1,0 +1,56 @@
+/* Sticky top header: context, range label, progress, save error. */
+
+#top {
+  position: sticky; top: 0; z-index: var(--z-header);
+  height: var(--header-h); display: flex; align-items: center; gap: 12px; flex-wrap: nowrap;
+  padding: 0 var(--page-pad); background: var(--surface); border-bottom: 1px solid var(--hair);
+}
+.top-left { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
+.top-left .icon-btn { margin-left: -6px; }
+.range-label {
+  flex: 0 1 auto; min-width: 0; font: 500 var(--fs-xs)/18px var(--font-mono); white-space: nowrap;
+  background: var(--accent-soft); color: var(--accent); border-radius: var(--r-pill); padding: 2px 8px;
+  overflow: hidden; text-overflow: ellipsis;
+}
+/* flex-basis 0: the context takes only the leftover space and shrinks first, the range label last. */
+.top-ctx { display: grid; min-width: 0; flex: 1 1 0; }
+.top-ctx > span {
+  grid-area: 1 / 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: opacity var(--dur) var(--ease);
+}
+.ctx-repo { font-size: var(--fs-sm); line-height: 20px; color: var(--ink-3); }
+.ctx-title { font-size: var(--fs-base); font-weight: 600; line-height: 20px; color: var(--ink); opacity: 0; pointer-events: none; }
+#top.show-title .ctx-repo { opacity: 0; pointer-events: none; }
+#top.show-title .ctx-title { opacity: 1; pointer-events: auto; }
+.top-right { flex: none; display: flex; align-items: center; gap: 8px; }
+/* After scrolling, the review title is the main landmark; in a narrow header the range label yields to it. */
+@media (max-width: 1279.98px) { #top.show-title .range-label { max-width: 140px; } }
+/* Below 768px only basic usability is guaranteed: the header must not overflow the window edge. */
+@media (max-width: 767.98px) {
+  #top { gap: 8px; }
+  #top .range-label, #top .seg, .progress-cap { display: none; }
+  #approve-btn { padding: 0 8px; }
+  #approve-btn .btn-text { display: none; }
+}
+@media (max-width: 479.98px) {
+  :root { --page-pad: 12px; }
+  .progress-track { width: 40px; }
+}
+
+.progress { display: grid; gap: 4px; margin-right: 6px; cursor: default; }
+.progress-text { display: flex; align-items: baseline; gap: 4px; white-space: nowrap; line-height: 16px; }
+.progress-num { font-size: var(--fs-sm); font-weight: 600; line-height: 16px; color: var(--ink); }
+.progress-cap { font-size: var(--fs-xs); color: var(--ink-3); }
+.progress-track { width: 64px; height: 4px; border-radius: 2px; background: var(--hair); overflow: hidden; }
+.progress-fill { height: 100%; width: 0; background: var(--accent); border-radius: 2px; transition: width var(--dur) var(--ease); }
+.progress.done .progress-fill { background: var(--success); }
+.progress.done .progress-num { color: var(--success); }
+.progress.done .progress-track { width: 100%; }
+
+#submit-btn .badge { background: var(--badge-on-primary); color: inherit; margin-right: -4px; }
+
+#save-error {
+  position: absolute; top: 100%; left: 0; right: 0;
+  background: var(--danger-soft); color: var(--danger); font-size: var(--fs-sm);
+  padding: 6px var(--page-pad); border-bottom: 1px solid var(--hair);
+}
