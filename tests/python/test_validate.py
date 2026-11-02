@@ -219,6 +219,14 @@ class BriefTest(unittest.TestCase):
                 self.assertError("brief point 1: `section`", strict=False)
                 self.assertError("out of range", strict=False)
 
+    def test_section_not_checked_without_valid_sections(self):
+        # The broken `sections` is the error to fix; a range of 1..0 for every point would only add noise.
+        self.guide["brief"][0]["section"] = 1
+        self.guide["sections"] = "oops"
+        errs = self.errors(strict=False)
+        self.assertTrue(any("`sections` must be a non-empty array" in e for e in errs), errs)
+        self.assertFalse(any("out of range" in e for e in errs), errs)
+
     def test_section_bounds_are_valid(self):
         self.guide["brief"][0]["section"] = len(self.guide["sections"])
         self.assertValid()

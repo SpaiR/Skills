@@ -63,7 +63,8 @@ def check_brief(brief, n_sections, strict):
             n = b["section"]
             if isinstance(n, bool) or not isinstance(n, int):
                 errors.append(f"{where}: `section` must be an integer")
-            elif not 1 <= n <= n_sections:
+            # Without valid sections that error is already reported: no range to check against.
+            elif n_sections and not 1 <= n <= n_sections:
                 errors.append(f"{where}: `section` {n} is out of range 1..{n_sections}")
     return errors
 
