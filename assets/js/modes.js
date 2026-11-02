@@ -1,13 +1,13 @@
-// Guide/Files mode switching, layout variables read from CSS, collapsing all files.
+// Overview/Guide/Files mode switching, layout variables read from CSS, collapsing all files.
 
 import { TREE_DEFAULT } from './constants.js';
 import { $main } from './dom.js';
 import { updateChrome } from './header.js';
 import { closeMenu } from './menu.js';
-import { filesMode, groupFor, groups, secFiles, sectionOpen } from './model.js';
+import { filesMode, groupFor, groups, guideMode, overviewMode, secFiles, sectionOpen } from './model.js';
 import { applyCurrent, scrollToElement, trackCurrent } from './nav.js';
 import { save } from './persist.js';
-import { fileQ, rerenderAllFiles, stickyOffset } from './rerender.js';
+import { fileQ, rerenderAllFiles, secQ, stickyOffset } from './rerender.js';
 import { renderMain } from './section.js';
 import { cancelDrag } from './selection.js';
 import { finished, L, S, secByKey, selection, ui } from './state.js';
@@ -20,6 +20,7 @@ import { computeVisible } from './tree.js';
 export function applyModeLayout() {
   const root = document.documentElement;
   root.classList.toggle('mode-files', filesMode());
+  root.classList.toggle('mode-overview', overviewMode());
   if (filesMode()) root.style.setProperty('--sidebar-w', `${S.treeW || TREE_DEFAULT}px`);
   else root.style.removeProperty('--sidebar-w');
   readLayoutVars();
@@ -42,12 +43,15 @@ export function observeTitle() {
 
 // Mode switch: the current file and the row under the sticky headers stay in place on screen.
 // toPath is the file to go to (chapter chip) instead of the current one by scroll position.
+// Overview mode has no files (groupFor is null there): it opens at the top. The file and row left for it are
+// remembered, and leaving Overview without a target goes back to them, so a look at it keeps the reading place.
+// With no current file (collapsed chapters, a long chapter overview), the Guide chapter scrolled into is remembered.
 export function setMode(mode, toPath) {
   if (finished || S.mode === mode) return;
   closeMenu(false);
   if (ui.drag) cancelDrag();
   if (!toPath) trackCurrent();
-  const path = toPath || (ui.curFile && ui.curFile.path);
+  let path = toPath || (ui.curFile && ui.curFile.path);
   let ref = null;
   const oldGroup = path && groupFor(path);
   const fileEl = oldGroup && $main().querySelector(fileQ(oldGroup.key, path));
@@ -63,6 +67,15 @@ export function setMode(mode, toPath) {
       break;
     }
   }
+  let retSec = null;
+  if (mode === 'overview') {
+    const secEl = !path && guideMode() && ui.curSec && $main().querySelector(secQ(ui.curSec));
+    retSec = secEl && secEl.getBoundingClientRect().top <= L.header + 1 ? ui.curSec : null;
+    ui.modeReturn = path || retSec ? { path, ref, sec: retSec } : null;
+  } else if (overviewMode()) {
+    if (!toPath && ui.modeReturn) ({ path, ref, sec: retSec } = ui.modeReturn);
+    ui.modeReturn = null;
+  }
   S.mode = mode;
   save();
   applyModeLayout();
@@ -77,13 +90,14 @@ export function setMode(mode, toPath) {
     if (!sec.headless && !sectionOpen(sec)) S.sectionOpen[sec.key] = true;
   } else {
     ui.curFile = null;
-    ui.curSec = null;
+    const sec = retSec && secByKey.get(retSec);
+    ui.curSec = sec && groups().includes(sec) ? sec.key : null;
   }
   if (ui.cursor) ui.cursor = { ...ui.cursor, sec: key(ui.cursor.path) };
   if (selection) selection.sec = key(selection.path);
   if (ui.form) ui.form.sec = key(ui.form.path);
   ui.secForm = null;
-  ui.pin = ui.curFile ? { sec: ui.curFile.sec, path } : null;
+  ui.pin = ui.curFile ? { sec: ui.curFile.sec, path } : ui.curSec ? { sec: ui.curSec, path: null } : null;
   if (filesMode()) computeVisible();
   document.getElementById('toc').replaceChildren();
   renderMain();
@@ -98,7 +112,8 @@ export function setMode(mode, toPath) {
     };
     const el = find();
     scrollToElement(find, el && el.matches('tr') ? Math.max(ref.top, stickyOffset()) : L.header + L.secHead, true);
-  } else window.scrollTo({ top: 0, behavior: 'instant' });
+  } else if (ui.curSec) scrollToElement(() => $main().querySelector(secQ(ui.curSec)), L.header, true);
+  else window.scrollTo({ top: 0, behavior: 'instant' });
   applyCurrent(true);
 }
 

@@ -30,10 +30,15 @@ paths:
 ## The guide.json contract changes as one unit
 
 `references/guide-method.md` (fields, rules, sample), `scripts/validate.py` (enforcement) and the viewer code that
-reads the guide (`main.js`, `section.js`, `file.js` for summaries, `header.js`, `feedback.js`, and `markdown.js` for
-the Markdown subset and callouts the methodology allows) describe the same format. When one changes:
+reads the guide (`main.js`, `section.js`, `overview.js` for `brief` and Overview mode, `file.js` for summaries,
+`header.js`, `feedback.js`, and `markdown.js` for the Markdown subset and callouts the methodology allows) describe
+the same format. The contract includes `brief[] {kind, text, section?}` and the plain first paragraph of every
+overview. When one changes:
 
-1. Change the methodology, the validator and the viewer together.
+1. Change the methodology, the validator and the viewer together. Writing limits (`brief` required, its point
+   count, words per point, no backticks in the plain part) belong to strict mode, which the CLI runs; `serve.py`
+   validates leniently so older outdirs still open. The thresholds in the methodology and the `BRIEF_*` constants
+   in `validate.py` must agree.
 2. Update `tests/python/test_validate.py`, the fixtures' `guide.json` files if the shape changed, and the e2e tests
    that depend on it.
 3. An incompatible change is a breaking commit (see `git.md`).

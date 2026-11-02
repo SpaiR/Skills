@@ -23,6 +23,8 @@ needs transpiling.
 - `expand.js` context expansion: full text loading, gap buttons, whole-file mode, `applyView`/`reshapeFile`
 - `rerender.js` targeted re-rendering with `withAnchor` and focus keeping
 - `section.js` main column: hero, chapter cards, Files group, chapter comments
+- `overview.js` the guide brief in the hero (`renderBrief`), Overview mode chapter cards (`renderOverview`), jumps
+  from them (`goToChapter`, `readInGuide`)
 - `file.js` file card: header, summary, collapsed note, diff body
 - `markdown.js` mini-Markdown for guide intent, overviews and summaries: inline code, bold, links, lists, headings,
   code blocks, quotes, GitHub callouts; applies `typography()`
@@ -33,8 +35,8 @@ needs transpiling.
 - `events.js` delegated click/change handlers of `#main`
 - `keyboard.js` global shortcuts and their actions
 - `nav.js` scrolling, jumps, current chapter/file tracking
-- `modes.js` Guide/Files switching, layout variables from CSS, collapse all
-- `header.js` top bar; `menu.js` "More" menu; `toc.js` Guide sidebar and drawer; `tree.js` Files tree
+- `modes.js` Overview/Guide/Files switching, layout variables from CSS, collapse all
+- `header.js` top bar; `menu.js` "More" menu; `toc.js` Overview/Guide sidebar and drawer; `tree.js` Files tree
 - `viewed.js` viewed marks for files and chapters; `view.js` diff view, wrap, theme
 - `dialogs.js` modal scaffold; `help.js` shortcuts dialog; `submit.js` submit dialog and finished screen
 - `publish.js` PR/MR publish dialog and the `/api/publish` payload (inline vs. body via `D.prPosition`)
@@ -46,6 +48,28 @@ needs transpiling.
   `selection`, `finished`) change only through their setters; imported bindings are read-only.
 - `S` is persisted to `state.json` (`save()` debounced, `flushSave()` on unload). Every field must get a default in
   `normalizeState()` (`persist.js`); old states must keep loading. `ui` is ephemeral page state, never saved.
+
+## Modes
+
+`S.mode` is `overview` | `guide` | `files` (`overviewMode()`, `guideMode()`, `filesMode()` in `model.js`).
+`normalizeState()` turns a missing or unknown value into `overview`, so a new review opens in Overview; a saved
+`guide` or `files` is kept. `html` gets `mode-overview` or `mode-files`. G toggles Guide and Files and goes from
+Overview to Guide; there is no key for Overview.
+
+- Overview shows the hero (intent, PR block, brief) and one `.ov-sec` card per chapter, no files. `groups()` is
+  empty and `groupFor()` is `null` there, so file keys, re-renders and Z find nothing to act on.
+- `.ov-sec` is deliberately not `.sec`: chapter keys, `withAnchor()` and `rerenderSection()` look for `.sec` and
+  must not treat the cards as chapters. In Overview `trackCurrent()` only marks the sidebar row of the card under
+  the top bar (`trackCard()`, `nav.js`), and `jumpToCard()` pins it. Chapter-only keys (`guideOnly`) show a hint
+  outside Guide mode.
+- Entering Overview remembers the file and row of Guide or Files, or the Guide chapter when no file is current
+  (`ui.modeReturn`); leaving it without a target goes back there, so a look at Overview keeps the reading place.
+  Jumps that have their own target (a card's «Читать в гайде», notes, drafts, chapter comments) do not restore it.
+- The brief (`guide.brief`, optional) is shown in Overview and Guide, not in Files; a guide without it shows no
+  block. Point text goes in as a text node (`typography()` applied), never through `md()`.
+- Jumps that need files (notes and drafts from the submit dialog, chapter comments) switch to Guide first when the
+  page is in Overview; chapter comments also leave Files. The diff view switch is hidden in Overview, and S there
+  shows a hint instead of changing it.
 
 ## Invariants tests rely on
 

@@ -123,10 +123,11 @@ python3 ${CLAUDE_SKILL_DIR}/scripts/serve.py --dir <outdir> --open
 The first output line is `DIFF_REVIEW_URL: <url>`. Give the user the URL and tell them the session is free while they
 read. The server waits up to 3 hours.
 
-The page has two modes: «Гайд» (the guide, opened first) and «Файлы» (files, with a file tree). For an open PR/MR the page
-also has «Опубликовать»: the user publishes the review to GitHub/GitLab from the page, after a confirmation dialog;
-`serve.py` posts it through `gh`/`glab`. You never publish anything yourself. Both let the user expand
-context between hunks and open a whole file: `collect.py` puts the full text of changed files into `full.patch`.
+The page has three modes: «Обзор» (the brief and all chapter overviews as one text page, opened first), «Гайд» (each
+chapter next to its diffs) and «Файлы» (files, with a file tree). For an open PR/MR the page also has «Опубликовать»: the
+user publishes the review to GitHub/GitLab from the page, after a confirmation dialog; `serve.py` posts it through
+`gh`/`glab`. You never publish anything yourself. «Гайд» and «Файлы» let the user expand context between hunks and open
+a whole file: `collect.py` puts the full text of changed files into `full.patch`.
 
 ## 6. Handle the decision
 

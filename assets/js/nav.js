@@ -3,7 +3,8 @@
 import { reducedMotion } from './constants.js';
 import { $main } from './dom.js';
 import { updateChrome } from './header.js';
-import { fileOpen, sectionOpen } from './model.js';
+import { fileOpen, overviewMode, sectionOpen } from './model.js';
+import { cardQ } from './overview.js';
 import { save } from './persist.js';
 import { fileQ, headTop, rerenderFile, rerenderSection, secQ, withAnchor } from './rerender.js';
 import { fileByPath, finished, L, S, secByKey, ui } from './state.js';
@@ -107,6 +108,10 @@ export function queueTrack() {
 
 export function trackCurrent() {
   if (finished) return;
+  if (overviewMode()) {
+    trackCard();
+    return;
+  }
   const main = $main();
   const line = L.header + L.secHead;
   let cur = null,
@@ -143,6 +148,25 @@ export function trackCurrent() {
       : ui.curFile === fileKey);
   ui.curFile = fileKey;
   ui.curSec = secKey;
+  applyCurrent(!same);
+}
+
+// Overview mode: the current chapter is the card under the top bar (jumpToCard puts a card 16px below it),
+// or the pinned card while it is on screen. It only marks the sidebar row; there are no files to track.
+function trackCard() {
+  const main = $main();
+  const cards = [...main.querySelectorAll('.ov-sec')];
+  const card = cards.filter((c) => c.getBoundingClientRect().top <= L.header + 17).pop() || cards[0];
+  let secKey = card ? card.dataset.key : null;
+  if (ui.pin) {
+    const el = !ui.pin.path && main.querySelector(cardQ(ui.pin.sec));
+    const r = el && el.getBoundingClientRect();
+    if (r && r.bottom > L.header && r.top < window.innerHeight) secKey = ui.pin.sec;
+    else ui.pin = null;
+  }
+  const same = ui.curSec === secKey && !ui.curFile;
+  ui.curSec = secKey;
+  ui.curFile = null;
   applyCurrent(!same);
 }
 

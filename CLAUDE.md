@@ -16,9 +16,11 @@ PR/MR, are published to it from the page.
    commits into the matching local clone (or a cache clone under `$TMPDIR/diff-review/repos/`) and the usual range diff
    `mergeBase..head` runs on them.
 2. A subagent reads `references/guide-method.md`, `guide.patch` and `meta.json` and writes `<outdir>/guide.json`.
-3. `scripts/validate.py --guide ... --meta ...` checks `guide.json` against `meta.json` (exit 0 ok, 1 errors).
-4. `scripts/serve.py --dir <outdir> --open` serves the viewer on 127.0.0.1 and prints `DIFF_REVIEW_URL: <url>`.
-5. The viewer (`assets/viewer.html` + `assets/js/*.js`) loads `/api/review`, keeps progress in `<outdir>/state.json`
+3. `scripts/validate.py --guide ... --meta ...` checks `guide.json` against `meta.json` strictly (exit 0 ok, 1 errors).
+4. `scripts/serve.py --dir <outdir> --open` validates leniently, serves the viewer on 127.0.0.1 and prints
+   `DIFF_REVIEW_URL: <url>`.
+5. The viewer (`assets/viewer.html` + `assets/js/*.js`) loads `/api/review` and opens in Overview mode (the brief and all
+   chapter overviews), with Guide and Files as the other two modes. It keeps progress in `<outdir>/state.json`
    and posts the decision to `/api/submit`, or, for a PR/MR, the review to `/api/publish` (`scripts/publish.py`
    posts it through `gh`/`glab`).
 6. `serve.py` writes `feedback.md` if there is text, prints `DIFF_REVIEW_RESULT: feedback|approved|published|closed|
@@ -32,11 +34,11 @@ references/guide-method.md  methodology and guide.json format for the subagent
 scripts/collect.py          git diff -> guide.patch, full.patch, meta.json
 scripts/remote.py           PR/MR references, metadata via gh/glab, fetching PR commits
 scripts/publish.py          posting a review to GitHub/GitLab via gh/glab (POST /api/publish)
-scripts/validate.py         guide.json coverage and shape checks
+scripts/validate.py         guide.json coverage and shape checks (strict CLI, lenient for serve.py)
 scripts/serve.py            stdlib HTTP server for the viewer and its API
 assets/viewer.html          page shell; loads css/index.css and js/main.js
-assets/js/                  native ES modules of the viewer; strings.js holds all page text
-assets/css/                 index.css @imports the parts in cascade order
+assets/js/                  native ES modules of the viewer; strings.js holds all page text, overview.js Overview mode
+assets/css/                 index.css @imports the parts in cascade order (overview.css for Overview mode)
 tests/unit/                 node:test: diffcore, expand, strings, contrast
 tests/python/               unittest: collect, serve, validate
 tests/e2e/                  node:test + playwright-core against system Chrome; lib.js holds helpers
@@ -59,7 +61,7 @@ npm run test:py     # python3 -m unittest discover -s tests/python
 npm run test:e2e    # node --test --test-concurrency=1 tests/e2e (headless system Chrome)
 npm test            # all three suites
 node tests/tools/contrast.js                       # print every palette contrast check
-python3 scripts/validate.py --guide G --meta M     # check one guide by hand
+python3 scripts/validate.py --guide G --meta M     # check one guide by hand (strict: a guide without `brief` fails)
 ```
 
 ## Data contracts
@@ -88,9 +90,14 @@ python3 scripts/validate.py --guide G --meta M     # check one guide by hand
 `guide.patch` and `full.patch` are split per file by `collect.split_patch`; chunk `i` of `guide.patch` is
 `files[i]`; `full.patch` has one chunk per file with `content.available`, in file order.
 
-**guide.json**: `title`, `intent`, `sections[] {title, overview, diffs[] {file, summary}}`, `unplacedFiles[]`,
+**guide.json**: `title`, `intent`, `brief[] {kind, text, section?}` (`kind` is `change`, `kept` or `risk`;
+`section` is a 1-based chapter number), `sections[] {title, overview, diffs[] {file, summary}}`, `unplacedFiles[]`,
 optional `generator`. The full shape and writing rules live in `references/guide-method.md`; `scripts/validate.py`
-enforces it (every changed file exactly once, at most 10 sections). `serve.py` refuses to start on an invalid guide.
+enforces it (every changed file exactly once, at most 10 sections). The CLI is strict, as the subagent and `SKILL.md`
+step 4 run it: `brief` is required (2-10 points, at least one `change`, at most 40 words and no backticks per
+point) and the first paragraph of every overview has no backticks. `serve.py` validates leniently
+(`validate(..., strict=False)`): `brief` may be absent, but if present its shape is checked. It refuses to start
+on a guide that fails that check, so older outdirs without `brief` still open.
 
 ## Rules
 

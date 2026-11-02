@@ -1,10 +1,11 @@
-// Sidebar in Guide mode: chapter list, slide-out drawer on narrow screens, file rows and badges.
+// Sidebar in Overview and Guide modes: chapter list, slide-out drawer on narrow screens, file rows and badges.
 
 import { narrowScreen, STATUS } from './constants.js';
 import { $main, basename, dirname, h, icon, pad2, plural } from './dom.js';
 import { openHelp } from './help.js';
-import { fileComments, filesMode, isViewed, secFiles, secStats } from './model.js';
+import { fileComments, filesMode, isViewed, overviewMode, secFiles, secStats } from './model.js';
 import { jumpToFile, jumpToSection } from './nav.js';
+import { cardQ, jumpToCard } from './overview.js';
 import { save } from './persist.js';
 import { fileQ, secQ } from './rerender.js';
 import { S, secByKey, sections, ui } from './state.js';
@@ -129,6 +130,11 @@ export function renderToc() {
   }
   const toc = document.getElementById('toc');
   const scroll = toc.scrollTop;
+  if (overviewMode()) {
+    renderOverviewToc(toc);
+    toc.scrollTop = scroll;
+    return;
+  }
   toc.replaceChildren(
     h('div', { class: 'toc-label' }, T.toc.chapters),
     h(
@@ -185,6 +191,39 @@ export function renderToc() {
   toc.scrollTop = scroll;
 }
 
+// Overview mode: chapters only, without files and viewed marks; a click scrolls to the chapter card.
+function renderOverviewToc(toc) {
+  toc.replaceChildren(
+    h('div', { class: 'toc-label' }, T.toc.chapters),
+    h(
+      'div',
+      { class: 'toc-list' },
+      sections.map((sec) =>
+        h(
+          'div',
+          { class: 'toc-group', dataset: { key: sec.key } },
+          h(
+            'div',
+            { class: 'toc-sec plain', 'aria-current': ui.curSec === sec.key ? 'true' : null },
+            h(
+              'button',
+              { class: 'toc-sec-go', type: 'button', dataset: { act: 'goto-sec', key: sec.key } },
+              h('span', { class: 'toc-num' }, sec.synthetic ? '—' : pad2(sec.idx + 1)),
+              h('span', { class: 'toc-title' }, sec.title),
+            ),
+          ),
+        ),
+      ),
+    ),
+    h(
+      'button',
+      { class: 'toc-help', type: 'button', dataset: { act: 'help' }, 'aria-keyshortcuts': '?' },
+      h('kbd', {}, '?'),
+      T.helpButton,
+    ),
+  );
+}
+
 export function onTocClick(e) {
   const btn = e.target.closest('[data-act]');
   if (!btn) return;
@@ -202,7 +241,7 @@ export function onTocClick(e) {
     toggleTreeDir(btn.dataset.dir);
     return;
   }
-  if (act === 'goto-sec') jumpToSection(btn.dataset.key);
+  if (act === 'goto-sec') (overviewMode() ? jumpToCard : jumpToSection)(btn.dataset.key);
   if (act === 'goto-file') jumpToFile(btn.dataset.path, btn.dataset.sec);
   if (narrowScreen.matches && ui.drawer) {
     setDrawer(false);
@@ -211,7 +250,9 @@ export function onTocClick(e) {
       const q =
         act === 'goto-file'
           ? `${fileQ(btn.dataset.sec, btn.dataset.path)} .file-toggle`
-          : `${secQ(btn.dataset.key)} .sec-toggle`;
+          : overviewMode()
+            ? `${cardQ(btn.dataset.key)} .ov-read`
+            : `${secQ(btn.dataset.key)} .sec-toggle`;
       const t = $main().querySelector(q);
       if (t) t.focus({ preventScroll: true });
     }

@@ -40,7 +40,8 @@ export function normalizeState(raw) {
     wrap: s.wrap !== false,
     theme: s.theme === 'light' || s.theme === 'dark' ? s.theme : 'auto',
     tocOpen: typeof s.tocOpen === 'boolean' ? s.tocOpen : null,
-    mode: s.mode === 'files' ? 'files' : 'guide',
+    // A new review (or an unknown value) opens in Overview; a saved Guide or Files mode is kept.
+    mode: s.mode === 'files' || s.mode === 'guide' ? s.mode : 'overview',
     treeCollapsed: obj(s.treeCollapsed),
     treeW: Number.isFinite(s.treeW) ? Math.min(TREE_MAX, Math.max(TREE_MIN, s.treeW)) : null,
     hideViewed: !!s.hideViewed,

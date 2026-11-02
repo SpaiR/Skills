@@ -31,8 +31,11 @@ paths:
 - `tests/fixtures/<name>/` are recorded outdirs (`meta.json`, `guide.json`, `guide.patch`, optional `full.patch`).
   Absolute paths inside (`root`, temp dirs) are recorded data: do not "fix" or anonymize them.
 - To record a new one, run `collect.py --out` on a scratch repo, write a valid `guide.json`
-  (`validate.py` must pass) and copy the files in. Keep fixtures on the current meta version unless the test is
-  about old outdirs.
+  (`validate.py` must pass, strict as the CLI runs it) and copy the files in. Keep fixtures on the current meta
+  version unless the test is about old outdirs.
+- `big`, `large`, `mixed` and `tree` were recorded before `guide.brief` and stand for older outdirs that `serve.py`
+  must still open: `test_validate.py` (`PRE_BRIEF_FIXTURES`) checks them leniently and requires them to stay
+  without `brief`. Every other fixture must pass strict validation.
 - `mixed/feedback.golden.md` must stay byte-identical to what the viewer posts for the state in
   `submit-and-final.test.js`. Change it only when a change to `T.feedback`/`feedback.js` is intended: regenerate it
   from the actual output that the failing test prints, and review the diff line by line. The fixture `mixed` is

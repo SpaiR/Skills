@@ -34,6 +34,10 @@
 .toc-sec:hover {
   background: var(--tint);
 }
+/* Overview mode: no viewed status column. */
+.toc-sec.plain {
+  grid-template-columns: minmax(0, 1fr);
+}
 /* Square left edge: on a rounded corner the current-chapter bar bends into a bracket. */
 .toc-sec[aria-current="true"] {
   background: var(--tint);

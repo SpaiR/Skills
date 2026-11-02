@@ -15,14 +15,20 @@ describe('files mode and file tree', () => {
     );
   const waitSaved = () => sleep(700);
 
-  it('keeps the file and line under the header on G, remembers the mode after reload, and opens a new review in "Гайд"', async (t) => {
+  it('keeps the file and line under the header on G, remembers the mode after reload, and opens a new review in "Обзор"', async (t) => {
     // was F1
-    const fx = await env.server('mixed2');
+    const fx = await env.server('mixed2', null, { fresh: true });
     let page = await env.open(fx);
-    assert.ok(
-      !(await page.evaluate(() => document.documentElement.classList.contains('mode-files'))),
-      'a new review did not open in "Гайд"',
+    assert.deepEqual(
+      await page.evaluate(() => ({
+        files: document.documentElement.classList.contains('mode-files'),
+        overview: document.documentElement.classList.contains('mode-overview'),
+        pressed: document.querySelector('#top .mode-seg button[aria-pressed="true"]').textContent,
+      })),
+      { files: false, overview: true, pressed: 'Обзор' },
+      'a new review did not open in "Обзор"',
     );
+    await page.click('#top .mode-seg button[data-mode="guide"]');
     await toEl(page, numSel(F('scripts/collect.py'), 'new', 56), 400);
     // The mode keeps the first line under the pinned headers (header + chapter + file = 140px in "Гайд").
     const pick = () =>

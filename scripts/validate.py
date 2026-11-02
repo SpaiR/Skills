@@ -5,19 +5,76 @@ Every changed file from meta.json must appear exactly once: in the diffs of one
 section or in unplacedFiles. Fixes nothing silently: prints all errors and exits
 with code 1. On success prints a short summary and exits with code 0.
 
+The CLI is strict: it also requires the `brief` list and plain-language first paragraphs of the
+section overviews. serve.py validates leniently, so older outdirs without `brief` still open.
+
 Usage: validate.py --guide guide.json --meta meta.json
 """
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
 MAX_SECTIONS = 10
+BRIEF_KINDS = ("change", "kept", "risk")
+BRIEF_MIN = 2
+BRIEF_MAX = 10
+BRIEF_MAX_WORDS = 40
 
 
-def validate(guide, meta):
-    """Return a list of errors (empty means the guide is valid)."""
+def first_paragraph(text):
+    """Text up to the first blank line. Carriage returns are dropped, as markdown.js does."""
+    return re.split(r"\n[ \t]*\n", text.replace("\r", "").strip(), maxsplit=1)[0]
+
+
+def check_brief(brief, n_sections, strict):
+    """Return the errors of the `brief` field (shape in both modes, limits only when strict)."""
+    if not isinstance(brief, list):
+        return ["`brief` must be an array of points"]
+    errors = []
+    if strict:
+        if len(brief) < BRIEF_MIN:
+            errors.append(f"`brief` has {len(brief)} points, at least {BRIEF_MIN} are required")
+        elif len(brief) > BRIEF_MAX:
+            errors.append(f"`brief` has {len(brief)} points, maximum is {BRIEF_MAX}: keep only the main ones")
+        if not any(isinstance(b, dict) and b.get("kind") == "change" for b in brief):
+            errors.append('`brief` needs at least one point with kind "change"')
+    for i, b in enumerate(brief, 1):
+        where = f"brief point {i}"
+        if not isinstance(b, dict):
+            errors.append(f"{where}: must be an object")
+            continue
+        if b.get("kind") not in BRIEF_KINDS:
+            errors.append(f"{where}: `kind` must be one of {', '.join(BRIEF_KINDS)}")
+        text = b.get("text")
+        if not isinstance(text, str) or not text.strip():
+            errors.append(f"{where}: empty `text`")
+        elif "\n" in text.strip():
+            errors.append(f"{where}: `text` must be a single line")
+        elif strict:
+            if "`" in text:
+                errors.append(f"{where}: `text` must not contain backticks, write plain language")
+            words = len(text.split())
+            if words > BRIEF_MAX_WORDS:
+                errors.append(f"{where}: `text` has {words} words, maximum is {BRIEF_MAX_WORDS}")
+        if "section" in b:
+            n = b["section"]
+            if isinstance(n, bool) or not isinstance(n, int):
+                errors.append(f"{where}: `section` must be an integer")
+            # Without valid sections that error is already reported: no range to check against.
+            elif n_sections and not 1 <= n <= n_sections:
+                errors.append(f"{where}: `section` {n} is out of range 1..{n_sections}")
+    return errors
+
+
+def validate(guide, meta, strict=True):
+    """Return a list of errors (empty means the guide is valid).
+
+    strict=False skips the rules that older guides do not meet: `brief` may be absent and the
+    limits on its points and on the first paragraph of the overviews are not checked.
+    """
     errors = []
     changed = [f["path"] for f in meta["files"]]
     changed_set = set(changed)
@@ -43,6 +100,11 @@ def validate(guide, meta):
         errors.append("`unplacedFiles` must be an array of strings (empty if everything is placed)")
         unplaced = []
 
+    if "brief" in guide:
+        errors.extend(check_brief(guide["brief"], len(sections), strict))
+    elif strict:
+        errors.append("field `brief` is required: an array of 2-10 points {kind, text, section?}")
+
     placements = {}  # path -> list of places
     unknown = []
 
@@ -57,6 +119,11 @@ def validate(guide, meta):
             where = f'section {i} "{s["title"].strip()}"'
         if not isinstance(s.get("overview"), str) or not s["overview"].strip():
             errors.append(f"{where}: empty `overview`")
+        elif strict and "`" in first_paragraph(s["overview"]):
+            errors.append(
+                f"{where}: the first paragraph of `overview` must not contain backticks, "
+                "write plain language there and put identifiers in the next paragraphs"
+            )
         diffs = s.get("diffs")
         if not isinstance(diffs, list):
             errors.append(f"{where}: `diffs` must be an array")
@@ -118,7 +185,7 @@ def main():
     n_placed = sum(len(s["diffs"]) for s in guide["sections"])
     print(
         f"OK: {len(guide['sections'])} sections, {n_placed} files in sections, "
-        f"{len(guide['unplacedFiles'])} in unplacedFiles"
+        f"{len(guide['unplacedFiles'])} in unplacedFiles, {len(guide['brief'])} brief points"
     )
 
 

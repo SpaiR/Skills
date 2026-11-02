@@ -82,6 +82,25 @@
     max-width: 140px;
   }
 }
+/* Three mode buttons: below 1100px they drop their minimum width and the progress keeps only the numbers
+   (its title still has the full text), so the left part does not run into the right one. */
+@media (max-width: 1099.98px) {
+  #top .mode-seg button {
+    min-width: 0;
+    padding: 0 8px;
+  }
+  .progress-cap {
+    display: none;
+  }
+}
+@media (max-width: 959.98px) {
+  #approve-btn {
+    padding: 0 8px;
+  }
+  #approve-btn .btn-text {
+    display: none;
+  }
+}
 /* Below 768px only basic usability is guaranteed: the header must not overflow the window edge. */
 @media (max-width: 767.98px) {
   #top {
