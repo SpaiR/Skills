@@ -143,6 +143,8 @@ export function renderHeader() {
           class: 'btn',
           id: 'approve-btn',
           type: 'button',
+          // Below 960px the button shows only its icon: the title names it for the mouse.
+          title: T.header.approve,
           'aria-label': T.header.approve,
           onclick: () => openSubmit('approve'),
         },

@@ -62,8 +62,9 @@ Overview to Guide; there is no key for Overview.
   must not treat the cards as chapters. In Overview `trackCurrent()` only marks the sidebar row of the card under
   the top bar (`trackCard()`, `nav.js`), and `jumpToCard()` pins it. Chapter-only keys (`guideOnly`) show a hint
   outside Guide mode.
-- Entering Overview remembers the file and row of Guide or Files (`ui.modeReturn`); leaving it without a target
-  goes back there, so a look at Overview keeps the reading place.
+- Entering Overview remembers the file and row of Guide or Files, or the Guide chapter when no file is current
+  (`ui.modeReturn`); leaving it without a target goes back there, so a look at Overview keeps the reading place.
+  Jumps that have their own target (a card's «Читать в гайде», notes, drafts, chapter comments) do not restore it.
 - The brief (`guide.brief`, optional) is shown in Overview and Guide, not in Files; a guide without it shows no
   block. Point text goes in as a text node (`typography()` applied), never through `md()`.
 - Jumps that need files (notes and drafts from the submit dialog, chapter comments) switch to Guide first when the

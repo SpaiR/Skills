@@ -164,6 +164,9 @@ export function readInGuide(key) {
     S.sectionOpen[key] = true;
     save();
   }
+  // The chapter is the target: the place remembered for Overview is not restored (setMode would reopen
+  // and scroll to it first).
+  ui.modeReturn = null;
   setMode('guide');
   showChapter(key, true);
 }

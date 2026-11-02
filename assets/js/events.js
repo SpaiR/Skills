@@ -105,7 +105,8 @@ export function goToNote(id, secKey) {
   const a = S.annotations.find((x) => x.id === id);
   const file = a && fileByPath.get(a.file);
   if (!file) return;
-  if (overviewMode()) setMode('guide');
+  // The note is the target: the place remembered for Overview is not restored.
+  if (overviewMode()) setMode('guide', a.file);
   const sec = groups().includes(secByKey.get(secKey)) ? secByKey.get(secKey) : groupFor(a.file);
   if (!sec) return;
   revealFile(file, sec);

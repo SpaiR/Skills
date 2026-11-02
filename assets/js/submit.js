@@ -250,7 +250,11 @@ export function openSubmit(action) {
 function goToSectionComment(key) {
   const sec = secByKey.get(key);
   if (!sec) return;
-  if (!guideMode()) setMode('guide');
+  if (!guideMode()) {
+    // The chapter is the target: the place remembered for Overview is not restored.
+    ui.modeReturn = null;
+    setMode('guide');
+  }
   if (!sectionOpen(sec)) {
     S.sectionOpen[key] = true;
     save();
@@ -266,7 +270,8 @@ function goToDraft(key) {
   const d = S.drafts[key];
   const file = d && fileByPath.get(d.file);
   if (!file) return;
-  if (overviewMode()) setMode('guide');
+  // The draft is the target: the place remembered for Overview is not restored.
+  if (overviewMode()) setMode('guide', d.file);
   const sec = groupFor(d.file);
   if (!sec) return;
   revealFile(file, sec);

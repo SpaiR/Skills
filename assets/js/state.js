@@ -28,7 +28,7 @@ export const ui = {
   drag: null, // drag across line numbers: {file, sec, fileEl, anchor, extend, range}
   cursor: null, // change block under the N/P cursor: {path, sec, from, to} (file line indices)
   pin: null, // current item after J/K/]/[/V: {sec, path}; held until the user scrolls manually
-  modeReturn: null, // the place in Guide or Files left for Overview: {path, ref}; leaving Overview goes back there
+  modeReturn: null, // the place in Guide or Files left for Overview: {path, ref, sec}; leaving Overview goes back there
   tocHover: false,
   heroHidden: false,
   opener: null,

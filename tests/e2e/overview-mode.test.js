@@ -343,6 +343,104 @@ describe('overview mode and guide brief', () => {
     assert.ok(Math.abs(overview.after.y - files.after.y) < 2, JSON.stringify({ files, overview }));
   });
 
+  it('goes back to the chapter of "Гайд" left for "Обзор" when no file was current there', async () => {
+    const closed = { s1: false, s2: false, s3: false, rest: false };
+    const page = await env.open(await env.server('mixed2', { mode: 'guide', sectionOpen: closed }), {
+      viewport: { width: 1440, height: 300 },
+    });
+    const place = () =>
+      page.evaluate(() => ({
+        top: Math.round(document.querySelector('#main .sec[data-key="s1"]').getBoundingClientRect().top),
+        current: document.querySelector('#toc .toc-sec[aria-current="true"]')?.closest('.toc-group').dataset.key,
+        file: !!document.querySelector('#main .file-head.is-current'),
+      }));
+    await page.click('#toc .toc-group[data-key="s1"] .toc-sec-go');
+    await sleep(400);
+    const before = await place();
+    assert.ok(before.top < 60, JSON.stringify(before));
+    assert.equal(before.current, 's1');
+    assert.equal(before.file, false);
+    await page.click('#top .mode-seg button[data-mode="overview"]');
+    await sleep(200);
+    await page.click('#top .mode-seg button[data-mode="guide"]');
+    await sleep(400);
+    assert.deepEqual(await place(), before);
+  });
+
+  it('opens only the chosen chapter from "Читать в гайде", not the one of the place left for "Обзор"', async () => {
+    const closed = { s1: false, s2: false, s3: false, rest: false };
+    const page = await env.open(await env.server('mixed2', { mode: 'files', sectionOpen: closed }), {
+      viewport: { width: 1440, height: 700 },
+    });
+    await page.locator('#toc .tree-row[data-path]').first().click();
+    await sleep(400);
+    const left = await page.evaluate(
+      () => document.querySelector('#main .file-head.is-current')?.closest('.file').dataset.path,
+    );
+    const guide = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'mixed2/guide.json'), 'utf8'));
+    const leftSec = `s${guide.sections.findIndex((x) => x.diffs.some((d) => d.file === left)) + 1}`;
+    const target = leftSec === 's3' ? 's2' : 's3';
+    await page.click('#top .mode-seg button[data-mode="overview"]');
+    await sleep(200);
+    await page.click(`.ov-sec[data-key="${target}"] .ov-read`);
+    await sleep(400);
+    const open = await page.$$eval('#main .sec:not(.collapsed)', (els) => els.map((e) => e.dataset.key));
+    assert.deepEqual(open, [target], JSON.stringify({ left, leftSec }));
+  });
+
+  it('opens only the target chapter from the submit dialog of "Обзор", not the one of the place left for it', async () => {
+    // The place left for "Обзор" is a file of chapter s3; every target lies in s1 or s2.
+    const state = {
+      mode: 'files',
+      sectionOpen: { s1: false, s2: false, s3: false, rest: false },
+      annotations: [
+        { id: 'n1', file: 'scripts/validate.py', side: 'new', start: 16, end: 16, text: 'заметка', suggestion: '' },
+      ],
+      sectionComments: { s1: 'к главе' },
+      drafts: {
+        'scripts/collect.py|new|34|34': {
+          file: 'scripts/collect.py',
+          side: 'new',
+          start: 34,
+          end: 34,
+          text: 'черновик',
+          suggestion: '',
+        },
+      },
+    };
+    const cases = [
+      ['note', 'dialog#submit .dlg-item >> text=заметка', 's2'],
+      ['chapter comment', 'dialog#submit .dlg-item >> text=к главе', 's1'],
+      ['draft', 'dialog#submit .dlg-drafts .btn', 's1'],
+    ];
+    for (const [what, click, target] of cases) {
+      const page = await env.open(await env.server('mixed2', state), { viewport: { width: 1440, height: 700 } });
+      await page.click('#toc .tree-row[data-path="references/method.md"]');
+      await sleep(400);
+      const left = await page.evaluate(
+        () => document.querySelector('#main .file-head.is-current')?.closest('.file').dataset.path,
+      );
+      assert.equal(left, 'references/method.md', `${what}: the place left for "Обзор"`);
+      await page.click('#top .mode-seg button[data-mode="overview"]');
+      await sleep(200);
+      await page.click('#submit-btn');
+      await page.click(click);
+      await sleep(400);
+      assert.equal((await mode(page)).mode, 'guide', `${what}: not in "Гайд"`);
+      const open = await page.$$eval('#main .sec:not(.collapsed)', (els) => els.map((e) => e.dataset.key));
+      assert.deepEqual(open, [target], `${what}: open chapters`);
+    }
+  });
+
+  it('names the approve button by its title when a narrow header leaves only its icon', async () => {
+    const page = await env.open(await env.server('mixed2'), { viewport: { width: 900, height: 700 } });
+    const r = await page.$eval('#approve-btn', (b) => ({
+      textShown: getComputedStyle(b.querySelector('.btn-text')).display !== 'none',
+      title: b.title,
+    }));
+    assert.deepEqual(r, { textShown: false, title: 'Одобрить' });
+  });
+
   it('marks the current chapter in the sidebar of "Обзор" after a jump and while scrolling', async () => {
     const page = await env.open(await env.server('mixed2', { mode: 'overview' }), {
       viewport: { width: 1440, height: 600 },
