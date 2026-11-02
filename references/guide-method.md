@@ -97,7 +97,9 @@ because the first reader cannot check it.
   if a reader will certainly ask, say plainly that the change does not explain it.
 - Count every number and quantity in the plain part («три варианта», «на пять записей меньше», «десятки», «сотни»)
   from the diff: deleted files, removed entries, a constant. Or copy it from `meta.json`. A sample value in a comment,
-  a docstring or a test is not a fact about real data. A rounded word like «сотни» is still a number.
+  a docstring or a test is not a fact about real data. A rounded word like «сотни» is still a number. For a
+  before/after count (entries in a menu, variants of a part), list the removed and the added items by name and count
+  each side before writing either number.
 - For a change in controls or UI, first match each user action to the control that does it, and keep them apart in
   the text. If a menu picks the font and the cursor position picks where the text goes, a sentence that has the menu
   doing both is wrong.
@@ -157,7 +159,8 @@ takes away, and often all they read. Each point is an object:
     symptom a user or operator would see; «логика сложная» or «стоит прочитать» alone is not a risk, because the
     reader cannot tell what to look for. Describe the symptom, not how the code computes it. Before a compatibility
     or migration risk, name what still depends on the old thing: a save format, a stored file, a caller outside the
-    diff. If you cannot name it, drop the point. Most briefs have zero to two; do not invent one to fill the kind.
+    diff. If you cannot name it, drop the point; a point that admits the diff does not show what depends on the old
+    thing is such a case, not one to keep with a disclaimer. Most briefs have zero to two; do not invent one to fill the kind.
 - `text`: one line, one or two sentences of plain Russian, at most 40 words, no code names and no backticks. The page
   shows it as plain text, so no Markdown either.
 - `section`: the number of the chapter that explains the point, counting from 1. Omit it when the point spans the whole
@@ -172,6 +175,8 @@ How to write a point:
 - Describe the effect, not the mechanism: «Счёт больше не создаётся дважды при повторном нажатии», not «добавлена
   проверка идемпотентности в обработчик».
 - One point, one fact. Two unrelated changes are two points.
+- Tests and docs earn a point only with a fact the reader needs: which case is or is not covered. «Документация
+  описывает новое поведение» is not a point.
 
 ### sections
 
@@ -204,7 +209,8 @@ list, callout or code block. It says what the user can now do; the controls, tim
 slowly. Overview mode shows it right after the brief, so do not restate the brief point: add the condition, the scope or the
 visible detail the point left out. An overview of a single paragraph is all first paragraph, which is often right for
 the wiring chapter (sample: «Подключение нового экрана к меню и правки настроек сборки.»). If you need a code name,
-start a second paragraph.
+start a second paragraph. For a chapter of data or scene edits, the first paragraph says what the edit changes in
+behaviour, often nothing, never the raw field values.
 
 The **next paragraphs** are for the second reader, usually 2–5 sentences in total:
 
@@ -390,6 +396,11 @@ write to:
      else the chapter covers, named concretely: «документация описывает новое поведение» names nothing.
    - List the plain name you used for each thing across the title, the brief, section titles and first paragraphs.
      Keep one per thing.
+   - List the effects a player, user or operator will notice: new costs, limits, numbers, keys, modes. Each one is in
+     the brief or a first paragraph, or you decided it is minor.
+   - Move controls out of first paragraphs: keys, mouse buttons, hold times and modifier keys go to the next
+     paragraph, unless the chapter is about the key bindings themselves. A colon followed by a list of controls is
+     still one sentence and counts against the 25-word limit.
    - Look for sentences over 25 words, arrows, packed identifiers, invented labels and filler.
 7. Write `guide.json` and run the validator command from your task. Fix and rerun until it passes.
 
