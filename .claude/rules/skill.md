@@ -22,7 +22,7 @@ paths:
 
 ## Subagent
 
-- Launched with `subagent_type: "general-purpose"`, `model: "sonnet"`, `effort: "medium"`. Changing the model or
+- Launched with `subagent_type: "general-purpose"`, `model: "sonnet"`, `effort: "high"`. Changing the model or
   effort changes cost and guide quality: do it deliberately and say why in the commit.
 - The subagent may write only inside the outdir and must run `validate.py` until it passes. The main session does
   not read the diff and does not write the guide.
