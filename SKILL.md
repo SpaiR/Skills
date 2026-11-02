@@ -78,7 +78,7 @@ subagent is writing the guide.
 
 ## 3. Launch the subagent
 
-Call Agent with `subagent_type: "general-purpose"`, `model: "sonnet"`, `effort: "high"`,
+Call Agent with `subagent_type: "general-purpose"`, `model: "sonnet"`, `effort: "medium"`,
 `description: "Guided review: <repo name>"`. Use the prompt below with the values filled in:
 
 ```
