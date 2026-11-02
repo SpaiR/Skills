@@ -268,5 +268,46 @@ class ServerV1OutdirTest(ServerCase):
         self.assertEqual(self.request("GET", "/api/full?i=3")[0], 404)
 
 
+class ServerGuideWithoutBriefTest(ServerCase):
+    """Lenient validation: an older guide with no `brief` still opens."""
+
+    def prepare_outdir(self):
+        path = self.outdir / "guide.json"
+        guide = json.loads(path.read_text(encoding="utf-8"))
+        guide.pop("brief", None)
+        path.write_text(json.dumps(guide, ensure_ascii=False), encoding="utf-8")
+
+    def test_guide_without_brief_loads(self):
+        status, body = self.request("GET", "/api/review")
+        self.assertEqual(status, 200)
+        self.assertNotIn("brief", json.loads(body)["guide"])
+
+
+class ServerBadBriefTest(unittest.TestCase):
+    def run_serve(self, brief):
+        with tempfile.TemporaryDirectory() as td:
+            outdir = Path(td) / "out"
+            shutil.copytree(FIXTURES / "mixed2", outdir)
+            path = outdir / "guide.json"
+            guide = json.loads(path.read_text(encoding="utf-8"))
+            guide["brief"] = brief
+            path.write_text(json.dumps(guide, ensure_ascii=False), encoding="utf-8")
+            return subprocess.run(
+                [sys.executable, str(SCRIPTS / "serve.py"), "--dir", str(outdir), "--timeout-min", "5"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+
+    def test_bad_brief_shape_refuses_to_start(self):
+        for brief in ("not a list", [{"kind": "oops", "text": "x"}], [{"kind": "change", "text": "x", "section": 99}]):
+            with self.subTest(brief=brief):
+                r = self.run_serve(brief)
+                self.assertEqual(r.returncode, 1)
+                self.assertNotIn("DIFF_REVIEW_URL", r.stdout)
+                self.assertIn("guide.json failed validation", r.stderr)
+                self.assertIn("brief", r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

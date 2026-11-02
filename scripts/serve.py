@@ -83,7 +83,7 @@ def submit_error(action, markdown, submitted):
 def load_review(outdir):
     meta = json.loads((outdir / "meta.json").read_text(encoding="utf-8"))
     guide = json.loads((outdir / "guide.json").read_text(encoding="utf-8"))
-    errors = validate(guide, meta)
+    errors = validate(guide, meta, strict=False)
     if errors:
         raise SystemExit("guide.json failed validation:\n" + "\n".join(f"- {e}" for e in errors))
     chunks = split_patch((outdir / "guide.patch").read_text(encoding="utf-8"))
