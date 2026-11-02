@@ -30,8 +30,11 @@ process.on('exit', () => {
   }
 });
 
-// Copies a fixture into a temp dir (with an optional state.json), starts serve.py on it and waits for its URL.
-// opts.meta: fields merged into meta.json (`pr` is merged one level deep); opts.env: extra environment for serve.py.
+// Copies a fixture into a temp dir with a state.json, starts serve.py on it and waits for its URL.
+// The page opens in "Гайд", the mode most tests are about: state.json gets `mode: "guide"` unless `state` sets
+// a mode. opts.fresh: no state.json at all, as for a new review (it opens in "Обзор").
+// opts.meta: fields merged into meta.json (`pr` is merged one level deep); opts.guide: top-level fields merged
+// into guide.json; opts.env: extra environment for serve.py.
 export async function startFixture(fx, state, opts = {}) {
   const run = fs.mkdtempSync('/tmp/dr-test-');
   for (const f of ['guide.json', 'guide.patch', 'meta.json'])
@@ -44,9 +47,14 @@ export async function startFixture(fx, state, opts = {}) {
     if (pr) meta.pr = { ...meta.pr, ...pr };
     fs.writeFileSync(metaPath, JSON.stringify(meta));
   }
+  if (opts.guide) {
+    const guidePath = path.join(run, 'guide.json');
+    const guide = JSON.parse(fs.readFileSync(guidePath, 'utf8'));
+    fs.writeFileSync(guidePath, JSON.stringify({ ...guide, ...opts.guide }));
+  }
   const full = path.join(FIXTURES, fx, 'full.patch');
   if (fs.existsSync(full)) fs.copyFileSync(full, path.join(run, 'full.patch'));
-  if (state) fs.writeFileSync(path.join(run, 'state.json'), JSON.stringify(state));
+  if (!opts.fresh) fs.writeFileSync(path.join(run, 'state.json'), JSON.stringify({ mode: 'guide', ...state }));
   const proc = spawn('python3', [SERVE, '--dir', run, '--timeout-min', '10'], {
     stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, ...opts.env },

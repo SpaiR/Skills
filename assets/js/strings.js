@@ -150,8 +150,12 @@ export const T = Object.freeze({
     sidebar: 'Боковая панель',
     sidebarTitle: 'Боковая панель (T)',
     mode: 'Режим',
+    overview: 'Обзор',
     guide: 'Гайд',
     files: 'Файлы',
+    overviewTitle: 'Обзор: суть изменения и главы',
+    guideTitle: 'Гайд (G)',
+    filesTitle: 'Файлы (G)',
     diffView: 'Вид диффа',
     unified: 'Единый',
     split: 'Рядом',
@@ -192,7 +196,17 @@ export const T = Object.freeze({
     commentDeleted: 'Комментарий к главе удалён',
   },
 
-  // Sidebar: chapter list (Guide mode) and file tree (Files mode).
+  // Overview mode and the guide brief (overview.js).
+  overview: {
+    briefAria: 'Кратко об изменении',
+    kinds: { change: 'Что меняется', kept: 'Что остаётся как было', risk: 'На что смотреть' },
+    chapterLink: (n) => `Глава ${n}`,
+    chapterLinkTitle: (title) => `Перейти к главе «${title}»`,
+    readInGuide: 'Читать в гайде',
+    readAria: (title) => `Читать главу «${title}» в гайде`,
+  },
+
+  // Sidebar: chapter list (Overview and Guide modes) and file tree (Files mode).
   toc: {
     chapters: 'Главы',
     markChapter: (title) => `Отметить главу «${title}» просмотренной`,
@@ -268,6 +282,7 @@ export const T = Object.freeze({
   // Toasts of keyboard actions and mode switches.
   keys: {
     guideOnly: 'Это действие с главами — оно есть в режиме «Гайд» (G)',
+    diffViewOnly: 'Вид диффа переключается в режимах «Гайд» и «Файлы» (G)',
     lastFile: 'Это последний файл',
     firstFile: 'Это первый файл',
     lastChapter: 'Это последняя глава',
@@ -290,7 +305,7 @@ export const T = Object.freeze({
     nextFile: 'Следующий / предыдущий файл',
     nextChapter: 'Следующая / предыдущая глава',
     nextChange: 'Следующее / предыдущее изменение',
-    mode: 'Режим: гайд или файлы',
+    mode: 'Режим: гайд или файлы, из обзора — в гайд',
     filter: 'Фильтр файлов',
     review: 'Ревью',
     markFile: 'Отметить файл просмотренным',

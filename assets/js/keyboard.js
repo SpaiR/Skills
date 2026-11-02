@@ -9,7 +9,7 @@ import { closeForm, openLineForm } from './forms.js';
 import { openHelp } from './help.js';
 import { fileBlocks, rowIndex } from './lines.js';
 import { closeMenu } from './menu.js';
-import { fileOpen, filesMode, isViewed } from './model.js';
+import { fileOpen, filesMode, guideMode, isViewed, overviewMode } from './model.js';
 import { setAllFilesOpen, setMode } from './modes.js';
 import { applyCurrent, jumpToSection, scrollToElement, trackCurrent } from './nav.js';
 import { fileQ, secQ, stickyOffset } from './rerender.js';
@@ -38,15 +38,17 @@ const KEYS = {
   KeyO: () => toggleCurrentFile(),
   KeyE: () => toggleCurrentWholeFile(),
   KeyC: () => commentAtCursor(),
-  KeyS: () => setViewMode(S.viewMode === 'split' ? 'unified' : 'split'),
+  // Overview shows no diffs and hides the view switch: S there only explains where it works.
+  KeyS: () => (overviewMode() ? toast(T.keys.diffViewOnly) : setViewMode(S.viewMode === 'split' ? 'unified' : 'split')),
   KeyW: () => setWrap(!S.wrap),
   KeyT: () => toggleToc(),
-  KeyG: () => setMode(filesMode() ? 'guide' : 'files'),
+  // G: Guide <-> Files; from Overview it goes to Guide.
+  KeyG: () => setMode(guideMode() ? 'files' : 'guide'),
   KeyZ: () => setAllFilesOpen(false),
   Slash: () => focusFilter(),
 };
-// Chapter keys: Files mode has no chapters, so a hint is shown instead of the action.
-const guideOnly = (fn) => () => (filesMode() ? toast(T.keys.guideOnly) : fn());
+// Chapter keys: only Guide mode has chapters (Overview has cards, Files a single group), elsewhere a hint is shown.
+const guideOnly = (fn) => () => (guideMode() ? fn() : toast(T.keys.guideOnly));
 KEYS.BracketRight = guideOnly(KEYS.BracketRight);
 KEYS.BracketLeft = guideOnly(KEYS.BracketLeft);
 const SHIFT_KEYS = {

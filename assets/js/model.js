@@ -6,10 +6,13 @@ import { T } from './strings.js';
 
 export const secFiles = (sec) => sec.diffs.map((d) => fileByPath.get(d.file)).filter(Boolean);
 export const filesMode = () => S.mode === 'files';
+export const guideMode = () => S.mode === 'guide';
+export const overviewMode = () => S.mode === 'overview';
 // Groups of the main column in the current mode: the guide chapters or a single headless Files group.
-export const groups = () => (filesMode() ? [filesGroup] : sections);
+// Overview mode shows no files, so it has no groups: its chapter cards (.ov-sec) are not .sec.
+export const groups = () => (filesMode() ? [filesGroup] : overviewMode() ? [] : sections);
 export const groupFor = (path) =>
-  filesMode() ? filesGroup : sections.find((s) => s.diffs.some((d) => d.file === path)) || null;
+  filesMode() ? filesGroup : overviewMode() ? null : sections.find((s) => s.diffs.some((d) => d.file === path)) || null;
 export const isViewed = (file) => !!S.filesViewed && S.filesViewed[file.path] === file.hash;
 export const sectionOpen = (sec) =>
   sec.headless ? true : sec.key in S.sectionOpen ? !!S.sectionOpen[sec.key] : !S.reviewed[sec.key];

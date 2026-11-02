@@ -8,7 +8,7 @@ import { buildMarkdown } from './feedback.js';
 import { updateChrome } from './header.js';
 import { lineAt } from './lines.js';
 import { closeMenu } from './menu.js';
-import { commentCount, filesMode, groupFor, isViewed, secComments, sectionOpen } from './model.js';
+import { commentCount, groupFor, guideMode, isViewed, overviewMode, secComments, sectionOpen } from './model.js';
 import { setMode } from './modes.js';
 import { jumpToSection, scrollToElement } from './nav.js';
 import { api, cancelSave, save } from './persist.js';
@@ -250,7 +250,7 @@ export function openSubmit(action) {
 function goToSectionComment(key) {
   const sec = secByKey.get(key);
   if (!sec) return;
-  if (filesMode()) setMode('guide');
+  if (!guideMode()) setMode('guide');
   if (!sectionOpen(sec)) {
     S.sectionOpen[key] = true;
     save();
@@ -261,10 +261,13 @@ function goToSectionComment(key) {
   flash($main().querySelector(`${secQ(key)} .sec-comment .note`));
 }
 
+// Overview mode shows no files: the jump goes through Guide mode. Files mode shows drafts itself.
 function goToDraft(key) {
   const d = S.drafts[key];
   const file = d && fileByPath.get(d.file);
-  const sec = file && groupFor(d.file);
+  if (!file) return;
+  if (overviewMode()) setMode('guide');
+  const sec = groupFor(d.file);
   if (!sec) return;
   revealFile(file, sec);
   const q =

@@ -5,9 +5,10 @@ import { expandGap, isWhole, setWholeFile } from './expand.js';
 import { continueDraft, deleteDraft, deleteNote, lineRowBefore, openEditForm, openLineForm } from './forms.js';
 import { updateChrome } from './header.js';
 import { rangeOf } from './lines.js';
-import { fileOpen, groupFor, groups, sectionOpen } from './model.js';
+import { fileOpen, groupFor, groups, overviewMode, sectionOpen } from './model.js';
 import { setMode } from './modes.js';
 import { jumpToFile, jumpToSection, scrollToElement } from './nav.js';
+import { goToChapter, readInGuide } from './overview.js';
 import { save } from './persist.js';
 import { fileQ, rerenderFile, rerenderSection, secQ, stickyOffset, withAnchor } from './rerender.js';
 import { closeSectionComment, deleteSectionComment, openSectionComment } from './section.js';
@@ -46,6 +47,10 @@ export function onMainClick(e) {
     if (again && (e.detail === 0 || act === 'toggle-file')) again.focus({ preventScroll: true });
   } else if (act === 'to-guide') {
     setMode('guide', file.path);
+  } else if (act === 'brief-sec') {
+    goToChapter(btn.dataset.key, e.detail === 0);
+  } else if (act === 'read-in-guide') {
+    readInGuide(btn.dataset.key);
   } else if (act === 'filter-reset') {
     resetFilter();
   } else if (act === 'gap') {
@@ -95,10 +100,12 @@ export function toggleFile(file, sec, open) {
 }
 
 // Expand the chapter and the file if collapsed, and scroll to the comment card, highlighting it.
+// Overview mode shows no files: the jump goes through Guide mode.
 export function goToNote(id, secKey) {
   const a = S.annotations.find((x) => x.id === id);
   const file = a && fileByPath.get(a.file);
   if (!file) return;
+  if (overviewMode()) setMode('guide');
   const sec = groups().includes(secByKey.get(secKey)) ? secByKey.get(secKey) : groupFor(a.file);
   if (!sec) return;
   revealFile(file, sec);

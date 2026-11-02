@@ -1,4 +1,5 @@
 // Main column: the hero block, chapter cards, the Files mode group and chapter comments.
+// Overview mode renders the hero and the cards of overview.js instead of chapters.
 
 import { fitTextarea } from './comments.js';
 import { isMac, MOD_ENTER } from './constants.js';
@@ -7,7 +8,8 @@ import { renderFile } from './file.js';
 import { closeForm, revealEditor } from './forms.js';
 import { updateChrome, updateHeader } from './header.js';
 import { md } from './markdown.js';
-import { filesMode, groups, secFiles, secStats, sectionOpen } from './model.js';
+import { filesMode, groups, overviewMode, secFiles, secStats, sectionOpen } from './model.js';
+import { renderBrief, renderOverview } from './overview.js';
 import { save } from './persist.js';
 import { rerenderSection, secQ, withAnchor } from './rerender.js';
 import { finished, R, S, secByKey, sections, ui } from './state.js';
@@ -15,7 +17,7 @@ import { T, WORDS } from './strings.js';
 import { toast } from './toast.js';
 import { fileRow, statPair } from './toc.js';
 
-// In Files mode, no intent: people read code there, not the story of the change.
+// In Files mode, no intent and no brief: people read code there, not the story of the change.
 function renderHero() {
   const g = R.guide,
     m = R.meta,
@@ -38,6 +40,7 @@ function renderHero() {
     h('h1', { id: 'review-title' }, g.title),
     !compact && g.intent && h('div', { class: 'intent md', html: md(g.intent) }),
     pr && renderPr(pr, compact),
+    !compact && renderBrief(),
     h(
       'div',
       { class: 'hero-meta' },
@@ -102,7 +105,7 @@ function renderPr(pr, compact) {
 }
 
 export function renderMain() {
-  $main().replaceChildren(renderHero(), ...groups().map(renderSection));
+  $main().replaceChildren(renderHero(), ...(overviewMode() ? renderOverview() : groups().map(renderSection)));
 }
 
 // Headless group of Files mode: only the filter row and the file cards.

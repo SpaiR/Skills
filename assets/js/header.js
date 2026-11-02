@@ -4,7 +4,7 @@ import { isMac, MOD_ENTER } from './constants.js';
 import * as D from './diffcore.js';
 import { h, icon } from './dom.js';
 import { toggleMenu } from './menu.js';
-import { commentCount, isViewed, splitAvailable } from './model.js';
+import { commentCount, isViewed, overviewMode, splitAvailable } from './model.js';
 import { setMode } from './modes.js';
 import { canPublish, openPublish } from './publish.js';
 import { fileByPath, R, S, sections } from './state.js';
@@ -43,15 +43,16 @@ export function renderHeader() {
         'div',
         { class: 'seg mode-seg', role: 'group', 'aria-label': T.header.mode, 'aria-keyshortcuts': 'G' },
         [
-          ['guide', T.header.guide],
-          ['files', T.header.files],
-        ].map(([mode, label]) =>
+          ['overview', T.header.overview, T.header.overviewTitle],
+          ['guide', T.header.guide, T.header.guideTitle],
+          ['files', T.header.files, T.header.filesTitle],
+        ].map(([mode, label, title]) =>
           h(
             'button',
             {
               type: 'button',
               dataset: { mode },
-              title: `${label} (G)`,
+              title,
               onclick: () => setMode(mode),
             },
             label,
@@ -96,7 +97,7 @@ export function renderHeader() {
       ),
       h(
         'div',
-        { class: 'seg', role: 'group', 'aria-label': T.header.diffView, 'aria-keyshortcuts': 'S' },
+        { class: 'seg view-seg', role: 'group', 'aria-label': T.header.diffView, 'aria-keyshortcuts': 'S' },
         ['unified', 'split'].map((mode) =>
           h(
             'button',
@@ -179,7 +180,9 @@ export function updateHeader() {
   p.querySelector('.progress-fill').style.width = `${total ? (100 * viewed) / total : 0}%`;
   for (const b of document.querySelectorAll('#top .mode-seg button'))
     b.setAttribute('aria-pressed', String(b.dataset.mode === S.mode));
-  for (const b of document.querySelectorAll('#top .seg:not(.mode-seg) button')) {
+  // Overview mode shows no diffs: the diff view switch is hidden there.
+  document.querySelector('#top .view-seg').hidden = overviewMode();
+  for (const b of document.querySelectorAll('#top .view-seg button')) {
     b.setAttribute(
       'aria-pressed',
       String(b.dataset.mode === (S.viewMode === 'split' && splitAvailable() ? 'split' : 'unified')),

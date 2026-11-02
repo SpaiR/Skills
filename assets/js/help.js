@@ -4,17 +4,17 @@ import { isMac } from './constants.js';
 import { dialogEl, dialogOpener } from './dialogs.js';
 import { h, icon } from './dom.js';
 import { closeMenu } from './menu.js';
-import { filesMode } from './model.js';
+import { filesMode, guideMode, overviewMode } from './model.js';
 import { finished } from './state.js';
 import { T } from './strings.js';
 
 // A mouse click in a key combination: shown as a word, not as a key cap.
 const CLICK = 'click';
 
-// Chapter keys are shown only in Guide mode: in Files mode they do nothing.
+// Chapter keys are shown only in Guide mode, the diff view key not in Overview: elsewhere they only show a hint.
 function helpGroups() {
   const mod = isMac ? '⌘' : 'Ctrl';
-  const guide = !filesMode();
+  const guide = guideMode();
   const rows = (list) => list.filter(Boolean);
   return [
     [
@@ -50,11 +50,11 @@ function helpGroups() {
     ],
     [
       T.help.view,
-      [
-        [[['S']], T.help.viewMode],
+      rows([
+        !overviewMode() && [[['S']], T.help.viewMode],
         [[['W']], T.help.wrap],
-        [[['T']], guide ? T.help.toc : T.help.tree],
-      ],
+        [[['T']], filesMode() ? T.help.tree : T.help.toc],
+      ]),
     ],
     [
       T.help.sending,

@@ -1,10 +1,10 @@
-// Guide/Files mode switching, layout variables read from CSS, collapsing all files.
+// Overview/Guide/Files mode switching, layout variables read from CSS, collapsing all files.
 
 import { TREE_DEFAULT } from './constants.js';
 import { $main } from './dom.js';
 import { updateChrome } from './header.js';
 import { closeMenu } from './menu.js';
-import { filesMode, groupFor, groups, secFiles, sectionOpen } from './model.js';
+import { filesMode, groupFor, groups, overviewMode, secFiles, sectionOpen } from './model.js';
 import { applyCurrent, scrollToElement, trackCurrent } from './nav.js';
 import { save } from './persist.js';
 import { fileQ, rerenderAllFiles, stickyOffset } from './rerender.js';
@@ -20,6 +20,7 @@ import { computeVisible } from './tree.js';
 export function applyModeLayout() {
   const root = document.documentElement;
   root.classList.toggle('mode-files', filesMode());
+  root.classList.toggle('mode-overview', overviewMode());
   if (filesMode()) root.style.setProperty('--sidebar-w', `${S.treeW || TREE_DEFAULT}px`);
   else root.style.removeProperty('--sidebar-w');
   readLayoutVars();
@@ -42,12 +43,14 @@ export function observeTitle() {
 
 // Mode switch: the current file and the row under the sticky headers stay in place on screen.
 // toPath is the file to go to (chapter chip) instead of the current one by scroll position.
+// Overview mode has no files (groupFor is null there): it opens at the top. The file and row left for it are
+// remembered, and leaving Overview without a target goes back to them, so a look at it keeps the reading place.
 export function setMode(mode, toPath) {
   if (finished || S.mode === mode) return;
   closeMenu(false);
   if (ui.drag) cancelDrag();
   if (!toPath) trackCurrent();
-  const path = toPath || (ui.curFile && ui.curFile.path);
+  let path = toPath || (ui.curFile && ui.curFile.path);
   let ref = null;
   const oldGroup = path && groupFor(path);
   const fileEl = oldGroup && $main().querySelector(fileQ(oldGroup.key, path));
@@ -62,6 +65,11 @@ export function setMode(mode, toPath) {
       if (num) ref = { side: num.dataset.side, no: num.dataset.no, top: r.top };
       break;
     }
+  }
+  if (mode === 'overview') ui.modeReturn = path ? { path, ref } : null;
+  else if (overviewMode()) {
+    if (!toPath && ui.modeReturn) ({ path, ref } = ui.modeReturn);
+    ui.modeReturn = null;
   }
   S.mode = mode;
   save();
