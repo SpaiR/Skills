@@ -43,7 +43,8 @@ In a Claude Code session type `/diff-review` with optional arguments in any orde
 For a PR/MR, the commits are fetched into your local clone if one of its remotes is that repository (only objects and
 `FETCH_HEAD` change), otherwise into a cache clone under `$TMPDIR/diff-review/repos/`.
 
-Claude prints a link to the local page. The page has two modes: «Гайд» (the guide) and «Файлы» (a file tree). Press
+Claude prints a link to the local page. It opens on «Обзор», a plain-language summary of the whole change and every
+chapter; «Гайд» shows each chapter next to its diffs, «Файлы» shows the diffs with a file tree. Press
 `?` on the page for keyboard shortcuts. Submit feedback, approve, or close; the session receives the result.
 
 ## Development

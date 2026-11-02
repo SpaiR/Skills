@@ -72,9 +72,16 @@ npm test          # npm run test:unit && npm run test:py && npm run test:e2e
 The format is defined in three places that must change together:
 
 1. `references/guide-method.md`: the fields, rules and the sample the subagent follows.
-2. `scripts/validate.py`: what is enforced (`serve.py` refuses to start on an invalid guide).
-3. The viewer code that reads it: `assets/js/main.js`, `section.js`, `file.js` (summaries), `header.js`,
-   `feedback.js`, and `markdown.js` (the Markdown subset and callouts the methodology allows).
+2. `scripts/validate.py`: what is enforced. The CLI is strict: the subagent and `SKILL.md` run it on new guides, so
+   it also checks the writing limits (`brief` required, its point count and length, no backticks in the brief and in
+   the first paragraph of overviews; constants `BRIEF_MIN`, `BRIEF_MAX`, `BRIEF_MAX_WORDS`). `serve.py` calls
+   `validate(guide, meta, strict=False)`, which checks only the shape, so recorded outdirs without `brief` still
+   open; it refuses to start on a guide that fails even that.
+3. The viewer code that reads it: `assets/js/main.js`, `section.js`, `overview.js` (the brief and Overview mode), `file.js`
+   (summaries), `header.js`, `feedback.js`, and `markdown.js` (the Markdown subset and callouts the methodology
+   allows).
+
+A new required field goes into strict mode only; lenient mode must keep accepting older guides.
 
 Then update `tests/python/test_validate.py`, the `guide.json` files of the fixtures if the shape changed, and the
 affected e2e tests. See [.claude/rules/skill.md](.claude/rules/skill.md).
