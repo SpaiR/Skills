@@ -1,0 +1,9 @@
+{
+  "name": "spair",
+  "version": "1.0.0",
+  "description": "Skills: diff-review and bigwork.",
+  "author": {
+    "name": "Ilya Prymshyts (SpaiR)",
+    "email": "klimbetoo@gmail.com"
+  }
+}

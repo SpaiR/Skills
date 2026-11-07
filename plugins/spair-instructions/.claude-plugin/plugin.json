@@ -1,0 +1,9 @@
+{
+  "name": "spair-instructions",
+  "version": "1.0.0",
+  "description": "Loads global instructions from context/CLAUDE.md into every session via a SessionStart hook.",
+  "author": {
+    "name": "Ilya Prymshyts (SpaiR)",
+    "email": "klimbetoo@gmail.com"
+  }
+}
