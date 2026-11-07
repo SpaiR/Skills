@@ -2,5 +2,8 @@
   "name": "fork-title",
   "version": "0.1.0",
   "description": "Renames a desktop fork titled \"<parent> (fork)\" after its first message",
+  "author": {
+    "name": "SpaiR"
+  },
   "types": "./types/index.d.ts"
 }

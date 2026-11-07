@@ -1,1 +1,9 @@
-{ "name": "context-size", "version": "0.1.0", "description": "Shows used context tokens next to the prompt footer's mode labels", "types": "./types/index.d.ts" }
+{
+  "name": "context-size",
+  "version": "0.1.0",
+  "description": "Shows used context tokens next to the prompt footer's mode labels",
+  "author": {
+    "name": "SpaiR"
+  },
+  "types": "./types/index.d.ts"
+}
