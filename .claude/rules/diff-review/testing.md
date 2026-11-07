@@ -1,6 +1,6 @@
 ---
 paths:
-  - "tests/**"
+  - "skills/diff-review/tests/**"
 ---
 
 # Tests (tests/)

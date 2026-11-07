@@ -1,6 +1,6 @@
 ---
 paths:
-  - "assets/css/**"
+  - "skills/diff-review/assets/css/**"
 ---
 
 # CSS (assets/css)

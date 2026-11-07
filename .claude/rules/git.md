@@ -7,15 +7,17 @@ published history or change git config without being asked.
 
 ## Commit messages
 
-Conventional Commits 1.0.0, enforced by `.githooks/commit-msg` (enabled by `npm run setup`). Subject line:
+Conventional Commits 1.0.0, enforced by `.githooks/commit-msg` (enable once per clone with
+`git config core.hooksPath .githooks`). Subject line:
 
 ```
 <type>(<scope>)?!?: <subject>
 ```
 
 - Types: `feat` `fix` `refactor` `test` `docs` `style` `build` `chore` `perf`.
-- Scopes: `viewer` (assets/), `collect`, `remote`, `publish`, `serve`, `validate` (scripts/), `skill` (SKILL.md,
-  references/), `tests` (tests/), `repo` (configs, docs, tooling).
+- Scopes: `bigwork` (skills/bigwork/); for diff-review, by area of `skills/diff-review/`: `viewer` (assets/),
+  `collect`, `remote`, `publish`, `serve`, `validate` (scripts/), `skill` (SKILL.md, references/), `tests` (tests/);
+  `repo` (root configs, docs, rules, tooling). The scope is optional.
 - Subject in English, imperative, lower case after the colon, no trailing period, at most ~100 characters.
 - Body: what and why, wrapped at ~100 columns. One logical change per commit.
 - The hook lets `Merge`, `Revert`, `fixup!`, `squash!` and `amend!` subjects through unchanged.
@@ -26,7 +28,7 @@ The type and scope lists above must match `types` and `scopes` in `.githooks/com
 ## Breaking changes
 
 Mark a commit breaking (`!` after the scope, plus a `BREAKING CHANGE:` footer) when it changes a data contract in
-an incompatible way:
+an incompatible way. For diff-review (paths relative to `skills/diff-review/`):
 
 - `meta.json` (fields, codes, `META_VERSION` bump in `scripts/collect.py`);
 - `guide.json` (shape enforced by `scripts/validate.py`, described in `references/guide-method.md`);

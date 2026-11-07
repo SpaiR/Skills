@@ -55,5 +55,5 @@ npm run lint
 npm test          # unit, Python and browser tests
 ```
 
-Development needs Node, Python 3, `uv` and Google Chrome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow
-and [CLAUDE.md](CLAUDE.md) for the architecture, data contracts and project rules.
+Development needs Node, Python 3, `uv` and Google Chrome. See [CONTRIBUTING.md](../../CONTRIBUTING.md) for the
+workflow and [architecture.md](../../.claude/rules/diff-review/architecture.md) for the architecture and data contracts.

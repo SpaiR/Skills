@@ -1,6 +1,65 @@
 # Contributing
 
-## Setup
+## Repository
+
+Each skill lives in `skills/<name>/`, and `npx skills add` copies that whole folder to the user. Keep repository
+docs, rules and hooks at the root; see the layout in [CLAUDE.md](CLAUDE.md). Rules for Claude Code live in
+[.claude/rules/](.claude/rules/) and apply to everyone.
+
+Enable the commit message check once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+To try a working copy as the installed skill, run from the repository root (it copies, so rerun after changes):
+
+```bash
+npx skills add ./ -g -a claude-code -s <name> -y
+```
+
+### Adding a skill
+
+Create `skills/<name>/SKILL.md` with `name` and `description` in the frontmatter, add the skill to the table in
+`README.md` and the layout in `CLAUDE.md`, add its scope to `.githooks/commit-msg` and `.claude/rules/git.md`, and
+check that `npx skills add ./ --list` finds it. Conventions: [.claude/rules/skills.md](.claude/rules/skills.md).
+
+## Language
+
+Code, comments, docs, rules, test names and commits are English. diff-review speaks Russian to its user; where
+Russian is allowed in it: [.claude/rules/diff-review/language.md](.claude/rules/diff-review/language.md).
+
+## Branches and commits
+
+Work on a topic branch (`refactor/...`, `fix/...`, `feat/...`) and merge it into `main` when it is green.
+
+Commit subjects follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/), checked by
+`.githooks/commit-msg`:
+
+```
+<type>(<scope>): <subject>
+```
+
+- Types: `feat`, `fix`, `refactor`, `test`, `docs`, `style`, `build`, `chore`, `perf`.
+- Scopes: `bigwork`; for diff-review `viewer`, `collect`, `remote`, `publish`, `serve`, `validate`, `skill`,
+  `tests`; `repo` for the root. The scope is optional.
+- Add `!` (and a `BREAKING CHANGE:` footer) for incompatible changes to diff-review's `meta.json`, `guide.json`,
+  `state.json` or the `DIFF_REVIEW_*` output markers.
+
+Examples:
+
+```
+feat(viewer): add a shortcut to jump to the next unviewed file
+fix(collect): keep renamed files when the base branch is missing
+docs(bigwork): clarify how agents are sized
+feat(collect)!: emit meta v4 with per-file language
+```
+
+More in [.claude/rules/git.md](.claude/rules/git.md).
+
+## diff-review
+
+Run every command in this section from `skills/diff-review/`.
 
 You need:
 
@@ -10,53 +69,14 @@ You need:
 - Google Chrome (browser tests drive the installed Chrome through `playwright-core`; no browser is downloaded).
 
 ```bash
-npm run setup   # npm install + point core.hooksPath at this folder's .githooks
+npm run setup   # npm install + git config core.hooksPath .githooks
 ```
 
-To try your working copy as the live skill, run `npx skills add ./ -g -a claude-code -s diff-review` from the repository root (it copies, so rerun after changes).
+Architecture, data flow and data contracts:
+[.claude/rules/diff-review/architecture.md](.claude/rules/diff-review/architecture.md). Area rules next to it:
+`viewer.md`, `css.md`, `scripts.md`, `skill.md`, `testing.md`.
 
-## Layout
-
-See the directory map and data flow in [CLAUDE.md](CLAUDE.md). Area rules live in [.claude/rules/](.claude/rules/):
-`viewer.md`, `css.md`, `scripts.md`, `skill.md`, `testing.md`. They are written for Claude Code but apply to
-everyone.
-
-## Language
-
-Code, comments, docs, test names and commits are English. Russian is the product language: it appears only in
-`assets/js/strings.js`, the static placeholders of `assets/viewer.html`, the guide content, page-text expectations
-and Russian input data in tests, fixtures, labelled samples in `references/guide-method.md`, and UI labels quoted
-verbatim in `README.md` and `SKILL.md`. Details: [.claude/rules/language.md](.claude/rules/language.md).
-
-## Branches and commits
-
-Work on a topic branch (`refactor/...`, `fix/...`, `feat/...`) and merge it into `main` when it is green.
-
-Commit subjects follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/), checked by
-`.githooks/commit-msg` once `npm run setup` has run:
-
-```
-<type>(<scope>): <subject>
-```
-
-- Types: `feat`, `fix`, `refactor`, `test`, `docs`, `style`, `build`, `chore`, `perf`.
-- Scopes: `viewer`, `collect`, `remote`, `publish`, `serve`, `validate`, `skill`, `tests`, `repo`.
-- Add `!` (and a `BREAKING CHANGE:` footer) for incompatible changes to `meta.json`, `guide.json`, `state.json` or
-  the `DIFF_REVIEW_*` output markers.
-
-Examples:
-
-```
-feat(viewer): add a shortcut to jump to the next unviewed file
-fix(collect): keep renamed files when the base branch is missing
-test(tests): cover gap expansion at the end of a file
-docs(skill): clarify how to pick a worktree from free text
-feat(collect)!: emit meta v4 with per-file language
-```
-
-More in [.claude/rules/git.md](.claude/rules/git.md).
-
-## Before committing
+### Before committing
 
 ```bash
 npm run lint      # Biome (JS, CSS) + ruff check + ruff format --check
@@ -67,7 +87,7 @@ npm test          # npm run test:unit && npm run test:py && npm run test:e2e
 `tests/e2e/performance.test.js` measures milliseconds and can flake under load, so rerun it alone
 (`node --test tests/e2e/performance.test.js`) before treating a failure as real.
 
-## Changing the guide.json format
+### Changing the guide.json format
 
 The format is defined in three places that must change together:
 
@@ -84,16 +104,16 @@ The format is defined in three places that must change together:
 A new required field goes into strict mode only; lenient mode must keep accepting older guides.
 
 Then update `tests/python/test_validate.py`, the `guide.json` files of the fixtures if the shape changed, and the
-affected e2e tests. See [.claude/rules/skill.md](.claude/rules/skill.md).
+affected e2e tests. See [.claude/rules/diff-review/skill.md](.claude/rules/diff-review/skill.md).
 
-## Adding UI text
+### Adding UI text
 
 All page text, including the `feedback.md` template, lives in `assets/js/strings.js`. Add the string to `T` in the
 group of the module that shows it, make it a function if it takes parameters, use `plural(n, WORDS.x)` for counted
 nouns, and import `T` in the module. Do not put Russian text anywhere else. Steps:
-[.claude/rules/language.md](.claude/rules/language.md).
+[.claude/rules/diff-review/language.md](.claude/rules/diff-review/language.md).
 
-## Fixtures and the golden feedback.md
+### Fixtures and the golden feedback.md
 
 - `tests/fixtures/<name>/` are recorded outdirs. To record one, run
   `python3 scripts/collect.py --repo <scratch repo> --out tests/fixtures/<name>` (add `--mode`/`--ref` as needed),
@@ -111,7 +131,7 @@ nouns, and import `T` in the module. Do not put Russian text anywhere else. Step
   prints `difference:` followed by two JSON strings, the actual Markdown first; decode the first one into the
   golden file and review the diff. An unintended difference is a bug.
 
-## Screenshots
+### Screenshots
 
 `tests/tools/shoot.js` takes six screenshots (light and dark, three widths) of a running page and prints console
 errors:

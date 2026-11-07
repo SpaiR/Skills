@@ -1,4 +1,9 @@
-# Language policy
+---
+paths:
+  - "skills/diff-review/**"
+---
+
+# Language policy (diff-review)
 
 The project is written in English; the product speaks Russian. The guide and the page are for a Russian-speaking
 reader, so their text is Russian. Everything a developer reads is English.

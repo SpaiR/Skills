@@ -23,3 +23,7 @@ npx skills add SpaiR/Skills -g -a claude-code -s '*' -y
 ```
 
 The CLI copies each skill into `~/.claude/skills/<name>/`. `npx skills update -g` pulls newer versions.
+
+## Development
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).

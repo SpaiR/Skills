@@ -1,6 +1,6 @@
 ---
 paths:
-  - "assets/**"
+  - "skills/diff-review/assets/**"
 ---
 
 # Viewer (assets/)

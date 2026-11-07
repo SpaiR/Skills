@@ -1,17 +1,16 @@
 ---
 paths:
-  - "SKILL.md"
-  - "references/**"
+  - "skills/diff-review/SKILL.md"
+  - "skills/diff-review/references/**"
 ---
 
-# Skill files (SKILL.md, references/)
+# diff-review skill files (SKILL.md, references/)
 
-- `SKILL.md` stays under 500 lines. Move detail into `references/` and link it; the subagent reads
-  `references/guide-method.md` itself.
-- Refer to files of the skill through `${CLAUDE_SKILL_DIR}` (scripts, references), never through absolute or
-  home-relative paths. Keep `allowed-tools` in the frontmatter in step with the commands the steps run.
-- The frontmatter `description` and `argument-hint` are what the user sees in the skill list; keep the argument
-  table in step 1 consistent with `collect.py --help`.
+General skill rules are in `../skills.md`. For diff-review:
+
+- The subagent reads `references/guide-method.md` itself; keep detail there, not in `SKILL.md`.
+- Keep `allowed-tools` in the frontmatter in step with the commands the steps run, and the argument table in step 1
+  consistent with `collect.py --help`.
 - `disable-model-invocation: true` stays: the skill runs only when the user types `/diff-review`.
 
 ## Languages

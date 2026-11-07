@@ -1,6 +1,6 @@
 ---
 paths:
-  - "scripts/**"
+  - "skills/diff-review/scripts/**"
 ---
 
 # Scripts (scripts/)
@@ -41,9 +41,9 @@ paths:
 - `META_VERSION` in `collect.py` is the meta.json version (currently 3). Adding an optional field is compatible;
   renaming, removing or changing the meaning of a field or a code bumps the version (breaking, see `git.md`).
 - The viewer must keep reading older outdirs; what v1/v2 lack and how the viewer falls back is in "Data contracts"
-  in `CLAUDE.md`. When you bump, add the fallback in `assets/js/strings.js`/`expand.js` and a test.
+  in `architecture.md`. When you bump, add the fallback in `assets/js/strings.js`/`expand.js` and a test.
 - New `notes[].code` or `content.reason` codes need Russian text in `strings.js` (`NOTES`, `FULL_TEXT_REASONS`).
-- Machine data in meta is codes, not prose (field details in `CLAUDE.md`).
+- Machine data in meta is codes, not prose (field details in `architecture.md`).
 
 ## Publishing (publish.py)
 

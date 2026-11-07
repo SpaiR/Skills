@@ -1,6 +1,6 @@
 """Tests for diff-review validate.py (plain unittest)."""
 
-# The brief and overview samples are Russian input data (see .claude/rules/language.md).
+# The brief and overview samples are Russian input data (see .claude/rules/diff-review/language.md at the repo root).
 # ruff: noqa: RUF001
 
 import copy

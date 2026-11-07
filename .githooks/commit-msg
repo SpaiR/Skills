@@ -6,7 +6,7 @@ case "$subject" in
   Merge\ *|Revert\ *|fixup!\ *|squash!\ *|amend!\ *) exit 0 ;;
 esac
 types='feat|fix|refactor|test|docs|style|build|chore|perf'
-scopes='viewer|collect|remote|publish|serve|validate|skill|tests|repo'
+scopes='bigwork|viewer|collect|remote|publish|serve|validate|skill|tests|repo'
 if printf '%s\n' "$subject" | grep -Eq "^($types)(\(($scopes)\))?!?: [^ ].{0,99}$"; then
   exit 0
 fi

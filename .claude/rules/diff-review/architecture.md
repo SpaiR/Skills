@@ -1,4 +1,9 @@
-# diff-review
+---
+paths:
+  - "skills/diff-review/**"
+---
+
+# diff-review architecture
 
 A Claude Code user skill: a guided review of local git changes, a GitHub pull request or a GitLab merge request in a
 local browser page. The main session collects
@@ -45,15 +50,14 @@ tests/e2e/                  node:test + playwright-core against system Chrome; l
 tests/fixtures/             recorded outdirs (mixed, mixed2, large, big, tree, pr-github, pr-gitlab) + feedback.golden.md
 tests/fakecli/              fake gh and glab for tests (rules in $FAKE_CLI_RULES, call log in $FAKE_CLI_LOG)
 tests/tools/                contrast.js (palette contrast CLI), shoot.js (manual screenshots)
-.githooks/commit-msg        Conventional Commits check
 ```
 
 ## Commands
 
-Run from the repo root. Requirements: Node (ESM, `node --test`), Python 3, `uv` (for `uvx ruff`), Google Chrome.
+Run from `skills/diff-review/`. Requirements: Node (ESM, `node --test`), Python 3, `uv` (for `uvx ruff`), Google Chrome.
 
 ```bash
-npm run setup       # npm install + point core.hooksPath at this folder's .githooks
+npm run setup       # npm install + git config core.hooksPath .githooks
 npm run lint        # biome check + ruff check + ruff format --check
 npm run format      # biome --write + ruff format + ruff --fix
 npm run test:unit   # node --test tests/unit
@@ -99,16 +103,3 @@ point) and the first paragraph of every overview has no backticks. `serve.py` va
 (`validate(..., strict=False)`): `brief` may be absent, but if present its shape is checked. It refuses to start
 on a guide that fails that check, so older outdirs without `brief` still open.
 
-## Rules
-
-Topic rules live in `.claude/rules/` and load automatically (path-scoped ones when matching files are touched):
-
-- `language.md`: English vs. Russian, where page text lives
-- `git.md`: commit format, types and scopes, when to commit
-- `viewer.md`: `assets/**` module map, state and rendering invariants, accessibility
-- `css.md`: `assets/css/**` cascade order, tokens, contrast checks
-- `scripts.md`: `scripts/**` stdlib only, exit codes, markers, git safety, meta versions, server security
-- `skill.md`: `SKILL.md`, `references/**` skill conventions and the guide contract
-- `testing.md`: `tests/**` suites, fixtures, golden file, flaky timing test
-
-Human-facing docs: `README.md`, `CONTRIBUTING.md`.
