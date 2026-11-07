@@ -9,6 +9,8 @@ Personal Claude Code skills, installed by users with `npx skills add SpaiR/Skill
 skills/<name>/          one skill per folder; npx skills copies the whole folder to ~/.claude/skills/<name>/
 skills/diff-review/     guided review of a diff, PR or MR in a local browser page (Python scripts + static viewer)
 skills/bigwork/         a large task run as a dynamic workflow (SKILL.md only)
+mods/<name>/            Claude Code plugins (mods), installed through the marketplace
+.claude-plugin/         marketplace.json listing the mods; the skills CLI ignores it
 .claude/rules/          rules for this repository; diff-review/ holds the rules of that skill
 .githooks/commit-msg    Conventional Commits check
 CONTRIBUTING.md         setup, commits, per-skill workflow

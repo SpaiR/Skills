@@ -1,0 +1,6 @@
+{
+  "name": "fork-title",
+  "version": "0.1.0",
+  "description": "Renames a desktop fork titled \"<parent> (fork)\" after its first message",
+  "types": "./types/index.d.ts"
+}

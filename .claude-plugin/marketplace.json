@@ -1,0 +1,9 @@
+{
+  "name": "claude-mods",
+  "owner": { "name": "SpaiR" },
+  "metadata": { "description": "Claude Code mods of SpaiR" },
+  "plugins": [
+    { "name": "context-size", "source": "./mods/context-size" },
+    { "name": "fork-title", "source": "./mods/fork-title" }
+  ]
+}
