@@ -1,0 +1,134 @@
+/* Design tokens for the light theme: colours, typography, spacing, radii, layers, layout sizes, motion.
+   Palette contrast is checked by tests/tools/contrast.js. */
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces: page, card, diff backdrop */
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --tint: #f3f4f6;
+  --raised: #ffffff; /* comment cards, menus, dialogs */
+  --hair: #e5e8ec; /* thin dividers and card borders */
+  --line: #d3d8de; /* hover borders, input borders */
+  --ctrl-border: #8c939e; /* checkbox and field border: 3.1:1 against --surface */
+
+  /* Text */
+  --ink: #1b1f24;
+  --ink-2: #4a5260;
+  --ink-3: #5b6370;
+
+  /* Accent */
+  --accent: #2c56c9;
+  --accent-hover: #2449ad;
+  --accent-ink: #ffffff; /* text on --accent: 6.4:1 */
+  --accent-soft: #e8eefc; /* active/current background: --accent on it is 5.5:1 */
+  --focus: #2c56c9;
+
+  /* Statuses */
+  --success: #14743a;
+  --success-soft: #e3f4e8;
+  --danger: #b3261e;
+  --danger-soft: #fbe9e8;
+  --warn: #8a5300;
+  --warn-soft: #fff6e6;
+  --warn-border: #e0a040;
+
+  /* Diff: line / number column / changed words / bar / sign */
+  --add-line: #e8f6ed;
+  --add-gutter: #d3eedc;
+  --add-word: #b8e8c6;
+  --add-bar: #2da44e;
+  --add-sign: #14743a;
+  --del-line: #fdeeee;
+  --del-gutter: #f9d8d8;
+  --del-word: #f9c6c6;
+  --del-bar: #d1242f;
+  --del-sign: #b3261e;
+  --hunk-bg: #eef3fb;
+  --hunk-ink: #5b6370;
+  --sel-tint: rgba(44, 86, 201, 0.08); /* selection overlay on top of any line background */
+  --sel-gutter: #dce5fb;
+  --row-hover: rgba(27, 31, 36, 0.04);
+  --hatch: rgba(27, 31, 36, 0.07); /* hatching for the empty side in split view */
+  --code-inline-bg: rgba(27, 31, 36, 0.06);
+  --code-inline-ring: rgba(27, 31, 36, 0.08);
+
+  /* Syntax highlighting */
+  --syn-kw: #6c22a6;
+  --syn-str: #084f7c;
+  --syn-com: #4b5564;
+  --syn-num: #7a4100;
+
+  /* Shadows: only for floating elements and comment cards */
+  /* Soft and layered: the border separates the layer, the shadow only hints at elevation. */
+  --shadow-xs: 0 1px 0 rgba(16, 24, 40, 0.04);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05), 0 2px 6px rgba(16, 24, 40, 0.04);
+  --shadow-md: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 20px -6px rgba(16, 24, 40, 0.12);
+  --shadow-lg:
+    0 2px 4px rgba(16, 24, 40, 0.04), 0 12px 24px -8px rgba(16, 24, 40, 0.1), 0 32px 64px -16px rgba(16, 24, 40, 0.18);
+  --backdrop: rgba(15, 17, 21, 0.45);
+  --badge-on-primary: rgba(255, 255, 255, 0.2);
+
+  /* Fonts */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Only Safari understands ui-monospace; Chrome on macOS actually falls through to Menlo. Cyrillic in Menlo keeps the grid. */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* Type scale */
+  --fs-micro: 11px; /* kbd, status letter */
+  --fs-xs: 12px; /* meta, counters, line numbers */
+  --fs-sm: 13px; /* secondary UI, file summary */
+  --fs-base: 14px; /* base UI: buttons, table of contents, comments */
+  --fs-prose: 15px; /* chapter overview */
+  --fs-lead: 16px; /* intent */
+  --fs-h2: 17px; /* chapter title in the sticky chapter head: anything larger does not fit in 48px */
+  --fs-h1: 26px; /* review title */
+  /* Weights: 400 text, 500 controls, 600 headings and accents. Never above 600: 650-700 look heavy in Cyrillic. */
+  --code-fs: 12.5px;
+  --code-lh: 20px;
+  --lh-ui: 1.45;
+  --lh-prose: 1.6;
+
+  /* Spacing */
+  --s-0: 2px;
+  --s-1: 4px;
+  --s-1h: 6px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-12: 48px;
+
+  /* Radii */
+  --r-xs: 4px; /* inline code, kbd, status badge, checkbox */
+  --r-sm: 6px; /* buttons, fields, table-of-contents rows */
+  --r-md: 8px; /* file card, comment, menu */
+  --r-lg: 10px; /* chapter card, dialog */
+  --r-pill: 999px;
+
+  /* Layers */
+  --z-file-head: 5;
+  --z-sec-head: 6;
+  --z-sidebar: 10;
+  --z-header: 20;
+  --z-menu: 30;
+  --z-toast: 40;
+  /* dialogs are <dialog> in the top layer, no z-index needed */
+
+  /* Layout */
+  --header-h: 52px;
+  --sidebar-w: 272px;
+  --sec-head-h: 48px;
+  --file-head-h: 40px;
+  /* Overview column: Cyrillic is ~16% wider than Latin; at 360-440px a line holds 40-50 characters. cqi is the width of #main. */
+  --aside-w: clamp(360px, 30cqi, 440px);
+  --page-pad: 24px;
+
+  /* Motion */
+  --dur-fast: 120ms;
+  --dur: 160ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+}

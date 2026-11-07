@@ -1,0 +1,41 @@
+/* Narrow screens: the table of contents becomes a slide-in drawer. */
+
+/* Narrow screen: the table of contents is a slide-in panel */
+@media (max-width: 1099.98px) {
+  #layout,
+  body.toc-hidden #layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #toc,
+  body.toc-hidden #toc {
+    /* align-self: stretch, otherwise "start" from the wide mode shrinks the fixed panel to its content. */
+    display: block;
+    position: fixed;
+    top: var(--header-h);
+    left: 0;
+    bottom: 0;
+    width: 300px;
+    height: auto;
+    align-self: stretch;
+    transform: translateX(-100%);
+    visibility: hidden;
+    z-index: var(--z-sidebar);
+    background: var(--surface);
+    box-shadow: var(--shadow-lg);
+    border-right: 1px solid var(--hair);
+    padding: var(--s-4) var(--s-2) var(--s-5) var(--s-2);
+    transition:
+      transform var(--dur) var(--ease),
+      visibility 0s linear var(--dur);
+  }
+  body.toc-drawer-open #toc {
+    transform: translateX(0);
+    visibility: visible;
+    transition:
+      transform var(--dur) var(--ease),
+      visibility 0s;
+  }
+  .tree-resize {
+    display: none;
+  }
+}

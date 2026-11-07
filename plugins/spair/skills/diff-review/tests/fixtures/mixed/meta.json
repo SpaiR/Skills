@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "root": "/private/var/folders/fp/m6vmxbdx6bv9bz1w82wbt7m00000gp/T/tmp.lL2xfNTRvG/harness/mixed-repo",
+  "repoName": "mixed-repo",
+  "worktree": null,
+  "branch": "feature/review-polish",
+  "head": "d9562d415efea76e29feceff9b4dd4e21e006cf0",
+  "mode": "since-base",
+  "label": "main...HEAD + незакоммиченное",
+  "base": "main",
+  "mergeBase": "2f4b30099c1979635abc8900fb23cbf01f4439bc",
+  "untrackedIncluded": 1,
+  "commits": [
+    "d9562d4 verify: kind + quiet; лимиты"
+  ],
+  "notes": [],
+  "createdAt": "2026-10-25T22:20:11+02:00",
+  "files": [
+    {
+      "path": "assets/logo.png",
+      "oldPath": null,
+      "status": "added",
+      "additions": 0,
+      "deletions": 0,
+      "binary": true
+    },
+    {
+      "path": "assets/viewer.html",
+      "oldPath": null,
+      "status": "deleted",
+      "additions": 0,
+      "deletions": 20,
+      "binary": false
+    },
+    {
+      "path": "package-lock.json",
+      "oldPath": null,
+      "status": "added",
+      "additions": 1,
+      "deletions": 0,
+      "binary": false
+    },
+    {
+      "path": "references/method.md",
+      "oldPath": "references/guide-method.md",
+      "status": "renamed",
+      "additions": 1,
+      "deletions": 0,
+      "binary": false
+    },
+    {
+      "path": "scripts/collect.py",
+      "oldPath": null,
+      "status": "modified",
+      "additions": 8,
+      "deletions": 5,
+      "binary": false
+    },
+    {
+      "path": "scripts/test_collect.py",
+      "oldPath": null,
+      "status": "added",
+      "additions": 1,
+      "deletions": 0,
+      "binary": false
+    },
+    {
+      "path": "scripts/validate.py",
+      "oldPath": null,
+      "status": "modified",
+      "additions": 2,
+      "deletions": 2,
+      "binary": false
+    }
+  ],
+  "totals": {
+    "files": 7,
+    "additions": 13,
+    "deletions": 27
+  }
+}

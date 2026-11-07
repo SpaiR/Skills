@@ -1,0 +1,63 @@
+{
+  "title": "Дерево: правка в каждом файле",
+  "intent": "Фикстура для дерева файлов.",
+  "sections": [
+    {
+      "title": "Исходники",
+      "overview": "Код.",
+      "diffs": [
+        {
+          "file": "packages/app/src/main/index.js",
+          "summary": "Строка 30."
+        },
+        {
+          "file": "src/core/engine.js",
+          "summary": "Строка 30."
+        },
+        {
+          "file": "src/core/util/math.js",
+          "summary": "Строка 30."
+        },
+        {
+          "file": "src/core/util/text.js",
+          "summary": "Строка 30."
+        },
+        {
+          "file": "src/ui/button.js",
+          "summary": "Строка 30."
+        },
+        {
+          "file": "src/ui/panel.js",
+          "summary": "Строка 30."
+        }
+      ]
+    },
+    {
+      "title": "Документация",
+      "overview": "Тексты.",
+      "diffs": [
+        {
+          "file": "README.md",
+          "summary": "Строка 30."
+        },
+        {
+          "file": "docs/guide/intro.md",
+          "summary": "Строка 30."
+        },
+        {
+          "file": "docs/guide/setup.md",
+          "summary": "Строка 30."
+        },
+        {
+          "file": "file10.txt",
+          "summary": "Строка 30."
+        },
+        {
+          "file": "file2.txt",
+          "summary": "Строка 30."
+        }
+      ]
+    }
+  ],
+  "unplacedFiles": []
+}

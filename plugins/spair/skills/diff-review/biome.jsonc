@@ -1,0 +1,49 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.6.3/schema.json",
+  "vcs": { "enabled": false },
+  "files": {
+    "includes": ["assets/**/*.js", "assets/**/*.css", "tests/**/*.js", "!!tests/fixtures", "!!**/node_modules"]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 120,
+    "lineEnding": "lf"
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "always",
+      "trailingCommas": "all"
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "complexity": {
+        // `a && a.b` -> `a?.b` turns falsy values into undefined; not a pure style change.
+        "useOptionalChain": "off",
+        // `!important` is deliberate (reduced-motion and print overrides).
+        "noImportantStyles": "off",
+        // Math.min/Math.max rewrite of a line in the diff algorithm is not worth the risk.
+        "useMathMinMax": "off"
+      },
+      "style": {
+        // Reordering selectors changes the cascade; rendering must not change.
+        "noDescendingSpecificity": "off",
+        // String concatenation is kept as written; style only.
+        "useTemplate": "off"
+      },
+      "performance": {
+        // innerText and textContent differ for rendered text; tests assert rendered text.
+        "useDomNodeTextContent": "off"
+      },
+      "suspicious": {
+        // Tests assert literal "${...}" text on purpose.
+        "noTemplateCurlyInString": "off"
+      }
+    }
+  },
+  "assist": { "enabled": true }
+}

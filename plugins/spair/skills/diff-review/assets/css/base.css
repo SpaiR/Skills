@@ -1,0 +1,116 @@
+/* Base: reset, typography, links, focus, shared text helpers. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  scroll-padding-top: 0;
+}
+body {
+  margin: 0;
+  font: var(--fs-base) / var(--lh-ui) var(--font-sans);
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+table.diff,
+pre,
+code,
+kbd {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  tab-size: 4;
+}
+h1,
+h2 {
+  text-wrap: balance;
+  margin: 0;
+}
+h1 {
+  letter-spacing: -0.02em;
+}
+h2 {
+  letter-spacing: -0.012em;
+}
+/* Prose: avoid short orphan last lines. Browsers without support ignore it. */
+.overview,
+.intent,
+.note-text,
+.file-summary,
+.md li,
+.callout p,
+.dlg-hint {
+  text-wrap: pretty;
+}
+button {
+  font: inherit;
+  color: inherit;
+}
+a {
+  color: var(--accent);
+  text-underline-offset: 2px;
+}
+a:hover {
+  color: var(--accent-hover);
+}
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+table.diff :focus-visible {
+  outline-offset: -2px;
+}
+[hidden] {
+  display: none !important;
+}
+
+.md code,
+.file-summary code,
+.hero code,
+.note-text code {
+  font-size: 0.86em;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--code-inline-bg);
+  box-shadow: inset 0 0 0 1px var(--code-inline-ring);
+  color: var(--ink);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.stat-add {
+  color: var(--success);
+}
+.stat-del {
+  color: var(--danger);
+}
+/* A zero part of a counter and the binary-file label carry no add/delete colour. */
+.stat-zero,
+.stat-bin {
+  color: var(--ink-3);
+}
+.stat-bin {
+  font-family: var(--font-sans);
+}
+.progress-num,
+.toc-num,
+.toc-count,
+.sec-num,
+.sec-sum,
+.file-stat,
+.fr-meta,
+.badge,
+td.num,
+.hunk-cell,
+.hero-meta {
+  font-variant-numeric: tabular-nums;
+}
+.icon {
+  flex: none;
+  display: block;
+}

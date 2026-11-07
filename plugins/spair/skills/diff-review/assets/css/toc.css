@@ -1,0 +1,209 @@
+/* Table of contents (sidebar) and file rows. */
+
+#toc {
+  position: sticky;
+  top: var(--header-h);
+  align-self: start;
+  height: calc(100vh - var(--header-h));
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: var(--s-5) var(--s-2) var(--s-5) 0;
+  border-right: 1px solid var(--hair);
+  scrollbar-width: thin;
+}
+.toc-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ink-3);
+  padding: 0 8px 8px;
+}
+.toc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.toc-sec {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+  min-height: 32px;
+  padding: 4px 4px 4px 8px;
+  border-radius: var(--r-sm);
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.toc-sec:hover {
+  background: var(--tint);
+}
+/* Overview mode: no viewed status column. */
+.toc-sec.plain {
+  grid-template-columns: minmax(0, 1fr);
+}
+/* Square left edge: on a rounded corner the current-chapter bar bends into a bracket. */
+.toc-sec[aria-current="true"] {
+  background: var(--tint);
+  box-shadow: inset 2px 0 0 var(--accent);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+.toc-status {
+  width: 16px;
+  height: 16px;
+  margin-top: 4px;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 1.5px solid var(--ctrl-border);
+  background: transparent;
+  color: var(--accent-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
+}
+.toc-status:hover {
+  border-color: var(--accent);
+}
+.toc-status.half {
+  border-color: var(--accent);
+  background: conic-gradient(var(--accent) 0 50%, transparent 0);
+}
+.toc-status.full {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.toc-status .icon {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2;
+}
+.toc-sec-go {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--r-xs);
+}
+.toc-num {
+  font-size: var(--fs-xs);
+  line-height: 20px;
+  color: var(--ink-3);
+}
+.toc-title {
+  font-size: var(--fs-base);
+  font-weight: 500;
+  line-height: 20px;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.toc-count {
+  font-size: var(--fs-xs);
+  line-height: 20px;
+  color: var(--ink-3);
+  padding-left: 8px;
+}
+.toc-sec[aria-current="true"] .toc-num {
+  color: var(--accent);
+  font-weight: 600;
+}
+.toc-group.reviewed .toc-title {
+  color: var(--ink-3);
+}
+.toc-files {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 2px 0 6px 28px;
+}
+
+/* File row: used in the table of contents and in the chapter's file list */
+.file-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 6px 0 4px;
+  border: 0;
+  border-radius: var(--r-xs);
+  width: 100%;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: var(--ink);
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.file-row:hover {
+  background: var(--tint);
+}
+.file-row.viewed {
+  opacity: 0.6;
+}
+.file-row[aria-current="true"] {
+  background: var(--accent-soft);
+}
+.file-row[aria-current="true"] .fr-base {
+  color: var(--ink);
+  font-weight: 600;
+}
+.fr-name {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.fr-base {
+  flex: none;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font: 500 var(--fs-xs) / 26px var(--font-mono);
+  color: var(--ink);
+}
+.fr-dir {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+.fr-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-xs);
+  line-height: 1;
+  white-space: nowrap;
+  padding-left: 6px;
+}
+.fr-comments {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--accent);
+  font-size: var(--fs-xs);
+  margin-right: 2px;
+}
+.fr-comments .icon {
+  width: 13px;
+  height: 13px;
+}
+.fr-check {
+  color: var(--success);
+  display: inline-flex;
+}
+.fr-check .icon {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2;
+}

@@ -1,0 +1,50 @@
+/* Final screen shown after submit or close. */
+
+/* Final screen */
+.finished {
+  max-width: 480px;
+  margin: 20vh auto;
+  padding: 0 16px;
+  text-align: center;
+}
+.finished-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.finished-icon .icon {
+  width: 24px;
+  height: 24px;
+}
+.finished-icon.sent {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.finished-icon.closed {
+  background: var(--tint);
+  color: var(--ink-3);
+}
+.finished h1 {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.finished p {
+  color: var(--ink-2);
+  margin: 8px 0 0;
+}
+.finished .finished-sub {
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+  margin-top: 4px;
+}
+.finished .finished-close {
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+  margin-top: 20px;
+  font-variant-numeric: tabular-nums;
+}

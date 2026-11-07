@@ -1,0 +1,396 @@
+/* Line comments: add button, annotation rows, notes, suggestions, drafts, editor form. */
+
+/* The "+" button next to a line number: its right edge extends 10px past the number column. */
+.cmt-btn {
+  position: absolute;
+  top: 0;
+  right: -10px;
+  z-index: 1;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-xs);
+  background: var(--accent);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--dur-fast) var(--ease),
+    background-color var(--dur-fast) var(--ease);
+}
+.cmt-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--accent-ink);
+  -webkit-mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 3.5v9M3.5 8h9' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E")
+    center / 14px 14px no-repeat;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 3.5v9M3.5 8h9' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E")
+    center / 14px 14px no-repeat;
+}
+.cmt-btn:hover {
+  background: var(--accent-hover);
+}
+table.unified tr.ln:hover .cmt-btn,
+.cmt-btn:focus-visible {
+  opacity: 1;
+}
+/* Split view: the button of the row's own half. */
+table.split tr.ln:has(> td:nth-child(-n + 3):hover) > td:nth-child(1) .cmt-btn,
+table.split tr.ln:has(> td:nth-child(n + 4):hover) > td:nth-child(4) .cmt-btn {
+  opacity: 1;
+}
+@media (hover: none) {
+  .cmt-btn {
+    display: none;
+  }
+}
+body.dragging .cmt-btn {
+  opacity: 0 !important;
+}
+body.dragging,
+body.dragging td.num {
+  cursor: ns-resize;
+}
+
+/* Row below a code line: a card, a draft or a form. Aligned to the start of the code. */
+tr.annot-row > td.annot-cell {
+  background: var(--surface);
+  padding: 6px 0 10px;
+  font: var(--fs-base) / var(--lh-ui) var(--font-sans);
+  white-space: normal;
+  cursor: default;
+}
+table.diff.split {
+  --gutter-w: calc(var(--num-w) + var(--sign-w));
+}
+.annot-in {
+  --x: calc(var(--gutter-w, 0px) + 4px);
+  margin: 0 12px 0 var(--x);
+  max-width: min(760px, calc(100cqi - var(--x) - 14px));
+}
+table.split .annot-in.side-new {
+  margin-left: calc(50% + var(--x));
+}
+table.split .annot-in.side-old {
+  max-width: min(760px, calc(50% - var(--x) - 12px));
+}
+body.nowrap table.split .annot-in.side-old {
+  max-width: min(760px, calc(100cqi - var(--x) - 14px));
+}
+/* Without wrapping the table is wider than the window: the card sticks to the left edge of the visible part. */
+body.nowrap .annot-in {
+  position: sticky;
+  left: var(--x);
+}
+body.nowrap table.split .annot-in.side-new {
+  margin-left: var(--x);
+}
+
+.note {
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  box-shadow: inset 3px 0 0 var(--accent);
+  padding: 6px 8px 10px 14px;
+  transition:
+    border-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+.note:hover {
+  border-color: color-mix(in srgb, var(--ctrl-border) 60%, var(--line));
+}
+.note.flash,
+.draft-row.flash,
+.annot-form.flash {
+  border-color: var(--accent);
+  box-shadow:
+    inset 3px 0 0 var(--accent),
+    0 0 0 3px var(--accent-soft);
+}
+.note-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 26px;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+.note-title {
+  font-variant-numeric: tabular-nums;
+}
+.note-actions {
+  display: inline-flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.note:hover .note-actions,
+.note:focus-within .note-actions {
+  opacity: 1;
+}
+@media (hover: none) {
+  .note-actions {
+    opacity: 1;
+  }
+}
+.note-text {
+  padding-right: 4px;
+  font-size: var(--fs-base);
+  line-height: 1.6;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Suggested edit: a mini diff */
+.suggestion {
+  margin: 8px 4px 0 0;
+  border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.suggestion-head {
+  padding: 4px 8px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 16px;
+  color: var(--success);
+  background: var(--success-soft);
+}
+.sg-body {
+  font: var(--fs-xs) / 18px var(--font-mono);
+  font-variant-ligatures: none;
+  tab-size: 4;
+}
+.sg-line {
+  display: flex;
+  min-height: 18px;
+}
+.sg-del {
+  background: var(--del-line);
+}
+.sg-add {
+  background: var(--add-line);
+}
+.sg-sign {
+  flex: none;
+  width: 3ch;
+  text-align: center;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.sg-del .sg-sign {
+  color: var(--del-sign);
+}
+.sg-add .sg-sign {
+  color: var(--add-sign);
+}
+.sg-code {
+  flex: 1;
+  min-width: 0;
+  padding-right: 8px;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Draft */
+.draft-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  padding: 6px 6px 6px 12px;
+  background: var(--raised);
+  border: 1px dashed var(--accent);
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+  transition:
+    border-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+/* Only the text between the quotes is truncated: the closing quote is always visible. */
+.draft-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  white-space: nowrap;
+}
+.draft-label {
+  flex: none;
+  color: var(--accent);
+  font-weight: 600;
+  margin-right: 4px;
+}
+.draft-q {
+  flex: none;
+}
+.draft-quote {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.draft-actions {
+  flex: none;
+  display: inline-flex;
+  gap: 2px;
+}
+
+/* Form */
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--raised);
+  border: 1px solid var(--accent);
+  border-radius: var(--r-md);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  transition: box-shadow var(--dur) var(--ease);
+}
+.editor-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 18px;
+}
+.editor-title {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.hint {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+.editor textarea,
+.dlg textarea {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  font: var(--fs-base) / 1.5 var(--font-sans);
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  transition: border-color var(--dur-fast) var(--ease);
+}
+.editor textarea::placeholder,
+.dlg textarea::placeholder {
+  color: var(--ink-3);
+}
+.editor textarea:hover,
+.dlg textarea:hover {
+  border-color: var(--ctrl-border);
+}
+.editor textarea:focus,
+.dlg textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+/* Height follows the text: from 3 lines up to half the window. Where field-sizing is missing, JS sets the height. */
+.editor textarea.grow {
+  field-sizing: content;
+  resize: none;
+  min-height: calc(4.5em + 18px);
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.editor textarea.mono {
+  font: var(--fs-xs) / 18px var(--font-mono);
+  font-variant-ligatures: none;
+  tab-size: 4;
+  min-height: calc(3 * 18px + 18px);
+  white-space: pre;
+  overflow-x: auto;
+}
+.sug-toggle.btn.ghost {
+  align-self: flex-start;
+  margin-left: -8px;
+  color: var(--accent);
+}
+.sug-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sug-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.sug-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--success);
+}
+/* The space for "Delete draft" is always reserved, so the form does not jump while typing. */
+.editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  container-type: inline-size;
+}
+.editor-actions .btn {
+  flex: none;
+}
+/* If it does not fit beside the buttons, it moves to its own line as a whole, aligned right. */
+.editor-actions .hint {
+  margin-left: auto;
+  text-align: right;
+  line-height: 16px;
+}
+.editor-actions .btn.is-off {
+  visibility: hidden;
+}
+/* Form hint: the long one if it fits in a row with the buttons, otherwise the short one (without "the draft stays"). */
+.save-hint .hint-short {
+  display: none;
+}
+@container (max-width: 660px) {
+  .save-hint .hint-long {
+    display: none;
+  }
+  .save-hint .hint-short {
+    display: inline;
+  }
+}
+.sec-editor {
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.sec-editor .editor-actions .hint {
+  text-align: left;
+  margin-left: 4px;
+}
+
+/* Chapter comment in the overview */
+.sec-comment {
+  margin-top: 14px;
+  max-width: 64ch;
+}
+.sec-comment .add-sec-comment.btn.ghost {
+  margin-left: -8px;
+  color: var(--accent);
+}
+.sec-comment .note {
+  box-shadow: inset 3px 0 0 var(--accent);
+  padding-bottom: 6px;
+}
+/* In the narrow overview column the buttons do not fit in the head: they sit under the text and are always visible. */
+.note-foot {
+  display: flex;
+  gap: 2px;
+  margin: 6px 0 0 -8px;
+}

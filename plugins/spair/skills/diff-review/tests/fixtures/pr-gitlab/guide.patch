@@ -1,0 +1,116 @@
+diff --git a/assets/logo.png b/assets/logo.png
+new file mode 100644
+index 0000000..ac6c544
+Binary files /dev/null and b/assets/logo.png differ
+diff --git a/assets/viewer.html b/assets/viewer.html
+deleted file mode 100644
+index 8790d37..0000000
+--- a/assets/viewer.html
++++ /dev/null
+@@ -1,20 +0,0 @@
+-<!doctype html>
+-<html lang="ru">
+-<head>
+-  <meta charset="utf-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1">
+-  <meta name="referrer" content="no-referrer">
+-  <title>Diff review</title>
+-  <link rel="icon" href="data:,">
+-  <link rel="stylesheet" href="/assets/viewer.css">
+-</head>
+-<body>
+-  <header id="top"></header>
+-  <div id="layout">
+-    <nav id="toc" aria-label="Главы"></nav>
+-    <main id="main"><p class="loading">Загружаю ревью…</p></main>
+-  </div>
+-  <div id="modal-root"></div>
+-  <script src="/assets/viewer.js"></script>
+-</body>
+-</html>
+diff --git a/package-lock.json b/package-lock.json
+new file mode 100644
+index 0000000..58b6707
+--- /dev/null
++++ b/package-lock.json
+@@ -0,0 +1 @@
++{"lockfileVersion": 3}
+diff --git a/references/guide-method.md b/references/method.md
+similarity index 99%
+rename from references/guide-method.md
+rename to references/method.md
+index 0077001..b671d8d 100644
+--- a/references/guide-method.md
++++ b/references/method.md
+@@ -142,3 +142,4 @@ Markdown — только когда он делает текст точнее:
+ ```
+ 
+ `generator` необязателен. Укажи модель, только если точно знаешь, кто ты.
++- новый пункт в методологии
+diff --git a/scripts/collect.py b/scripts/collect.py
+index bdf57c0..054f13f 100644
+--- a/scripts/collect.py
++++ b/scripts/collect.py
+@@ -31,7 +31,7 @@ DIFF_FLAGS = [
+     "--no-color", "--no-ext-diff", "--no-textconv", "--find-renames",
+     "--src-prefix=a/", "--dst-prefix=b/", "-U3",
+ ]
+-LOG_LIMIT = 50
++LOG_LIMIT = 100  # больше коммитов в сводке
+ 
+ 
+ class CollectError(Exception):
+@@ -50,9 +50,12 @@ def out(root, *args, **kw):
+     return git(root, *args, **kw).stdout.decode(errors="replace").strip()
+ 
+ 
+-def verify(root, ref):
+-    res = git(root, "rev-parse", "--verify", "-q", f"{ref}^{{commit}}", check=False)
+-    return res.stdout.decode().strip() if res.returncode == 0 else None
++def verify(root, ref, kind="commit"):
++    """Возвращает полный sha или None, если ревизия не найдена."""
++    res = git(root, "rev-parse", "--verify", "--quiet", f"{ref}^{{{kind}}}", check=False)
++    if res.returncode != 0:
++        return None
++    return res.stdout.decode().strip() or None
+ 
+ 
+ def resolve_base(root, explicit):
+@@ -65,7 +68,7 @@ def resolve_base(root, explicit):
+         ref = res.stdout.decode().strip().removeprefix("refs/remotes/")
+         if verify(root, ref):
+             return ref
+-    for name in ("main", "master", "develop"):
++    for name in ("main", "master", "develop", "trunk"):
+         for ref in (f"origin/{name}", name):
+             if verify(root, ref):
+                 return ref
+diff --git a/scripts/test_collect.py b/scripts/test_collect.py
+new file mode 100644
+index 0000000..2933329
+--- /dev/null
++++ b/scripts/test_collect.py
+@@ -0,0 +1 @@
++# TODO: тесты
+diff --git a/scripts/validate.py b/scripts/validate.py
+index ac4fe6c..684f8d7 100644
+--- a/scripts/validate.py
++++ b/scripts/validate.py
+@@ -13,7 +13,7 @@ import json
+ import sys
+ from pathlib import Path
+ 
+-MAX_SECTIONS = 10
++MAX_SECTIONS = 12
+ 
+ 
+ def validate(guide, meta):
+@@ -56,7 +56,7 @@ def validate(guide, meta):
+         else:
+             where = f"глава {i} «{s['title'].strip()}»"
+         if not isinstance(s.get("overview"), str) or not s["overview"].strip():
+-            errors.append(f"{where}: пустой `overview`")
++            errors.append(f"{where}: пустой `overview`, напишите 2–6 предложений о том, что изменилось, зачем и к чему это ведёт; без обзора ревьюер не поймёт смысл главы и будет вынужден читать дифф целиком")
+         diffs = s.get("diffs")
+         if not isinstance(diffs, list):
+             errors.append(f"{where}: `diffs` должен быть массивом")

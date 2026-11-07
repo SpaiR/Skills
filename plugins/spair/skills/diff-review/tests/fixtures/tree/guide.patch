@@ -1,0 +1,143 @@
+diff --git a/README.md b/README.md
+index 443af61..a0d99ba 100644
+--- a/README.md
++++ b/README.md
+@@ -27,7 +27,7 @@ README.md line 26
+ README.md line 27
+ README.md line 28
+ README.md line 29
+-README.md line 30
++README.md line 30 // changed
+ README.md line 31
+ README.md line 32
+ README.md line 33
+diff --git a/docs/guide/intro.md b/docs/guide/intro.md
+index 823b2ca..587aba7 100644
+--- a/docs/guide/intro.md
++++ b/docs/guide/intro.md
+@@ -27,7 +27,7 @@ docs/guide/intro.md line 26
+ docs/guide/intro.md line 27
+ docs/guide/intro.md line 28
+ docs/guide/intro.md line 29
+-docs/guide/intro.md line 30
++docs/guide/intro.md line 30 // changed
+ docs/guide/intro.md line 31
+ docs/guide/intro.md line 32
+ docs/guide/intro.md line 33
+diff --git a/docs/guide/setup.md b/docs/guide/setup.md
+index d3de45a..547a684 100644
+--- a/docs/guide/setup.md
++++ b/docs/guide/setup.md
+@@ -27,7 +27,7 @@ docs/guide/setup.md line 26
+ docs/guide/setup.md line 27
+ docs/guide/setup.md line 28
+ docs/guide/setup.md line 29
+-docs/guide/setup.md line 30
++docs/guide/setup.md line 30 // changed
+ docs/guide/setup.md line 31
+ docs/guide/setup.md line 32
+ docs/guide/setup.md line 33
+diff --git a/file10.txt b/file10.txt
+index 7ee2fb4..525fbff 100644
+--- a/file10.txt
++++ b/file10.txt
+@@ -27,7 +27,7 @@ file10.txt line 26
+ file10.txt line 27
+ file10.txt line 28
+ file10.txt line 29
+-file10.txt line 30
++file10.txt line 30 // changed
+ file10.txt line 31
+ file10.txt line 32
+ file10.txt line 33
+diff --git a/file2.txt b/file2.txt
+index eba7c8b..f4c4dd0 100644
+--- a/file2.txt
++++ b/file2.txt
+@@ -27,7 +27,7 @@ file2.txt line 26
+ file2.txt line 27
+ file2.txt line 28
+ file2.txt line 29
+-file2.txt line 30
++file2.txt line 30 // changed
+ file2.txt line 31
+ file2.txt line 32
+ file2.txt line 33
+diff --git a/packages/app/src/main/index.js b/packages/app/src/main/index.js
+index 79d747d..2805c49 100644
+--- a/packages/app/src/main/index.js
++++ b/packages/app/src/main/index.js
+@@ -27,7 +27,7 @@ packages/app/src/main/index.js line 26
+ packages/app/src/main/index.js line 27
+ packages/app/src/main/index.js line 28
+ packages/app/src/main/index.js line 29
+-packages/app/src/main/index.js line 30
++packages/app/src/main/index.js line 30 // changed
+ packages/app/src/main/index.js line 31
+ packages/app/src/main/index.js line 32
+ packages/app/src/main/index.js line 33
+diff --git a/src/core/engine.js b/src/core/engine.js
+index e0c6e53..bce763f 100644
+--- a/src/core/engine.js
++++ b/src/core/engine.js
+@@ -27,7 +27,7 @@ src/core/engine.js line 26
+ src/core/engine.js line 27
+ src/core/engine.js line 28
+ src/core/engine.js line 29
+-src/core/engine.js line 30
++src/core/engine.js line 30 // changed
+ src/core/engine.js line 31
+ src/core/engine.js line 32
+ src/core/engine.js line 33
+diff --git a/src/core/util/math.js b/src/core/util/math.js
+index 425d4a0..f54f513 100644
+--- a/src/core/util/math.js
++++ b/src/core/util/math.js
+@@ -27,7 +27,7 @@ src/core/util/math.js line 26
+ src/core/util/math.js line 27
+ src/core/util/math.js line 28
+ src/core/util/math.js line 29
+-src/core/util/math.js line 30
++src/core/util/math.js line 30 // changed
+ src/core/util/math.js line 31
+ src/core/util/math.js line 32
+ src/core/util/math.js line 33
+diff --git a/src/core/util/text.js b/src/core/util/text.js
+index ab4414e..062af60 100644
+--- a/src/core/util/text.js
++++ b/src/core/util/text.js
+@@ -27,7 +27,7 @@ src/core/util/text.js line 26
+ src/core/util/text.js line 27
+ src/core/util/text.js line 28
+ src/core/util/text.js line 29
+-src/core/util/text.js line 30
++src/core/util/text.js line 30 // changed
+ src/core/util/text.js line 31
+ src/core/util/text.js line 32
+ src/core/util/text.js line 33
+diff --git a/src/ui/button.js b/src/ui/button.js
+index c92ffc7..d8b5d83 100644
+--- a/src/ui/button.js
++++ b/src/ui/button.js
+@@ -27,7 +27,7 @@ src/ui/button.js line 26
+ src/ui/button.js line 27
+ src/ui/button.js line 28
+ src/ui/button.js line 29
+-src/ui/button.js line 30
++src/ui/button.js line 30 // changed
+ src/ui/button.js line 31
+ src/ui/button.js line 32
+ src/ui/button.js line 33
+diff --git a/src/ui/panel.js b/src/ui/panel.js
+index ae6137e..d51c129 100644
+--- a/src/ui/panel.js
++++ b/src/ui/panel.js
+@@ -27,7 +27,7 @@ src/ui/panel.js line 26
+ src/ui/panel.js line 27
+ src/ui/panel.js line 28
+ src/ui/panel.js line 29
+-src/ui/panel.js line 30
++src/ui/panel.js line 30 // changed
+ src/ui/panel.js line 31
+ src/ui/panel.js line 32
+ src/ui/panel.js line 33

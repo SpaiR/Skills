@@ -1,0 +1,79 @@
+diff --git a/src/big.js b/src/big.js
+index 07b3d27..49ff764 100644
+--- a/src/big.js
++++ b/src/big.js
+@@ -38,7 +38,7 @@ export function fn37(a, b) { return a + b * 37; } // строка 37
+ export function fn38(a, b) { return a + b * 38; } // строка 38
+ export function fn39(a, b) { return a + b * 39; } // строка 39
+ export function fn40(a, b) { return a + b * 40; } // строка 40
+-export function fn41(a, b) { return a + b * 41; } // строка 41
++export function fn41(a, b) { return a - b * 41; } // строка 41 // поправлено
+ export function fn42(a, b) { return a + b * 42; } // строка 42
+ export function fn43(a, b) { return a + b * 43; } // строка 43
+ export function fn44(a, b) { return a + b * 44; } // строка 44
+@@ -2498,7 +2498,7 @@ export function fn2497(a, b) { return a + b * 2497; } // строка 2497
+ export function fn2498(a, b) { return a + b * 2498; } // строка 2498
+ export function fn2499(a, b) { return a + b * 2499; } // строка 2499
+ export function fn2500(a, b) { return a + b * 2500; } // строка 2500
+-export function fn2501(a, b) { return a + b * 2501; } // строка 2501
++export function fn2501(a, b) { return a - b * 2501; } // строка 2501 // поправлено
+ export function fn2502(a, b) { return a + b * 2502; } // строка 2502
+ export function fn2503(a, b) { return a + b * 2503; } // строка 2503
+ export function fn2504(a, b) { return a + b * 2504; } // строка 2504
+@@ -2508,7 +2508,7 @@ export function fn2507(a, b) { return a + b * 2507; } // строка 2507
+ export function fn2508(a, b) { return a + b * 2508; } // строка 2508
+ export function fn2509(a, b) { return a + b * 2509; } // строка 2509
+ export function fn2510(a, b) { return a + b * 2510; } // строка 2510
+-export function fn2511(a, b) { return a + b * 2511; } // строка 2511
++export function fn2511(a, b) { return a - b * 2511; } // строка 2511 // поправлено
+ export function fn2512(a, b) { return a + b * 2512; } // строка 2512
+ export function fn2513(a, b) { return a + b * 2513; } // строка 2513
+ export function fn2514(a, b) { return a + b * 2514; } // строка 2514
+@@ -2998,6 +2998,7 @@ export function fn2997(a, b) { return a + b * 2997; } // строка 2997
+ export function fn2998(a, b) { return a + b * 2998; } // строка 2998
+ export function fn2999(a, b) { return a + b * 2999; } // строка 2999
+ export function fn3000(a, b) { return a + b * 3000; } // строка 3000
++export const added = true;
+ export function fn3001(a, b) { return a + b * 3001; } // строка 3001
+ export function fn3002(a, b) { return a + b * 3002; } // строка 3002
+ export function fn3003(a, b) { return a + b * 3003; } // строка 3003
+@@ -4998,7 +4999,7 @@ export function fn4997(a, b) { return a + b * 4997; } // строка 4997
+ export function fn4998(a, b) { return a + b * 4998; } // строка 4998
+ export function fn4999(a, b) { return a + b * 4999; } // строка 4999
+ export function fn5000(a, b) { return a + b * 5000; } // строка 5000
+-export function fn5001(a, b) { return a + b * 5001; } // строка 5001
++export function fn5001(a, b) { return a - b * 5001; } // строка 5001 // поправлено
+ export function fn5002(a, b) { return a + b * 5002; } // строка 5002
+ export function fn5003(a, b) { return a + b * 5003; } // строка 5003
+ export function fn5004(a, b) { return a + b * 5004; } // строка 5004
+@@ -7775,7 +7776,7 @@ export function fn7774(a, b) { return a + b * 7774; } // строка 7774
+ export function fn7775(a, b) { return a + b * 7775; } // строка 7775
+ export function fn7776(a, b) { return a + b * 7776; } // строка 7776
+ export function fn7777(a, b) { return a + b * 7777; } // строка 7777
+-export function fn7778(a, b) { return a + b * 7778; } // строка 7778
++export function fn7778(a, b) { return a - b * 7778; } // строка 7778 // поправлено
+ export function fn7779(a, b) { return a + b * 7779; } // строка 7779
+ export function fn7780(a, b) { return a + b * 7780; } // строка 7780
+ export function fn7781(a, b) { return a + b * 7781; } // строка 7781
+@@ -9988,7 +9989,7 @@ export function fn9987(a, b) { return a + b * 9987; } // строка 9987
+ export function fn9988(a, b) { return a + b * 9988; } // строка 9988
+ export function fn9989(a, b) { return a + b * 9989; } // строка 9989
+ export function fn9990(a, b) { return a + b * 9990; } // строка 9990
+-export function fn9991(a, b) { return a + b * 9991; } // строка 9991
++export function fn9991(a, b) { return a - b * 9991; } // строка 9991 // поправлено
+ export function fn9992(a, b) { return a + b * 9992; } // строка 9992
+ export function fn9993(a, b) { return a + b * 9993; } // строка 9993
+ export function fn9994(a, b) { return a + b * 9994; } // строка 9994
+diff --git a/src/small.js b/src/small.js
+index eb31e75..332300f 100644
+--- a/src/small.js
++++ b/src/small.js
+@@ -97,7 +97,7 @@ const v96 = 96;
+ const v97 = 97;
+ const v98 = 98;
+ const v99 = 99;
+-const v100 = 100;
++const v100 = 1000;
+ const v101 = 101;
+ const v102 = 102;
+ const v103 = 103;

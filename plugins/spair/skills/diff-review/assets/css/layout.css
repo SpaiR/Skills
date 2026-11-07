@@ -1,0 +1,32 @@
+/* Page layout: the grid of sidebar and main column. */
+
+#layout {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  gap: var(--s-6);
+  padding: 0 var(--page-pad) var(--s-12);
+}
+body.toc-hidden #layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+body.toc-hidden #toc {
+  display: none;
+}
+#main {
+  container: main / inline-size;
+  padding-top: var(--s-6);
+  min-width: 0;
+}
+.loading {
+  padding: 80px 0;
+  text-align: center;
+  color: var(--ink-3);
+}
+.load-error {
+  max-width: 640px;
+  margin: 48px auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}

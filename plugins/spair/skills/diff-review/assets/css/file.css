@@ -1,0 +1,188 @@
+/* File card: head, path, per-file controls, summary. */
+
+.file {
+  background: var(--surface);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-md);
+  overflow: clip;
+  box-shadow: var(--shadow-xs);
+  scroll-margin-top: calc(var(--header-h) + var(--sec-head-h) + 8px);
+  container: file / inline-size;
+}
+.file-head {
+  position: sticky;
+  top: calc(var(--header-h) + var(--sec-head-h));
+  z-index: var(--z-file-head);
+  height: var(--file-head-h);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 4px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--hair);
+  transition: box-shadow var(--dur-fast) var(--ease);
+}
+.file-head:last-child {
+  border-bottom: 0;
+}
+/* Current file: a bar inset from top and bottom, so it does not bend at the card's rounded top corner. */
+.file-head.is-current::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--accent);
+}
+.file-h {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+.file-toggle {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.file-toggle:hover {
+  background: var(--tint);
+}
+.file-toggle .chev {
+  color: var(--ink-3);
+  transition: transform var(--dur) var(--ease);
+}
+.file.collapsed .file-toggle .chev {
+  transform: rotate(-90deg);
+}
+.path {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  font: var(--fs-sm) / 20px var(--font-mono);
+  white-space: nowrap;
+}
+.p-dir {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: ltr;
+  color: var(--ink-3);
+}
+.p-name {
+  flex: none;
+  color: var(--ink);
+  font-weight: 600;
+}
+.p-old {
+  display: flex;
+  min-width: 0;
+  flex: 0 1 auto;
+  color: var(--ink-3);
+}
+.p-old-dir {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.p-old-name {
+  flex: none;
+}
+.p-arrow {
+  flex: none;
+  color: var(--ink-3);
+  padding: 0 6px;
+}
+.badge.comments {
+  border: 0;
+  background: var(--accent-soft);
+  color: var(--accent);
+  cursor: pointer;
+  flex: none;
+}
+.badge.comments .icon {
+  width: 13px;
+  height: 13px;
+}
+.whole-btn {
+  flex: none;
+  color: var(--ink-2);
+}
+.whole-btn[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.whole-btn[aria-pressed="true"]:hover {
+  background: var(--accent-soft);
+}
+@container file (max-width: 699.98px) {
+  .whole-text {
+    display: none;
+  }
+}
+.file-stat {
+  flex: none;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+.viewed {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 4px 0 8px;
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  cursor: pointer;
+  user-select: none;
+}
+@container file (max-width: 699.98px) {
+  .viewed-text {
+    display: none;
+  }
+}
+
+.file-summary {
+  padding: 8px 12px;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-ui);
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--hair);
+}
+.file-summary:last-child {
+  border-bottom: 0;
+}
+.collapsed-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  padding: 6px 8px 6px 12px;
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+}
+.collapsed-note .btn {
+  color: var(--accent);
+}
+.file-empty {
+  padding: 10px 12px;
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+}

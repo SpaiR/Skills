@@ -1,0 +1,104 @@
+/* Overview mode and the guide brief: the brief block of the hero and the chapter cards (.ov-sec). */
+
+/* Brief: points grouped by kind, each group marked by a thin bar on the left. */
+.brief {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  max-width: 72ch;
+  margin-top: var(--s-5);
+}
+.brief-group {
+  padding-left: var(--s-4);
+  border-left: 2px solid var(--line);
+}
+.brief-group.is-change {
+  border-left-color: var(--accent);
+}
+.brief-group.is-risk {
+  border-left-color: var(--warn-border);
+}
+.brief-title {
+  margin: 0 0 var(--s-1);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0;
+  color: var(--ink-2);
+}
+.brief-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1h);
+}
+.brief-item {
+  font-size: var(--fs-prose);
+  line-height: var(--lh-prose);
+  color: var(--ink);
+  text-wrap: pretty;
+}
+/* The chapter link of a brief point: a link-style button after the point text. */
+.brief-ch {
+  margin-left: var(--s-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: var(--fs-sm);
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+  cursor: pointer;
+  border-radius: var(--r-xs);
+}
+.brief-ch:hover {
+  color: var(--accent-hover);
+}
+
+/* Chapter cards of Overview mode: no sticky head and no files, the overview at full width. */
+.ov-sec {
+  background: var(--surface);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-lg);
+  padding: var(--s-5) var(--s-6);
+  margin-bottom: var(--s-4);
+}
+.ov-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  margin-bottom: var(--s-3);
+}
+.ov-num {
+  flex: none;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--ink-3);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.ov-head h2 {
+  min-width: 0;
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  line-height: 24px;
+  color: var(--ink);
+}
+.ov-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin-top: var(--s-4);
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--hair);
+}
+.ov-stats {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
