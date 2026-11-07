@@ -15,7 +15,7 @@ Conventional Commits 1.0.0, enforced by `.githooks/commit-msg` (enable once per 
 ```
 
 - Types: `feat` `fix` `refactor` `test` `docs` `style` `build` `chore` `perf`.
-- Scopes: `bigwork` (skills/bigwork/); for diff-review, by area of `skills/diff-review/`: `viewer` (assets/),
+- Scopes: `bigwork` (skills/bigwork/); `mods` (mods/, .claude-plugin/); for diff-review, by area of `skills/diff-review/`: `viewer` (assets/),
   `collect`, `remote`, `publish`, `serve`, `validate` (scripts/), `skill` (SKILL.md, references/), `tests` (tests/);
   `repo` (root configs, docs, rules, tooling). The scope is optional.
 - Subject in English, imperative, lower case after the colon, no trailing period, at most ~100 characters.

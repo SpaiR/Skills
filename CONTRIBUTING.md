@@ -24,6 +24,13 @@ Create `skills/<name>/SKILL.md` with `name` and `description` in the frontmatter
 `README.md` and the layout in `CLAUDE.md`, add its scope to `.githooks/commit-msg` and `.claude/rules/git.md`, and
 check that `npx skills add ./ --list` finds it. Conventions: [.claude/rules/skills.md](.claude/rules/skills.md).
 
+## Mods
+
+`mods/<name>/` holds Claude Code plugins, listed in the marketplace `.claude-plugin/marketplace.json` at the root.
+Each has `.claude-plugin/plugin.json` and `hooks/hooks.json` naming its hook modules. To add one, create the folder,
+add it to `plugins` in the marketplace and to the table in `README.md`, and check the manifest with
+`claude plugin validate .`.
+
 ## Language
 
 Code, comments, docs, rules, test names and commits are English. diff-review speaks Russian to its user; where
@@ -41,7 +48,7 @@ Commit subjects follow [Conventional Commits](https://www.conventionalcommits.or
 ```
 
 - Types: `feat`, `fix`, `refactor`, `test`, `docs`, `style`, `build`, `chore`, `perf`.
-- Scopes: `bigwork`; for diff-review `viewer`, `collect`, `remote`, `publish`, `serve`, `validate`, `skill`,
+- Scopes: `bigwork`; `mods`; for diff-review `viewer`, `collect`, `remote`, `publish`, `serve`, `validate`, `skill`,
   `tests`; `repo` for the root. The scope is optional.
 - Add `!` (and a `BREAKING CHANGE:` footer) for incompatible changes to diff-review's `meta.json`, `guide.json`,
   `state.json` or the `DIFF_REVIEW_*` output markers.
