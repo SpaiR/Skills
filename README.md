@@ -9,11 +9,17 @@ Personal Claude Code skills of SpaiR.
 
 ## Install the skills
 
-With the [`skills`](https://github.com/vercel-labs/skills) CLI, user-level, for Claude Code:
+With the [`skills`](https://github.com/vercel-labs/skills) CLI:
 
 ```bash
-npx skills add SpaiR/Skills -g -a claude-code            # pick skills interactively
-npx skills add SpaiR/Skills -g -a claude-code -s '*' -y  # all of them
+npx skills add SpaiR/Skills
+```
+
+It asks which skills to install, for which agents, and whether globally or into the current project. To skip the
+questions and install every skill globally for Claude Code:
+
+```bash
+npx skills add SpaiR/Skills -g -a claude-code -s '*' -y
 ```
 
 The CLI copies each skill into `~/.claude/skills/<name>/`. `npx skills update -g` pulls newer versions.
