@@ -53,7 +53,7 @@ tests/tools/                contrast.js (palette contrast CLI), shoot.js (manual
 Run from the repo root. Requirements: Node (ESM, `node --test`), Python 3, `uv` (for `uvx ruff`), Google Chrome.
 
 ```bash
-npm run setup       # npm install + git config core.hooksPath .githooks
+npm run setup       # npm install + point core.hooksPath at this folder's .githooks
 npm run lint        # biome check + ruff check + ruff format --check
 npm run format      # biome --write + ruff format + ruff --fix
 npm run test:unit   # node --test tests/unit

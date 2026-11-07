@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Claude Code skill: guided review of local git changes in a local web viewer",
   "scripts": {
-    "setup": "npm install && git config core.hooksPath .githooks",
+    "setup": "npm install && git config core.hooksPath \"$(git rev-parse --show-prefix).githooks\"",
     "test": "npm run test:unit && npm run test:py && npm run test:e2e",
     "test:unit": "node --test 'tests/unit/**/*.test.js'",
     "test:py": "python3 -m unittest discover -s tests/python",

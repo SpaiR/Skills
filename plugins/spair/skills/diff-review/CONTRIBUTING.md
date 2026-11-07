@@ -10,10 +10,10 @@ You need:
 - Google Chrome (browser tests drive the installed Chrome through `playwright-core`; no browser is downloaded).
 
 ```bash
-npm run setup   # npm install + git config core.hooksPath .githooks
+npm run setup   # npm install + point core.hooksPath at this folder's .githooks
 ```
 
-To try your working copy as the live skill, clone or symlink it to `~/.claude/skills/diff-review`.
+To try your working copy as the live skill, run `claude --plugin-dir plugins/spair` from the repository root.
 
 ## Layout
 
