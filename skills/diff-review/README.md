@@ -13,7 +13,7 @@ static page with no dependencies.
 Install it with the [`skills`](https://github.com/vercel-labs/skills) CLI from the repository that holds it:
 
 ```bash
-npx skills add <this repo> -g -a claude-code -s diff-review
+npx skills add SpaiR/Skills -g -a claude-code -s diff-review
 ```
 
 Requirements: `git`, Python 3.9+ and a browser. No packages to install for using the skill. For PRs/MRs: the

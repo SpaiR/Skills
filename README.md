@@ -12,8 +12,8 @@ Personal Claude Code skills of SpaiR.
 With the [`skills`](https://github.com/vercel-labs/skills) CLI, user-level, for Claude Code:
 
 ```bash
-npx skills add <this repo> -g -a claude-code            # pick skills interactively
-npx skills add <this repo> -g -a claude-code -s '*' -y  # all of them
+npx skills add SpaiR/Skills -g -a claude-code            # pick skills interactively
+npx skills add SpaiR/Skills -g -a claude-code -s '*' -y  # all of them
 ```
 
 The CLI copies each skill into `~/.claude/skills/<name>/`. `npx skills update -g` pulls newer versions.
