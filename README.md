@@ -1,24 +1,31 @@
-# spair-skills
+# Skills
 
-Claude Code plugin marketplace with two plugins:
+Personal Claude Code skills and global instructions of SpaiR.
 
-| Plugin | What it adds |
+| Path | What it is |
 | :- | :- |
-| `spair` | Skills `/spair:diff-review` (guided review of a diff, PR or MR in a local browser page) and `/spair:bigwork` (a large task run as a dynamic workflow). |
-| `spair-instructions` | Global instructions from `plugins/spair-instructions/context/CLAUDE.md`, loaded into every session by a `SessionStart` hook. Enable or disable it on its own. |
+| `skills/diff-review` | `/diff-review`: guided review of a diff, PR or MR in a local browser page. |
+| `skills/bigwork` | `/bigwork`: a large task run as a dynamic workflow. |
+| `global/CLAUDE.md` | Global instructions: voice, explaining, memory policy, execution rules. |
 
-## Install
+## Install the skills
+
+With the [`skills`](https://github.com/vercel-labs/skills) CLI, user-level, for Claude Code:
 
 ```bash
-claude plugin marketplace add <this repo or a local path to it>
-claude plugin install spair@spair-skills
-claude plugin install spair-instructions@spair-skills
+npx skills add <this repo> -g -a claude-code            # pick skills interactively
+npx skills add <this repo> -g -a claude-code -s '*' -y  # all of them
 ```
 
-## Notes
+The CLI copies each skill into `~/.claude/skills/<name>/`. `npx skills update -g` pulls newer versions.
 
-- A plugin can't ship a `CLAUDE.md` that Claude Code loads as memory, so `spair-instructions` prints the file from a
-  `SessionStart` hook instead. Hook output is capped at 10,000 characters; past that Claude gets only a file path and a
-  2,000-character preview. Keep `context/CLAUDE.md` under the cap.
-- `diff-review` keeps its own dev setup (tests, lint, commit hook) in `plugins/spair/skills/diff-review/`; see its
-  `CONTRIBUTING.md`.
+## Connect the global instructions
+
+The `skills` CLI installs skills only, so `global/CLAUDE.md` is connected by an import from your user `CLAUDE.md`.
+Clone the repository and add this line to `~/.claude/CLAUDE.md` (adjust the path to your clone):
+
+```markdown
+@~/Personal/Skills/global/CLAUDE.md
+```
+
+Remove the line to disconnect the instructions.

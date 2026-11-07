@@ -10,14 +10,11 @@ static page with no dependencies.
 
 ## Install
 
-The skill ships in the `spair` plugin of the `spair-skills` marketplace (the repository root):
+Install it with the [`skills`](https://github.com/vercel-labs/skills) CLI from the repository that holds it:
 
 ```bash
-claude plugin marketplace add <this repo>
-claude plugin install spair@spair-skills
+npx skills add <this repo> -g -a claude-code -s diff-review
 ```
-
-It runs as `/spair:diff-review`.
 
 Requirements: `git`, Python 3.9+ and a browser. No packages to install for using the skill. For PRs/MRs: the
 [GitHub CLI](https://cli.github.com) (`gh auth login`) and/or the [GitLab CLI](https://gitlab.com/gitlab-org/cli)
@@ -25,22 +22,22 @@ Requirements: `git`, Python 3.9+ and a browser. No packages to install for using
 
 ## Use
 
-In a Claude Code session type `/spair:diff-review` with optional arguments in any order:
+In a Claude Code session type `/diff-review` with optional arguments in any order:
 
 ```text
-/spair:diff-review                          # the change discussed in this session (since the base branch, incl. uncommitted)
-/spair:diff-review uncommitted              # HEAD vs. the working tree, incl. untracked files
-/spair:diff-review staged                   # the index only
-/spair:diff-review 3f2c1ab                  # a single commit
-/spair:diff-review main..feature            # a range (A..B or A...B)
-/spair:diff-review feature/login            # a branch from its merge-base with the base branch
-/spair:diff-review feature/login --base develop
-/spair:diff-review ~/work/app-wt uncommitted
-/spair:diff-review the worktree with the login fix
-/spair:diff-review https://github.com/owner/repo/pull/123
-/spair:diff-review https://gitlab.example.com/group/project/-/merge_requests/45
-/spair:diff-review pr 123                   # also #123, mr 45, !45: resolved by gh/glab in the current repository
-/spair:diff-review pr                       # the PR/MR of the current branch
+/diff-review                          # the change discussed in this session (since the base branch, incl. uncommitted)
+/diff-review uncommitted              # HEAD vs. the working tree, incl. untracked files
+/diff-review staged                   # the index only
+/diff-review 3f2c1ab                  # a single commit
+/diff-review main..feature            # a range (A..B or A...B)
+/diff-review feature/login            # a branch from its merge-base with the base branch
+/diff-review feature/login --base develop
+/diff-review ~/work/app-wt uncommitted
+/diff-review the worktree with the login fix
+/diff-review https://github.com/owner/repo/pull/123
+/diff-review https://gitlab.example.com/group/project/-/merge_requests/45
+/diff-review pr 123                   # also #123, mr 45, !45: resolved by gh/glab in the current repository
+/diff-review pr                       # the PR/MR of the current branch
 ```
 
 For a PR/MR, the commits are fetched into your local clone if one of its remotes is that repository (only objects and

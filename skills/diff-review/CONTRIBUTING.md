@@ -13,7 +13,7 @@ You need:
 npm run setup   # npm install + point core.hooksPath at this folder's .githooks
 ```
 
-To try your working copy as the live skill, run `claude --plugin-dir plugins/spair` from the repository root.
+To try your working copy as the live skill, run `npx skills add ./ -g -a claude-code -s diff-review` from the repository root (it copies, so rerun after changes).
 
 ## Layout
 

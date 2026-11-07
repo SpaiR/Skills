@@ -139,7 +139,7 @@ DIFF_REVIEW_RESULT: feedback|approved|published|closed|timeout [<path to feedbac
 
 - `feedback`: read `feedback.md` and treat it as a message from the user. It is their review of your or someone else's
   changes in the repository `<root>`. Answer questions. Make requested edits in `<root>`, i.e. in the worktree that was
-  reviewed, not in the session's directory. Clarify anything ambiguous. Then offer to rerun `/spair:diff-review` to check the
+  reviewed, not in the session's directory. Clarify anything ambiguous. Then offer to rerun `/diff-review` to check the
   result. For a PR/MR, edit only if its head branch is checked out in a local worktree (`git -C <repo> worktree list`);
   otherwise answer and ask where to make the changes.
 - `approved`: confirm in one line. If `feedback.md` is attached, read it and take the comments into account. Do not
