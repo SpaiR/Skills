@@ -39,8 +39,8 @@ why before launching, not after.
   it instead of asking an agent's opinion.
 - **No silent caps.** Anything that bounds coverage (top-N, sampling, skipped items, agents that returned `null`) is
   `log()`ged during the run and named in the report.
-- **Name for the progress view.** Phases are the steps of the approved plan, under the same names, or the pipeline's
-  stages when there is no plan. Agent labels read `<role>: <item>` in plain words, understandable without the plan
+- **Name for the progress view.** Phases are the steps of the approved plan, under the same names (`Stock`, not
+  `1 Stock`: the view numbers phases itself), or the pipeline's stages when there is no plan. Agent labels read `<role>: <item>` in plain words, understandable without the plan
   (`verify: placement rules`, not `verify 5`). All names are in English; `meta.name` is a short kebab-case name,
   `meta.description` says in one sentence what the run produces.
 - **Size to the work.** Agent count follows the amount of independent work, not the maximum available. The session's
