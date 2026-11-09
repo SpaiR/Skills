@@ -1,6 +1,6 @@
 {
   "name": "context-size",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Shows used context tokens next to the prompt footer's mode labels",
   "author": {
     "name": "SpaiR"
